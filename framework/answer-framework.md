@@ -176,6 +176,28 @@ architectures.
 
 ---
 
+## Driving the conversation (delivery counts as much as content)
+
+Interviewers grade how you communicate, not just what you know. A correct design
+delivered as a wall of monologue scores worse than a slightly thinner one
+delivered as a led conversation. Concretely:
+
+- **Lead, do not wait.** State your plan up front ("I will scope, sketch the
+  retrieval-then-ranking funnel, then go deep on features and serving"), then
+  drive it. The interviewer should steer, not push.
+- **Think out loud and signpost.** Say which step you are on and why. "I am going
+  to assume X because Y; tell me if that is wrong" turns silence into signal.
+- **Make assumptions explicit and write them down.** It lets the interviewer
+  correct the ones that matter instead of watching you build on sand.
+- **Manage time.** Cover the whole funnel at some depth, then go deep where the
+  interviewer leans in. If you are running long, say "I will note monitoring and
+  drift exist and move on unless you want them."
+- **Read the steer.** A question is usually a hint about where they want depth.
+  Follow it instead of finishing your prepared thread.
+- **State tradeoffs, not verdicts.** "A bigger embedding lifts recall but costs
+  index memory; I would keep it modest because the latency budget is tight" beats
+  asserting a number with no reasoning.
+
 ## Common mistakes
 
 - Jumping to a solution before scoping the objective and the scale.

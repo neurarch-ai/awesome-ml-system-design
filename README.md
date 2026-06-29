@@ -38,6 +38,11 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
    there is a link that loads the actual graph so you can trace the data flow
    yourself instead of trusting a static picture.
 
+> **Interviews ask end-to-end questions, not "explain ranking."** The
+> [**question bank**](questions.md) maps the questions you actually get ("design
+> YouTube recommendations", "why is my model good offline but bad online") to the
+> component topics below. Start there if you are practicing for a specific loop.
+
 ---
 
 ## Topics
