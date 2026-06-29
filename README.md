@@ -64,6 +64,14 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 See [topics/README.md](topics/README.md) for the full roadmap and how to
 contribute a topic.
 
+Every ready topic ends with a **Seen in production** section: real first-party
+engineering writeups (Pinterest, Meta, Google, Airbnb, Instacart, Alibaba,
+Netflix, and more) tagged by what they illustrate, so the framework is grounded
+in shipped systems rather than whiteboard theory. For the broadest index of
+production ML systems, see the
+[Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design)
+(800 case studies from 150+ companies).
+
 > Building with large language models instead? The companion
 > [**LLM System Design Interview**](https://github.com/neurarch-ai/awesome-llm-system-design)
 > repo covers the LLM-era stack: RAG, the KV cache, agent orchestration,
