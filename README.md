@@ -52,14 +52,14 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 | 01 | [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness | Ready |
 | 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget | Ready |
 | 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features | Ready |
-| 04 | Feature store and training-serving skew | Online/offline parity, point-in-time correctness, backfills, freshness | Planned |
+| 04 | [Feature store and training-serving skew](topics/04-feature-store-and-training-serving-skew.md) | Online/offline parity, point-in-time correctness, backfills, freshness | Ready |
 | 05 | Real-time ML serving and model deployment | Model servers, batching, shadow and canary, rollback, autoscaling | Planned |
 | 06 | Online experimentation and A/B testing | Metrics, guardrails, interleaving, novelty effects, sample sizing | Planned |
 | 07 | Embeddings and representation learning | Contrastive learning, negatives, dimensionality, index choice | Planned |
 | 08 | Fraud and anomaly detection | Class imbalance, label delay, cost-sensitive thresholds, adversaries | Planned |
 | 09 | Search ranking | Query understanding, learning-to-rank, relevance labels, position bias | Planned |
 | 10 | Ads CTR prediction | Calibration, auctions, bidding signals, delayed conversions | Planned |
-| 11 | ML monitoring and drift | Feature drift, label drift, performance decay, alerting | Planned |
+| 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting | Ready |
 
 See [topics/README.md](topics/README.md) for the full roadmap and how to
 contribute a topic.

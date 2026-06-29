@@ -24,7 +24,9 @@ your gaps.
 | Design a content moderation / harmful-content system | Classification, imbalanced labels, precision/recall tradeoff, human loop | [framework](framework/answer-framework.md) (+ planned: a classification topic) |
 | Design spam / bot detection | Classification under adversarial drift, features, feedback loops | [framework](framework/answer-framework.md) (+ planned) |
 | Design fraud / anomaly detection | Rare-event detection, label delay, cost-sensitive thresholds | planned: Fraud and anomaly detection |
-| Why is our model good offline but bad online? | Training-serving skew, leakage, position bias, calibration | [02 ranking](topics/02-ranking-model.md), [framework](framework/answer-framework.md) |
+| Design a feature platform for our models | Online/offline parity, point-in-time correctness, reuse | [04 feature store](topics/04-feature-store-and-training-serving-skew.md), [02 ranking](topics/02-ranking-model.md) |
+| Our model was great at launch and quietly got worse | Drift, label delay, monitoring, the retraining loop | [11 monitoring](topics/11-ml-monitoring-and-drift.md), [04 feature store](topics/04-feature-store-and-training-serving-skew.md) |
+| Why is our model good offline but bad online? | Training-serving skew, leakage, position bias, calibration | [04 feature store](topics/04-feature-store-and-training-serving-skew.md), [02 ranking](topics/02-ranking-model.md), [framework](framework/answer-framework.md) |
 
 ## How to use a question
 

@@ -18,11 +18,11 @@ shape, mirroring the [answer framework](../framework/answer-framework.md):
 - [01 - Candidate retrieval (two-tower)](01-candidate-retrieval.md)
 - [02 - Ranking model](02-ranking-model.md)
 - [03 - Sequential and personalized recommendation](03-sequential-recommendation.md)
+- [04 - Feature store and training-serving skew](04-feature-store-and-training-serving-skew.md)
+- [11 - ML monitoring and drift](11-ml-monitoring-and-drift.md)
 
 ## Planned
 
-- 04 - Feature store and training-serving skew (online/offline parity,
-  point-in-time correctness, backfills, freshness)
 - 05 - Real-time ML serving and model deployment (model servers, batching,
   shadow and canary, rollback, autoscaling)
 - 06 - Online experimentation and A/B testing (metrics, guardrails,
@@ -35,8 +35,6 @@ shape, mirroring the [answer framework](../framework/answer-framework.md):
   position bias)
 - 10 - Ads CTR prediction (calibration, auctions, bidding signals, delayed
   conversions)
-- 11 - ML monitoring and drift (feature drift, label drift, performance decay,
-  alerting)
 
 ## Contributing a topic
 
