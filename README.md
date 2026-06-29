@@ -53,12 +53,12 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 | 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget | Ready |
 | 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features | Ready |
 | 04 | [Feature store and training-serving skew](topics/04-feature-store-and-training-serving-skew.md) | Online/offline parity, point-in-time correctness, backfills, freshness | Ready |
-| 05 | Real-time ML serving and model deployment | Model servers, batching, shadow and canary, rollback, autoscaling | Planned |
-| 06 | Online experimentation and A/B testing | Metrics, guardrails, interleaving, novelty effects, sample sizing | Planned |
-| 07 | Embeddings and representation learning | Contrastive learning, negatives, dimensionality, index choice | Planned |
-| 08 | Fraud and anomaly detection | Class imbalance, label delay, cost-sensitive thresholds, adversaries | Planned |
-| 09 | Search ranking | Query understanding, learning-to-rank, relevance labels, position bias | Planned |
-| 10 | Ads CTR prediction | Calibration, auctions, bidding signals, delayed conversions | Planned |
+| 05 | [Real-time ML serving and model deployment](topics/05-realtime-serving-and-deployment.md) | Model servers, batching, shadow and canary, rollback, autoscaling | Ready |
+| 06 | [Online experimentation and A/B testing](topics/06-online-experimentation-and-ab-testing.md) | Metrics, guardrails, interleaving, novelty effects, sample sizing | Ready |
+| 07 | [Embeddings and representation learning](topics/07-embeddings-and-representation-learning.md) | Contrastive learning, negatives, dimensionality, index choice | Ready |
+| 08 | [Fraud and anomaly detection](topics/08-fraud-and-anomaly-detection.md) | Class imbalance, label delay, cost-sensitive thresholds, adversaries | Ready |
+| 09 | [Search ranking](topics/09-search-ranking.md) | Query understanding, learning-to-rank, relevance labels, position bias | Ready |
+| 10 | [Ads CTR prediction](topics/10-ads-ctr-prediction.md) | Calibration, auctions, bidding signals, delayed conversions | Ready |
 | 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting | Ready |
 
 See [topics/README.md](topics/README.md) for the full roadmap and how to

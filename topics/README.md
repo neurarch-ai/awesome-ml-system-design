@@ -19,22 +19,15 @@ shape, mirroring the [answer framework](../framework/answer-framework.md):
 - [02 - Ranking model](02-ranking-model.md)
 - [03 - Sequential and personalized recommendation](03-sequential-recommendation.md)
 - [04 - Feature store and training-serving skew](04-feature-store-and-training-serving-skew.md)
+- [05 - Real-time ML serving and model deployment](05-realtime-serving-and-deployment.md)
+- [06 - Online experimentation and A/B testing](06-online-experimentation-and-ab-testing.md)
+- [07 - Embeddings and representation learning](07-embeddings-and-representation-learning.md)
+- [08 - Fraud and anomaly detection](08-fraud-and-anomaly-detection.md)
+- [09 - Search ranking](09-search-ranking.md)
+- [10 - Ads CTR prediction](10-ads-ctr-prediction.md)
 - [11 - ML monitoring and drift](11-ml-monitoring-and-drift.md)
 
-## Planned
-
-- 05 - Real-time ML serving and model deployment (model servers, batching,
-  shadow and canary, rollback, autoscaling)
-- 06 - Online experimentation and A/B testing (metrics, guardrails,
-  interleaving, novelty effects, sample sizing)
-- 07 - Embeddings and representation learning (contrastive learning, negatives,
-  dimensionality, index choice)
-- 08 - Fraud and anomaly detection (class imbalance, label delay, cost-sensitive
-  thresholds, adversaries)
-- 09 - Search ranking (query understanding, learning-to-rank, relevance labels,
-  position bias)
-- 10 - Ads CTR prediction (calibration, auctions, bidding signals, delayed
-  conversions)
+All eleven topics are written. New contributions are welcome: see the rules below.
 
 ## Contributing a topic
 
