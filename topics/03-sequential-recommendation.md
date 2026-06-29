@@ -109,12 +109,14 @@ item interactions instead of tokens:
   position vector) that feeds the ranker as a feature or the retrieval user
   tower.
 
-The detail worth naming: **time/position encoding**. Pure position (1st, 2nd,
-3rd) ignores that two actions a second apart differ from two a month apart.
-Encoding the actual time gaps, not just the order, is what lets the model weight
-recency properly. Casual diagrams often draw plain positional encodings and miss
-this. Open the real graph and look at where the position/time signal enters the
-attention block. See the link at the end.
+The detail worth naming: **how order and time enter the model**. The base
+mechanism is a positional encoding over the sequence (1st, 2nd, 3rd action), the
+same idea as a language model. The refinement worth knowing is that pure position
+ignores that two actions a second apart differ from two a month apart, so
+stronger variants encode the actual **time gaps** between events, not just their
+order, which lets the model weight recency properly. Open the real graph and look
+at where the positional signal enters the attention block. See the link at the
+end.
 
 ### Session-based recommendation
 
@@ -222,8 +224,8 @@ trace the sequence in:
 - **Behavior sequence transformer (BST):**
   [open it live](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/bst/model.json).
   Follow the user's interaction sequence into the self-attention block and find
-  where the position/time signal is added. That is what lets it weight recency
-  instead of just order.
+  the positional encoding that gives the model order. That is the base mechanism;
+  encoding real time gaps on top of it is the extension discussed above.
 
   ![BST](https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/bst/assets/diagram.png)
 
@@ -231,7 +233,8 @@ trace the sequence in:
   [open it live](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/sli-rec/model.json).
   It models short-term and long-term interests on separate paths and combines
   them, a different take on the same problem of mixing recent intent with durable
-  preference. Compare how it handles the time signal against the BST.
+  preference, with a time-aware recurrent path that the plain attention stack does
+  not have.
 
   ![SLi-Rec](https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/sli-rec/assets/diagram.png)
 
