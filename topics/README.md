@@ -13,21 +13,32 @@ shape, mirroring the [answer framework](../framework/answer-framework.md):
 8. Likely follow-up questions
 9. The relevant architecture, opened live
 
-## Ready
+## Topics by pipeline stage
 
+All eleven topics are written. They are grouped by where they sit in a production
+ML system. To navigate by use case instead, start from the
+[question bank](../questions.md).
+
+**Retrieval and representation**
 - [01 - Candidate retrieval (two-tower)](01-candidate-retrieval.md)
+- [07 - Embeddings and representation learning](07-embeddings-and-representation-learning.md)
+
+**Ranking**
 - [02 - Ranking model](02-ranking-model.md)
 - [03 - Sequential and personalized recommendation](03-sequential-recommendation.md)
+
+**Data and serving infrastructure**
 - [04 - Feature store and training-serving skew](04-feature-store-and-training-serving-skew.md)
 - [05 - Real-time ML serving and model deployment](05-realtime-serving-and-deployment.md)
+
+**Measurement and reliability**
 - [06 - Online experimentation and A/B testing](06-online-experimentation-and-ab-testing.md)
-- [07 - Embeddings and representation learning](07-embeddings-and-representation-learning.md)
+- [11 - ML monitoring and drift](11-ml-monitoring-and-drift.md)
+
+**End-to-end systems**
 - [08 - Fraud and anomaly detection](08-fraud-and-anomaly-detection.md)
 - [09 - Search ranking](09-search-ranking.md)
 - [10 - Ads CTR prediction](10-ads-ctr-prediction.md)
-- [11 - ML monitoring and drift](11-ml-monitoring-and-drift.md)
-
-All eleven topics are written. New contributions are welcome: see the rules below.
 
 ## Contributing a topic
 

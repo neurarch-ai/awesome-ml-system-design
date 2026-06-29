@@ -47,19 +47,53 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 
 ## Topics
 
-| # | Topic | What it teaches | Status |
-|---|-------|-----------------|--------|
-| 01 | [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness | Ready |
-| 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget | Ready |
-| 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features | Ready |
-| 04 | [Feature store and training-serving skew](topics/04-feature-store-and-training-serving-skew.md) | Online/offline parity, point-in-time correctness, backfills, freshness | Ready |
-| 05 | [Real-time ML serving and model deployment](topics/05-realtime-serving-and-deployment.md) | Model servers, batching, shadow and canary, rollback, autoscaling | Ready |
-| 06 | [Online experimentation and A/B testing](topics/06-online-experimentation-and-ab-testing.md) | Metrics, guardrails, interleaving, novelty effects, sample sizing | Ready |
-| 07 | [Embeddings and representation learning](topics/07-embeddings-and-representation-learning.md) | Contrastive learning, negatives, dimensionality, index choice | Ready |
-| 08 | [Fraud and anomaly detection](topics/08-fraud-and-anomaly-detection.md) | Class imbalance, label delay, cost-sensitive thresholds, adversaries | Ready |
-| 09 | [Search ranking](topics/09-search-ranking.md) | Query understanding, learning-to-rank, relevance labels, position bias | Ready |
-| 10 | [Ads CTR prediction](topics/10-ads-ctr-prediction.md) | Calibration, auctions, bidding signals, delayed conversions | Ready |
-| 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting | Ready |
+Two ways in. **By use case** (how interviews are actually posed): start with the
+[**question bank**](questions.md), which maps prompts like "design YouTube
+recommendations" to the topics below. **By pipeline stage** (to study a system end
+to end): the topics are grouped below by where they sit in a production ML system.
+
+### Retrieval and representation
+*Get a small set of good candidates out of millions, and learn the vectors that make that possible.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 01 | [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness |
+| 07 | [Embeddings and representation learning](topics/07-embeddings-and-representation-learning.md) | Contrastive learning, negative sampling, dimensionality, index choice |
+
+### Ranking
+*Score and order the candidates retrieval hands you.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget |
+| 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features |
+
+### Data and serving infrastructure
+*Make the model runnable in production, with consistent features and safe deploys.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 04 | [Feature store and training-serving skew](topics/04-feature-store-and-training-serving-skew.md) | Online/offline parity, point-in-time correctness, backfills, freshness |
+| 05 | [Real-time ML serving and model deployment](topics/05-realtime-serving-and-deployment.md) | Model servers, batching, shadow and canary, rollback, autoscaling |
+
+### Measurement and reliability
+*Know it works, and keep it working as the world moves.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 06 | [Online experimentation and A/B testing](topics/06-online-experimentation-and-ab-testing.md) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
+| 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting |
+
+### End-to-end systems
+*Compose the stages above into a full system for one domain.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 08 | [Fraud and anomaly detection](topics/08-fraud-and-anomaly-detection.md) | Class imbalance, label delay, cost-sensitive thresholds, adversaries |
+| 09 | [Search ranking](topics/09-search-ranking.md) | Query understanding, learning-to-rank, relevance labels, position bias |
+| 10 | [Ads CTR prediction](topics/10-ads-ctr-prediction.md) | Calibration, auctions, bidding signals, delayed conversions |
+
+All eleven topics are written and ready.
 
 See [topics/README.md](topics/README.md) for the full roadmap and how to
 contribute a topic.
