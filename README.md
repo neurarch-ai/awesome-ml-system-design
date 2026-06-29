@@ -106,6 +106,9 @@ production ML systems, see the
 [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design)
 (800 case studies from 150+ companies).
 
+Prefer to browse the whole set by category in one place? Every entry is rolled
+up into [**CASE-STUDIES.md**](CASE-STUDIES.md).
+
 > Building with large language models instead? The companion
 > [**LLM System Design Interview**](https://github.com/neurarch-ai/awesome-llm-system-design)
 > repo covers the LLM-era stack: RAG, the KV cache, agent orchestration,
