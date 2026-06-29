@@ -57,14 +57,15 @@ tables; the online path assembles features for each candidate and scores.
 
 ### Offline (training) path
 
-```
-impression + outcome logs ──▶ join labels (point-in-time correct) ──▶ features
-                                                                          │
-                                              train ranker (sparse + dense) 
-                                                                          │
-                                  offline eval (AUC / NDCG, calibration) ──▶ gate
-                                                                          │
-                                          push model + embedding tables ──▶ serving
+```mermaid
+flowchart TD
+  L["impression + outcome logs"] --> J["join labels<br/>(point-in-time correct)"]
+  J --> F["features"]
+  F --> T["train ranker<br/>(sparse + dense)"]
+  T --> E["offline eval<br/>(AUC / NDCG, calibration)"]
+  E --> G{"gate"}
+  G --> P["push model + embedding tables"]
+  P --> S["serving"]
 ```
 
 Point-in-time correctness matters: when you join a label to features, use the
@@ -73,12 +74,13 @@ future into training and the offline metric lies.
 
 ### Online (serving) path
 
-```
-candidates + user/context ──▶ fetch & assemble features (user, item, cross)
-                                              │
-                              batch-score all candidates through the ranker
-                                              │
-                          calibrated scores ──▶ business rules / re-rank ──▶ final order
+```mermaid
+flowchart TD
+  C["candidates + user/context"] --> F["fetch & assemble features<br/>(user, item, cross)"]
+  F --> B["batch-score all candidates<br/>through the ranker"]
+  B --> S["calibrated scores"]
+  S --> R["business rules / re-rank"]
+  R --> O["final order"]
 ```
 
 The candidates all share the same user and context features, so fetch those once

@@ -54,14 +54,15 @@ because the sequence changes mid-session.
 
 ### Offline (training) path
 
-```
-interaction logs ──▶ build per-user ordered sequences ──▶ (sequence, next-item) pairs
-                                                                    │
-                                  train sequence model (attention over history)
-                                                                    │
-                                          offline eval (recall@k, NDCG) ──▶ gate
-                                                                    │
-                                                    push model ──▶ serving
+```mermaid
+flowchart TD
+  L["interaction logs"] --> B["build per-user ordered sequences"]
+  B --> P["(sequence, next-item) pairs"]
+  P --> T["train sequence model<br/>(attention over history)"]
+  T --> E["offline eval<br/>(recall@k, NDCG)"]
+  E --> G{"gate"}
+  G --> M["push model"]
+  M --> S["serving"]
 ```
 
 Training pairs are causal: given the sequence up to time t, predict the
@@ -70,12 +71,13 @@ leaks the future.
 
 ### Online (serving) path
 
-```
-user's recent events (kept fresh)  ──▶ sequence encoder ──▶ user intent embedding
-        ▲                                                          │
-        │                                          feeds retrieval tower / ranking features
-   streaming update                                                │
-   on each new action ───────────────────────────────────▶ next recommendation
+```mermaid
+flowchart TD
+  E["user's recent events<br/>(kept fresh)"] --> SE["sequence encoder"]
+  SE --> UI["user intent embedding"]
+  UI --> F["feeds retrieval tower /<br/>ranking features"]
+  F --> N["next recommendation"]
+  N -->|"streaming update<br/>on each new action"| E
 ```
 
 Each new action the user takes is appended to their recent-event list (a fast

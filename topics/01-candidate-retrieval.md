@@ -54,14 +54,14 @@ nearest-neighbor lookup.
 
 ### Offline (training and indexing) path
 
-```
-interaction logs ──▶ build (user, positive-item) pairs ──▶ train two-tower
-                                                                │
-                            ┌───────────────────────────────────┘
-                            ▼
-                      item tower ──▶ embed entire catalog ──▶ build ANN index
-                            │
-                      user tower (weights pushed to the online service)
+```mermaid
+flowchart TD
+  L["interaction logs"] --> P["build (user, positive-item) pairs"]
+  P --> T["train two-tower"]
+  T --> IT["item tower"]
+  IT --> E["embed entire catalog"]
+  E --> A["build ANN index"]
+  T --> UT["user tower<br/>(weights pushed to online service)"]
 ```
 
 The item tower runs over the whole catalog as a batch job and writes every item
@@ -71,12 +71,13 @@ upserted into the index on a schedule; that cadence is your item freshness.
 
 ### Online (serving) path
 
-```
-request ──▶ fetch user features ──▶ user tower ──▶ user embedding
-                                                        │
-                                          ANN search over item index
-                                                        │
-                                            top-N candidate items ──▶ to ranking
+```mermaid
+flowchart TD
+  R["request"] --> F["fetch user features"]
+  F --> UT["user tower"]
+  UT --> UE["user embedding"]
+  UE --> A["ANN search over item index"]
+  A -->|"top-N candidate items"| RK["to ranking"]
 ```
 
 Per request you embed only the user (one forward pass through the small user
@@ -149,8 +150,11 @@ for candidates, not in isolation.
 Be explicit about the funnel this stage anchors (illustrative orders of
 magnitude):
 
-```
-catalog ~10,000,000 ──▶ retrieval ~1,000 ──▶ ranking ~100 ──▶ shown ~10
+```mermaid
+flowchart LR
+  C["catalog<br/>~10,000,000"] --> R["retrieval<br/>~1,000"]
+  R --> K["ranking<br/>~100"]
+  K --> S["shown<br/>~10"]
 ```
 
 Retrieval's job is the first arrow: cut four orders of magnitude almost for free.
