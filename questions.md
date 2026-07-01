@@ -22,7 +22,13 @@ your gaps.
 | Design "people you may know" / friend recommendation | Graph-based candidates and embeddings, retrieval, ranking | [07 embeddings](topics/07-embeddings-and-representation-learning.md), [01 retrieval](topics/01-candidate-retrieval.md), [02 ranking](topics/02-ranking-model.md) |
 | Design real-time personalization (react to the last action) | Behavior-sequence modeling, real-time features, freshness | [03 sequential](topics/03-sequential-recommendation.md), [02 ranking](topics/02-ranking-model.md) |
 | Design fraud / anomaly / abuse detection | Extreme class imbalance, cost-sensitive thresholds, label delay, adversaries | [08 fraud](topics/08-fraud-and-anomaly-detection.md), [11 monitoring](topics/11-ml-monitoring-and-drift.md) |
-| Design spam / bot / content-moderation classification | Imbalanced classification under adversarial drift, precision/recall tradeoff, human loop | [08 fraud](topics/08-fraud-and-anomaly-detection.md), [framework](framework/answer-framework.md) |
+| Design content moderation / trust and safety at scale | Per-policy harm taxonomy, recall at a precision floor, multi-modal, human-in-the-loop, adversarial evasion | [16 content moderation](topics/16-content-moderation.md), [08 fraud](topics/08-fraud-and-anomaly-detection.md) |
+| Design image classification / moderation / visual search | Task taxonomy, transfer learning, labeling cost, GPU serving, recall at precision | [12 computer vision](topics/12-computer-vision.md), [16 content moderation](topics/16-content-moderation.md) |
+| Design speech recognition / a voice assistant / wake word | Streaming vs batch, RNN-T vs Conformer, WER pitfalls, on-device, wake word | [17 speech and audio](topics/17-speech-and-audio.md) |
+| Design a task-specific NLP system (classification, NER, translation, routing) | Fine-tuned encoder vs a big LLM, imbalance, multilingual, weak supervision | [13 NLP](topics/13-natural-language-processing.md) |
+| Design demand / sales / ETA forecasting | Probabilistic and hierarchical forecasts, backtesting, forecast-then-optimize | [14 forecasting](topics/14-demand-forecasting-and-time-series.md) |
+| Design credit risk / churn / dynamic pricing / LTV | Calibration, uplift and causal decisions, delayed and biased labels, survival, fairness | [15 predictive modeling](topics/15-predictive-modeling-tabular.md) |
+| How do you cold-start new users and items, and keep the feed from ossifying? | Content towers, explore-exploit, contextual bandits, off-policy evaluation | [18 cold start and exploration](topics/18-cold-start-and-exploration.md), [01 retrieval](topics/01-candidate-retrieval.md) |
 | How do you learn embeddings for users / items / entities? | Contrastive learning, negative sampling, dimensionality, the ANN index | [07 embeddings](topics/07-embeddings-and-representation-learning.md), [01 retrieval](topics/01-candidate-retrieval.md) |
 | Design how models get served and deployed safely | Model servers, batching, canary/shadow, rollback, autoscaling | [05 serving](topics/05-realtime-serving-and-deployment.md), [04 feature store](topics/04-feature-store-and-training-serving-skew.md) |
 | Your model wins offline; how do you decide it ships? | A/B testing, guardrail metrics, sample sizing, interleaving, novelty effects | [06 experimentation](topics/06-online-experimentation-and-ab-testing.md), [02 ranking](topics/02-ranking-model.md) |
@@ -44,6 +50,6 @@ your gaps.
 4. **Always have an eval and an online story.** Offline AUC/NDCG plus an online
    A/B test, because the two routinely disagree.
 
-All eleven component topics are written. Missing a question you were asked, or
+All eighteen component topics are written. Drill the depth-probing follow-ups in [deep-dives.md](deep-dives.md). Missing a question you were asked, or
 want a new angle covered? Open an issue or a PR; see
 [topics/README.md](topics/README.md).

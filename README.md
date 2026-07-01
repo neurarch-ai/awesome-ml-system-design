@@ -63,7 +63,14 @@ predictive), plus the cross-cutting platform layer they all run on.
 | 01 | [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness |
 | 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget |
 | 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features |
-| 10 | [Ads CTR prediction](topics/10-ads-ctr-prediction.md) | Calibration, auctions, bidding signals, delayed conversions |
+| 18 | [Cold start and exploration](topics/18-cold-start-and-exploration.md) | New-user and new-item cold start, content towers, explore-exploit, contextual bandits, off-policy evaluation |
+
+### Advertising
+*Rank ads under an auction, where the calibrated probability is the product.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 10 | [Ads CTR prediction](topics/10-ads-ctr-prediction.md) | Calibration (it feeds the auction), cross features, bidding signals, delayed conversions |
 
 ### Search and ranking
 *Understand a query, retrieve, and learn to rank the results.*
@@ -72,12 +79,13 @@ predictive), plus the cross-cutting platform layer they all run on.
 |---|-------|-----------------|
 | 09 | [Search ranking](topics/09-search-ranking.md) | Query understanding, learning-to-rank, relevance labels, position bias |
 
-### Fraud and anomaly detection
+### Fraud, abuse, and content moderation
 *Cost-sensitive decisions under extreme imbalance and adversarial drift.*
 
 | # | Topic | What it teaches |
 |---|-------|-----------------|
 | 08 | [Fraud and anomaly detection](topics/08-fraud-and-anomaly-detection.md) | Class imbalance, label delay, cost-sensitive thresholds, adversaries |
+| 16 | [Content moderation and trust and safety](topics/16-content-moderation.md) | Per-policy harm taxonomy, recall at a precision floor, multi-modal, human-in-the-loop, adversarial evasion |
 
 ### Computer vision
 *Classify, detect, segment, embed, and read images at scale.*
@@ -85,6 +93,13 @@ predictive), plus the cross-cutting platform layer they all run on.
 | # | Topic | What it teaches |
 |---|-------|-----------------|
 | 12 | [Computer vision](topics/12-computer-vision.md) | Task taxonomy (classify, detect, segment, embed, OCR), transfer learning, labeling cost, GPU serving cost, moderation recall, visual search |
+
+### Speech and audio
+*Recognize, synthesize, and understand speech, streaming and on-device.*
+
+| # | Topic | What it teaches |
+|---|-------|-----------------|
+| 17 | [Speech and audio](topics/17-speech-and-audio.md) | Streaming vs batch ASR, RNN-T and Conformer, WER pitfalls, wake word, diarization, TTS, on-device |
 
 ### Natural language processing
 *Task-specific text models, and when a fine-tuned encoder beats a big LLM.*
@@ -112,7 +127,7 @@ predictive), plus the cross-cutting platform layer they all run on.
 | 06 | [Online experimentation and A/B testing](topics/06-online-experimentation-and-ab-testing.md) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
 | 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting |
 
-All fifteen topics are written and ready.
+All eighteen topics are written and ready.
 
 **Going deeper than the whiteboard?** [**deep-dives.md**](deep-dives.md) is a
 bank of ~152 rapid-fire, depth-probing questions: the follow-ups an interviewer

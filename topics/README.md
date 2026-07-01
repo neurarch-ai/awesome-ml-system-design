@@ -15,7 +15,7 @@ shape, mirroring the [answer framework](../framework/answer-framework.md):
 
 ## Topics by ML use case
 
-All fifteen topics are written. They are grouped to mirror how production ML
+All eighteen topics are written. They are grouped to mirror how production ML
 actually splits, the same use-case taxonomy the
 [Evidently AI 800-case database](https://www.evidentlyai.com/ml-system-design)
 uses, plus the cross-cutting platform layer. To navigate by interview question
@@ -25,16 +25,23 @@ instead, start from the [question bank](../questions.md).
 - [01 - Candidate retrieval (two-tower)](01-candidate-retrieval.md)
 - [02 - Ranking model](02-ranking-model.md)
 - [03 - Sequential and personalized recommendation](03-sequential-recommendation.md)
+- [18 - Cold start and exploration](18-cold-start-and-exploration.md)
+
+**Advertising**
 - [10 - Ads CTR prediction](10-ads-ctr-prediction.md)
 
 **Search and ranking**
 - [09 - Search ranking](09-search-ranking.md)
 
-**Fraud and anomaly detection**
+**Fraud, abuse, and content moderation**
 - [08 - Fraud and anomaly detection](08-fraud-and-anomaly-detection.md)
+- [16 - Content moderation and trust and safety](16-content-moderation.md)
 
 **Computer vision**
 - [12 - Computer vision](12-computer-vision.md)
+
+**Speech and audio**
+- [17 - Speech and audio](17-speech-and-audio.md)
 
 **Natural language processing**
 - [13 - Natural language processing](13-natural-language-processing.md)
