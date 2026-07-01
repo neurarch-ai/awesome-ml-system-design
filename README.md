@@ -115,8 +115,8 @@ predictive), plus the cross-cutting platform layer they all run on.
 All fifteen topics are written and ready.
 
 **Going deeper than the whiteboard?** [**deep-dives.md**](deep-dives.md) is a
-bank of ~93 rapid-fire, depth-probing questions: the follow-ups an interviewer
-pulls once the design is on the board (BatchNorm versus LayerNorm, calibration and the right metric, target leakage, embedding negatives, and which architecture moves which metric). Each answer leads with the mechanism, then the tradeoff.
+bank of ~152 rapid-fire, depth-probing questions: the follow-ups an interviewer
+pulls once the design is on the board (BatchNorm versus LayerNorm, calibration and the right metric, target leakage, classical models and ensembles, statistics and loss functions, and which architecture moves which metric). Each answer leads with the mechanism, then the tradeoff.
 
 See [topics/README.md](topics/README.md) for the full roadmap and how to
 contribute a topic.
