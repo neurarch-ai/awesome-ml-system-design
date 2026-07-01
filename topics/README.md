@@ -13,32 +13,42 @@ shape, mirroring the [answer framework](../framework/answer-framework.md):
 8. Likely follow-up questions
 9. The relevant architecture, opened live
 
-## Topics by pipeline stage
+## Topics by ML use case
 
-All eleven topics are written. They are grouped by where they sit in a production
-ML system. To navigate by use case instead, start from the
-[question bank](../questions.md).
+All fifteen topics are written. They are grouped to mirror how production ML
+actually splits, the same use-case taxonomy the
+[Evidently AI 800-case database](https://www.evidentlyai.com/ml-system-design)
+uses, plus the cross-cutting platform layer. To navigate by interview question
+instead, start from the [question bank](../questions.md).
 
-**Retrieval and representation**
+**Recommender systems**
 - [01 - Candidate retrieval (two-tower)](01-candidate-retrieval.md)
-- [07 - Embeddings and representation learning](07-embeddings-and-representation-learning.md)
-
-**Ranking**
 - [02 - Ranking model](02-ranking-model.md)
 - [03 - Sequential and personalized recommendation](03-sequential-recommendation.md)
+- [10 - Ads CTR prediction](10-ads-ctr-prediction.md)
 
-**Data and serving infrastructure**
+**Search and ranking**
+- [09 - Search ranking](09-search-ranking.md)
+
+**Fraud and anomaly detection**
+- [08 - Fraud and anomaly detection](08-fraud-and-anomaly-detection.md)
+
+**Computer vision**
+- [12 - Computer vision](12-computer-vision.md)
+
+**Natural language processing**
+- [13 - Natural language processing](13-natural-language-processing.md)
+
+**Forecasting and predictive modeling**
+- [14 - Demand forecasting and time series](14-demand-forecasting-and-time-series.md)
+- [15 - Predictive modeling on tabular data](15-predictive-modeling-tabular.md)
+
+**Platform, representation, and reliability**
+- [07 - Embeddings and representation learning](07-embeddings-and-representation-learning.md)
 - [04 - Feature store and training-serving skew](04-feature-store-and-training-serving-skew.md)
 - [05 - Real-time ML serving and model deployment](05-realtime-serving-and-deployment.md)
-
-**Measurement and reliability**
 - [06 - Online experimentation and A/B testing](06-online-experimentation-and-ab-testing.md)
 - [11 - ML monitoring and drift](11-ml-monitoring-and-drift.md)
-
-**End-to-end systems**
-- [08 - Fraud and anomaly detection](08-fraud-and-anomaly-detection.md)
-- [09 - Search ranking](09-search-ranking.md)
-- [10 - Ads CTR prediction](10-ads-ctr-prediction.md)
 
 ## Contributing a topic
 
