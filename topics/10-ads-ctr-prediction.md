@@ -325,6 +325,44 @@ Real systems and references that ship the patterns above. Read them for what an
 interview answer skips: the calibration discipline, the embedding-table scale, the
 delayed-feedback and feedback-loop handling, and the deployment shape.
 
+### The shared pipeline
+
+Every one of these systems collapses to the same skeleton: a request pulls a set of
+eligible ads, a sparse-embedding model scores each into a **calibrated** pCTR (and
+often pCVR), and the auction turns that probability into money via eCPM = bid times
+pCTR. Because clicks are fast but conversions land days later, the training loop has
+to correct for labels that have not arrived yet, and it only ever sees outcomes for
+ads the previous model chose to show. The differences below are mostly about which
+model family carries the interactions and how honestly each team keeps the
+probability calibrated as it drifts.
+
+```mermaid
+flowchart LR
+  REQ["ad request"] --> CAND["candidate ads<br/>(eligibility)"]
+  CAND --> MODEL["pCTR / pCVR model<br/>(calibrated probabilities)"]
+  MODEL --> ECPM["eCPM = bid x pCTR"]
+  ECPM --> AUC["auction"]
+  AUC --> SERVE["served ad"]
+  SERVE -.->|"delayed conversions +<br/>correction"| TRAIN["training"]
+  TRAIN -.-> MODEL
+```
+
+### How they differ
+
+| System | Model family | Calibration approach | Delayed feedback | Task shape |
+|---|---|---|---|---|
+| Meta DLRM | Embeddings + explicit dot-product interactions | Proper loss (log loss) | Not the paper's focus | Single-task |
+| Facebook GBDT + LR | Boosted-tree leaves feeding a linear model | Naturally calibrated linear head | Data-freshness cadence | Single-task |
+| Wide & Deep (Google Play) | Wide linear + deep embedding MLP | Proper loss on the joint model | Not addressed | Single-task |
+| Pinterest | AutoML shared-bottom, multi-tower MLPs | Per-head Platt scaling (up to 80% error cut) | Not addressed | Multi-task |
+| LinkedIn | Three-tower DNN (wide, deep, shallow) | Isotonic + shallow calibration tower | Not the focus (exposure-bias fix) | Single-task |
+| Instacart | Deep CTR with transfer learning | Transfer-learned calibration to observed rates | Not the focus | Single-task |
+| Twitter | Continuous-training CTR | Proper loss under corrected labels | Fake-negative weighted loss | Single-task |
+| Criteo | Display CTR / CVR | Proper loss on corrected labels | Two-model delay approach | Single-task |
+| Google (Factory Floor) | Large sparse CTR with feature crosses | Calibration as a first-class metric | Bounded windows | Single-task |
+
+### The systems
+
 - **Meta** [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091): sparse embeddings plus explicit interactions, the canonical CTR architecture. *(model)*
 - **Guo et al.** [DeepFM](https://arxiv.org/abs/1703.04247): factorization-machine plus deep network for CTR. *(model)*
 - **Wang et al.** [DCN V2](https://arxiv.org/abs/2008.13535): explicit bounded-degree feature crosses for CTR ranking. *(model)*

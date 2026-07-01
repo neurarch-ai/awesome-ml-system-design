@@ -305,6 +305,42 @@ Real systems and references that ship the patterns above. Read them for what an
 interview answer skips: the serving abstraction in practice, staged rollout
 discipline, and how teams keep a deployed model from drifting away from training.
 
+### The shared pipeline
+
+Every system here separates the model artifact from the server that runs it, then
+pushes each version through a versioned registry into a fleet of stateless serving
+replicas behind autoscaling. Requests fetch features, hit the model server (often
+with dynamic or micro-batching to fill the hardware), and get logged so online
+metrics can catch a regression. The safe path is the same skeleton: a candidate is
+shadowed or canaried before it widens, and a bad version rolls back to the last good
+one by pointing traffic, not rebuilding.
+
+```mermaid
+flowchart LR
+  REG["model registry<br/>(versioned artifacts)"] --> SRV["serving fleet<br/>(model server + dynamic batching, GPU/CPU)"]
+  SRV --> SC{"shadow / canary"}
+  SC -->|"healthy"| AS["autoscale<br/>(queue depth / GPU)"]
+  AS --> MON["online metrics<br/>+ monitoring"]
+  SC -->|"regression"| RB["rollback to last good"]
+  MON -->|"regression"| RB
+  RB --> REG
+```
+
+### How they differ
+
+| System | Serving stack | Batching / GPU | Deploy safety | Centralized vs decentralized |
+|---|---|---|---|---|
+| Clipper (RISELab) | In-house research system, model abstraction layer | Adaptive batching + prediction caching | Model abstraction for swaps | Centralized layer over frameworks |
+| Uber Michelangelo | In-house platform | Batched RPC, sub-10ms P95 | Registry + staged rollout | Centralized platform |
+| Grab Catwalk | TF Serving on Kubernetes | K8s autoscaling, hundreds of models | Version-served-while-loading, rollback to prior | Centralized self-serve platform |
+| Lyft LyftLearn | In-house serving | Ms-latency predictions | Versioning + shadowing | Decentralized inference platform |
+| Shopify Merlin | Ray-on-Kubernetes, MLServer / FastAPI | GPU-configurable, MLServer request batching | CI/CD, per-service isolation | Decentralized, dedicated service per use case |
+| Pinterest | GPU serving | Dynamic batching, sub-linear latency scaling | (not the focus) | Centralized GPU inference |
+| Netflix Kayenta | Automated canary analysis | (not the focus) | Automated canary gate: baseline vs canary metrics | Centralized rollout gate |
+| Booking.com | Multi-phase ranking platform | Phase-split scoring | Shadow-traffic mirroring, p999 budgets | Centralized ranking platform |
+
+### The systems
+
 - **Berkeley RISELab** [Clipper: A Low-Latency Online Prediction Serving System](https://arxiv.org/abs/1612.03079): a serving system with caching, batching, and model abstraction. *(serving system)*
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): deployment discipline, staged rollout, and not letting serving drift from training. *(discipline)*
 - **Uber, DoorDash, and Netflix** have all published model-serving and deployment writeups (real-time prediction services, staged rollouts, and model registries); they are indexed in the database below rather than linked individually here. *(platform)*

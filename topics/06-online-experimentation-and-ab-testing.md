@@ -374,6 +374,38 @@ Real references and writeups that ship the patterns above. Read them for what an
 interview answer skips: how teams pick the OEC, run trustworthy tests at scale,
 catch SRM and interference, and turn results into ship decisions.
 
+### The shared pipeline
+
+Every platform below runs the same skeleton: form a hypothesis, hash a diversion
+unit into stable arms, log a pre-declared success metric alongside guardrail
+metrics, then squeeze variance out (CUPED or interleaving) and check for
+interference before a ship-or-hold call. The differences are all in the details of
+that squeeze and that check, which is where scarce traffic and marketplace bias
+actually bite.
+
+```mermaid
+flowchart TD
+  H["hypothesis"] --> R["assign / randomize<br/>(user / session / cluster / switchback)"]
+  R --> M["collect success<br/>+ guardrail metrics"]
+  M --> V["variance reduction (CUPED)<br/>+ interference checks"]
+  V --> D{"ship or hold?"}
+  D -->|"lift, guardrails safe"| SHIP["ship"]
+  D -->|"flat / breach / interference"| HOLD["hold"]
+```
+
+### How they differ
+
+| System | Randomization unit | Variance reduction | Guardrail metrics | Interference handling |
+|---|---|---|---|---|
+| Netflix (interleaving) | Per user, both rankers blended in one list | Interleaving; ~100x fewer subscribers to prune rankers | Business metrics confirmed in the follow-up A/B | Within-user comparison sidesteps cross-user leakage |
+| Uber | Per user, flicker (arm-switching) users excluded | CUPED | App crash rate, trip frequency, sequential monitoring | Sequential monitoring, not marketplace-specific here |
+| LinkedIn | Individual vs cluster randomization | CUPED | Network-effect metrics under test | Cluster randomization to detect and bound interference |
+| Lyft | Session / geo / time (switchback) | Not the focus | Marketplace health metrics | Geo and time switchbacks to contain marketplace spillover |
+| Airbnb | Per user | Power and impact gating | Impact, power, stat-sig-negative guardrails | Guardrails flag harmful tests pre-launch |
+| Spotify | Per user | Not the focus | Success plus quality metrics combined | Risk-aware decision across multiple metrics |
+
+### The systems
+
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): emphasizes measuring real online impact, not just offline metrics. *(discipline)*
 - **Kohavi, Tang, Xu** *Trustworthy Online Controlled Experiments* (the A/B testing book): the canonical reference on OEC choice, sample ratio mismatch, peeking, interference, and running experiments at scale. *(reference)*
 - **Netflix, Microsoft (ExP), Airbnb, LinkedIn** experimentation engineering writeups: first-party accounts of large-scale experimentation platforms, variance reduction, interleaving, and interference-robust designs. *(platform)*

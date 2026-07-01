@@ -306,6 +306,40 @@ Real systems that ship the patterns above. Each is a first-party engineering
 writeup; read them for what an interview answer skips: who the system serves, the
 product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Under the branding these systems share one skeleton: assemble historical series
+plus calendar and covariates into features, fit a model that emits a probabilistic
+or quantile forecast, hand that distribution to a downstream decision (a
+replenishment optimizer, a rebalancing policy, an ETA quote), and close the loop
+with a rolling backtest that retrains as the series drift. The forecast is the
+intermediate; the decision it feeds is the product.
+
+```mermaid
+flowchart LR
+  HIST["historical series"] --> FEAT["features<br/>+ calendar / covariates"]
+  FEAT --> MODEL["forecast model<br/>(classical / global GBT / deep)"]
+  MODEL --> DIST["probabilistic /<br/>quantile forecast"]
+  DIST --> OPT["forecast-then-optimize<br/>decision"]
+  OPT --> ACT["action<br/>(stock / position / ETA)"]
+  ACT -.->|realized outcome| BT["rolling backtest"]
+  BT -.->|retrain| MODEL
+```
+
+### How they differ
+
+| System | Model class | Point vs probabilistic | Decision it feeds | Structure |
+|---|---|---|---|---|
+| Uber (forecasting intro) | Classical + ML + deep | Both (prediction intervals stressed) | Driver positioning, capacity, marketing | Plain series |
+| Amazon (hierarchical) | Deep, end-to-end coherent | Probabilistic | Supply-chain / resource planning | Hierarchy |
+| Google DeepMind (Maps ETA) | Graph neural net + temporal | Point | Google Maps routing / ETA | Spatiotemporal graph |
+| Instacart (availability) | Layered general/trending/real-time | Probability of availability | Item availability surfacing | Plain series |
+| Zalando (inventory) | Probabilistic forecast + Monte Carlo | Probabilistic | Replenishment optimization | Plain series |
+| Grab (supply-demand) | Geo-temporal ratios | Point ratios | Matching and rebalancing | Spatiotemporal |
+| Lyft (causal) | Causal-DAG forecasting | Point under confounding | Marketplace policy decisions | Plain series |
+
+### The systems
+
 - **Uber** [Forecasting at Uber: An Introduction](https://www.uber.com/blog/forecasting-introduction/): An overview of Uber's classical, ML, and deep-learning forecasting stack with prediction intervals. *(product design)*
 - **Uber** [Engineering Uncertainty Estimation in Neural Networks for Time Series](https://www.uber.com/blog/neural-networks-uncertainty-estimation/): A Bayesian neural net decomposing model, misspecification, and noise uncertainty. *(eval bar)*
 - **Uber** [DeepETA: How Uber Predicts Arrival Times Using Deep Learning](https://www.uber.com/us/en/blog/deepeta-how-uber-predicts-arrival-times/): A Transformer-based ETA residual model meeting global latency and accuracy constraints. *(deployment)*

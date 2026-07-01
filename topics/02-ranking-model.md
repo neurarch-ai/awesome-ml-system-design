@@ -234,6 +234,45 @@ Real systems that ship the patterns above. Each is a first-party engineering
 writeup; read them for what an interview answer skips: who the system serves,
 the product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Underneath the branding these systems run the same skeleton. They assemble dense
+numeric features alongside sparse categorical ids that pass through embedding
+tables, push both through a DNN ranker (wide-and-deep, DLRM, or a multi-task body
+with per-action heads), calibrate the raw outputs so the probabilities mean
+something, and combine the per-objective scores into one utility value that sorts
+the list. Every step happens inside a hard latency budget, so the interesting
+engineering is where each system spends its compute.
+
+```mermaid
+flowchart LR
+  subgraph budget["within latency budget (low tens of ms)"]
+    D["dense features"] --> R["DNN ranker<br/>wide-and-deep / DLRM / multi-task heads"]
+    S["sparse features<br/>embedding tables"] --> R
+    R --> C["calibration<br/>(Platt / isotonic / ECE-tuned)"]
+    C --> U["utility combination<br/>(weighted per-objective)"]
+    U --> O["ordered list"]
+  end
+```
+
+### How they differ
+
+| System | Model family | Objectives | Calibration |
+|---|---|---|---|
+| Google Wide & Deep | Wide linear plus deep MLP | Single (install) | Implicit |
+| Meta DLRM | Explicit pairwise interactions | Single or multi | Not central |
+| Instacart pCTR | Consolidated wide-and-deep | Single (pCTR) | Explicit, ops-driven |
+| Pinterest home feed | Multi-task DNN, per-action heads | Multi | Logistic regression per head |
+| LinkedIn feed | Multi-task DNN | Multi (click, comment, reshare) | Not central |
+| Airbnb search | GBDT then neural net | Single (booking) | Not central |
+| DoorDash ads | Tree then multi-task DNN | Multi | Not central |
+| Spotify ads | Multi-gate MoE with DCN-v2 | Multi | ECE-monitored (drives pricing) |
+| Pinterest lightweight | XGBoost lightweight ranker | Single | Not central (top of funnel) |
+| Wayfair | Post-hoc calibration layer | Ranking scores in | Time-informed purchase prob |
+| Walmart search | Relevance plus engagement re-ranker | Multi | Not central |
+
+### The systems
+
 - **Google** [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792): Joint wide linear (memorization) plus deep net (generalization) for Google Play ranking. *(product design)*
 - **Meta** [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091): Dense MLP plus sparse embedding tables with explicit feature interactions, sharded for scale. *(product design)*
 - **Instacart** [One Model to Serve Them All: a single deep pCTR model for multiple surfaces](https://company.instacart.com/how-its-made/one-model-to-serve-them-all-how-instacart-deployed-a-single-deep-learning-pctr-model-for-multiple-surfaces-with-improved-operations-and-performance-along-the-way): Consolidating per-surface XGBoost into one wide-and-deep pCTR model; calibration and ops wins. *(deployment)*

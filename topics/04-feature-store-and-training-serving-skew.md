@@ -229,6 +229,39 @@ Real systems and references that ship the patterns above. Read them for what an
 interview answer skips: the online/offline split in practice, point-in-time
 joins, and how teams keep features consistent across training and serving.
 
+### The shared pipeline
+
+Every system here converges on the same skeleton: raw events flow through feature
+pipelines (batch on a warehouse, streaming off an event bus) that write into two
+stores from one set of feature definitions. The offline store keeps timestamped
+history for point-in-time joins that build training sets; the online store keeps
+the latest value per entity for low-latency serving. Because both sides derive from
+the same definitions, the feature a model trains on matches the feature it serves,
+which is exactly how skew is avoided.
+
+```mermaid
+flowchart TD
+  RAW["raw events"] --> BATCH["batch pipeline<br/>(warehouse / Spark)"]
+  RAW --> STREAM["streaming pipeline<br/>(event bus to fresh aggregates)"]
+  DEF["shared feature definitions"] --> BATCH
+  DEF --> STREAM
+  BATCH --> OFF["offline store<br/>(history, point-in-time joins)"]
+  BATCH --> ON["online store<br/>(serving)"]
+  STREAM --> ON
+  OFF -->|"training set"| MODEL["model"]
+  ON -->|"feature vector"| MODEL
+```
+
+### How they differ
+
+| System | Online store technology | Streaming vs batch | Point-in-time correctness | Ownership / self-serve |
+|---|---|---|---|---|
+| Uber Michelangelo | Cassandra (P95 under 10ms) | Both: batch precompute from HDFS plus Kafka/Samza near-real-time aggregates | Same data and batch pipeline for training and serving; streaming logged back to HDFS with backfill | ~10,000 shared features, owner/description/SLA metadata, cross-team reuse |
+| Feast | Pluggable: Redis, DynamoDB, Bigtable, Cassandra, Postgres, and 20+ more | Both: scheduled materialization plus push-based streaming ingestion (Kafka/Kinesis) | As-of joins produce point-in-time correct sets so future values do not leak | Python SDK, CLI, web UI registry; DataHub/Amundsen governance |
+| Google Rules of ML | Not a store; guidance for serving systems | Emphasizes logging serving-time features to reuse for training | Test on data gathered after training data ends; watch for external tables changing between train and serve | Discipline: reuse code between training and serving |
+
+### The systems
+
 - **Uber** [Meet Michelangelo: Uber's Machine Learning Platform](https://www.uber.com/blog/michelangelo-machine-learning-platform/): popularized the Palette feature store and the online/offline materialization split. *(platform)*
 - **LinkedIn** [Feathr feature store](https://github.com/feathr-ai/feathr): one feature definition serving both online and offline at scale. *(platform)*
 - **Feast** [open-source feature store](https://github.com/feast-dev/feast): a clean reference design for the dual store and point-in-time correct joins. *(reference design)*

@@ -222,6 +222,39 @@ Real systems that ship the patterns above. Each is a first-party engineering
 writeup; read them for what an interview answer skips: who the system serves,
 the product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Every one of these systems turns an ordered list of user interactions into a
+compact intent representation and hangs it off the ranking or retrieval stage.
+The interactions become embeddings, a sequence model (self-attention, an
+activation-unit attention pool, or a recurrent net) weighs which past actions
+matter now, and the pooled output either feeds a ranking head as a feature or a
+retrieval tower as a user vector. The systems that feel most responsive add a
+real-time fusion of the last N actions on top of a slower-moving long-term
+representation.
+
+```mermaid
+flowchart LR
+  S["user behavior sequence<br/>(ordered interactions)"] --> EMB["item + side-feature<br/>embeddings"]
+  EMB --> SEQ["sequence model<br/>(transformer / attention pool / RNN)"]
+  RT["real-time last-N actions"] -.optional fusion.-> SEQ
+  SEQ --> U["user intent vector"]
+  U --> H["ranking head /<br/>retrieval tower"]
+```
+
+### How they differ
+
+| System | Sequence model | Real-time vs batch | Long / lifelong history | Funnel position |
+|---|---|---|---|---|
+| Alibaba BST | Self-attention transformer | Batch-built sequence | Recent window | Ranking (CTR) |
+| Alibaba DIN | Attention activation unit (pool per candidate) | Batch | Aggregated interests re-weighted per ad | Ranking (CTR) |
+| Pinterest TransAct | Transformer encoder | Real-time last-100 actions, twice-weekly retrain | Short-term, paired with long-term embeddings | Ranking (Homefeed) |
+| Pinterest PinnerFormer | Transformer, all-action loss | Batch (daily), avoids streaming updates | Long horizon into one user vector | Retrieval + ranking feature |
+| Spotify CoSeRNN | Recurrent net, one embedding per session | Real-time at session start | Session-level, long-term plus per-session offset | Retrieval (ANN over tracks) |
+| Kuaishou TWIN V2 | Two-stage attention (GSU retrieve, ESU score) | Offline clustering, online inference | Lifelong, up to ~10^6 compressed via clustering | Ranking (CTR) |
+
+### The systems
+
 - **Alibaba** [Behavior Sequence Transformer for E-commerce Recommendation](https://arxiv.org/abs/1905.06874): A transformer over the user behavior sequence lifts CTR in Taobao ranking. *(product design)*
 - **Alibaba** [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978): An attention activation unit adapts the user-interest vector per candidate ad. *(product design)*
 - **Pinterest** [How Pinterest Leverages Realtime User Actions (TransAct)](https://medium.com/pinterest-engineering/how-pinterest-leverages-realtime-user-actions-in-recommendation-to-boost-homefeed-engagement-volume-165ae2e8cde8): TransAct fuses the real-time last-100 actions into Homefeed ranking. *(deployment)*

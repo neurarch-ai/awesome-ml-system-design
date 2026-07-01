@@ -307,6 +307,34 @@ Real systems that ship the patterns above. Each is a first-party engineering wri
 read them for what an interview answer skips: who the system serves, the product design,
 the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Every system below builds point-in-time features (state as known at decision time), scores an entity, then hands the number to a **decision layer** that turns it into money: a credit limit, a churn action, a price, an LTV budget, or a voucher. Most predict with gradient-boosted trees; the ones that model **when** an event happens use survival curves, and the ones that decide **whether to intervene** switch to uplift or causal models. Calibration sits between the score and the decision because the absolute probability, not the ranking, sets the money.
+
+```mermaid
+flowchart LR
+  F["point-in-time features"] --> MDL["model<br/>(GBDT; survival or uplift where needed)"]
+  MDL --> CAL["calibration"] --> DEC["decision layer<br/>(EV threshold / uplift / optimizer)"]
+  DEC --> ACT["action"]
+  ACT -.->|"delayed labels"| F
+```
+
+### How they differ
+
+| System | Model type | Decision it feeds | Delayed / biased labels | Regulation / explainability |
+|---|---|---|---|---|
+| Nubank | Survival curves + ranking | Credit line increase | Default matures over months | Regulated credit; simple robust methods |
+| Block (Square) | Conditional survival forest | Churn timing | Time-to-event, censored accounts | Low |
+| Airbnb (listing LTV) | ML LTV framework | Marketing / LTV budget | 365-day horizon, incremental vs baseline | Low |
+| Airbnb (home value) | XGBoost, 150+ features | Listing value estimate | Modest | Low |
+| Expedia | CatBoost CLV | LTV budget | Long horizon | Low |
+| Wayfair | Propensity + uplift | Programmatic marketing | Treatment response | Low |
+| Uber | Causal DL (S-learner) + convex opt | Incentive / promotion budget | Causal, business-metric labels | Low |
+| Gojek | Deep causal uplift + knapsack | Voucher allocation | Observed past treatment effects | Low |
+| Zalando | Forecast-then-optimize | Markdown / price steering | Forecast horizon | Low |
+
+### The systems
+
 - **Nubank** [How Nubank models risk for scalable credit limit increases](https://building.nubank.com/how-nubank-models-risk-for-smarter-scalable-credit-limit-increases/): Survival curves plus two-phase ranking-then-calibration for default risk across 122M customers. *(product design)*
 - **Block (Square)** [PySurvival Tutorial: Churn Modeling](https://developer.squareup.com/blog/pysurvival-tutorial-churn-modeling/): A conditional survival forest predicting subscription churn timing, C-index 0.83. *(eval bar)*
 - **Airbnb** [How Airbnb measures Listing Lifetime Value](https://medium.com/airbnb-engineering/how-airbnb-measures-listing-lifetime-value-a603bf05142c): An ML framework for baseline, incremental, and marketing-induced listing LTV over 365 days. *(product design)*

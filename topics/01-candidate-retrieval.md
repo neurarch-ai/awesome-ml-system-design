@@ -236,6 +236,44 @@ Real systems that ship the patterns above. Each is a first-party engineering
 writeup; read them for what an interview answer skips: who the system serves,
 the product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Under the product differences these systems are the same skeleton. The item tower
+runs as an offline batch job over the whole catalog, its embeddings land in an ANN
+index, and only the user (or query) tower runs online, producing one vector that
+does a single nearest-neighbor lookup before handing candidates to ranking. Almost
+every writeup here spends its real engineering budget not on the model but on the
+two hard parts: which negatives you train against, and how you keep the index
+fresh and fast at catalog scale.
+
+```mermaid
+flowchart LR
+  subgraph Offline
+    CAT["catalog items"] --> IT["item tower<br/>(batch)"]
+    IT --> EMB["item embeddings"]
+    EMB --> IDX["build ANN index"]
+  end
+  subgraph Online
+    REQ["request"] --> UT["user / query tower"]
+    UT --> UE["user embedding"]
+    UE --> ANN["ANN lookup"]
+    IDX --> ANN
+    ANN --> RANK["to ranking"]
+  end
+```
+
+### How they differ
+
+| System | Negatives | ANN index | Item tower cadence | What bites at their scale |
+|---|---|---|---|---|
+| YouTube/Google | In-batch + logQ correction | Not the focus | Batch | Power-law sampling bias against head items |
+| Airbnb | Impression-not-booked (journey) | IVF over HNSW | Daily batch | Frequent price/availability updates, filter latency, cluster uniformity |
+| Snap | In-batch | HNSW | Frequent batch refresh | Splitting feed-processing from a sharded retrieval service |
+| Etsy | Hard-negative sampling | HNSW with 4-bit PQ | Batch | Unifying graph, transformer, term embeddings end to end |
+| Pinterest | Sampled softmax, user-level masking | Learned/offline index | Batch | In-batch false negatives, request-level duplication |
+
+### The systems
+
 - **Pinterest** [Establishing a Large Scale Learned Retrieval System](https://medium.com/pinterest-engineering/establishing-a-large-scale-learned-retrieval-system-at-pinterest-eb0eaf7b92c5): Offline-indexed item embeddings plus a request-time user tower; sampled softmax with popularity correction. *(deployment)*
 - **YouTube/Google** [Sampling-Bias-Corrected Neural Modeling for Large Corpus Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/): In-batch negatives are biased under power-law; logQ correction restores unbiased softmax. *(product design)*
 - **Uber** [Innovative Recommendation Applications Using Two Tower Embeddings](https://www.uber.com/blog/innovative-recommendation-applications-using-two-tower-embeddings/): Layer-sharing plus bag-of-words history; one global model replaces thousands of city models. *(product design)*

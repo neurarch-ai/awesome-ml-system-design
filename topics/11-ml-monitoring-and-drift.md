@@ -226,6 +226,37 @@ Real references and tooling for the patterns above. Read them for what an
 interview answer skips: how teams handle label delay, calibrate drift thresholds,
 and tell a pipeline bug apart from genuine drift.
 
+### The shared pipeline
+
+Every system here logs production predictions alongside the exact features that produced them, then runs cheap distribution and data-quality checks on that log immediately while true performance metrics wait for labels to land. Detectors watch three things: feature drift (a feature's distribution moving off its reference), label or score drift (the prediction distribution shifting before labels confirm it), and performance decay once outcomes join back. Breaches feed an alerting layer tiered by severity, which either pages a human, triggers a retrain, or fires a rollback. The consistent move is to lead with the fast, label-free signals as an early warning for the slow performance metric.
+
+```mermaid
+flowchart TD
+  LOG["production predictions<br/>+ served features"] --> FD["feature drift"]
+  LOG --> LD["label / score drift"]
+  LOG --> DQ["data-quality checks<br/>(nulls, schema, freshness)"]
+  JOIN["labels joined back"] --> PERF["performance decay"]
+  FD --> ALERT{"threshold breached?"}
+  LD --> ALERT
+  DQ --> ALERT
+  PERF --> ALERT
+  ALERT -->|"yes"| ACT["alert (tiered)"]
+  ACT --> RESP["retrain or rollback trigger"]
+```
+
+### How they differ
+
+| System | Drift type detected | Detection method | Alerting | Action taken |
+|---|---|---|---|---|
+| Evidently AI | Feature + prediction drift | PSI, KS, chi-square distribution tests | Report / dashboard driven | Feeds retrain decision (tooling) |
+| Uber D3 | Partial data / feature drift | Column stats vs Prophet dynamic thresholds | PagerDuty oncall on breach | Detect + alert, manual response |
+| Uber deploy-safety | Feature drift + online-offline skew | Statistical tests, schema validation, shadow testing | Alerts can block promotion | Auto-rollback, gradual rollout, shadow |
+| Lyft | Score + performance drift | Feature validation, anomaly + drift detection | Anomaly-based alerts | Retrain trigger |
+| Netflix | Prediction + data drift | Logging, monitoring, explainability layer | Observability dashboards | Diagnose, then retrain |
+| Shopify | Feature drift | Distribution monitoring (fraud example) | Monitoring surfaces | Retrain on drift |
+
+### The systems
+
 - **Chip Huyen** [Data Distribution Shifts and Monitoring](https://huyenchip.com/2022/02/07/data-distribution-shifts-and-monitoring.html): the clearest single read on covariate vs concept drift, label delay, and what to actually monitor. *(foundations)*
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): the production discipline, including watching for silent failures in the data feeding the model. *(discipline)*
 - **Evidently AI** [open-source drift detection](https://github.com/evidentlyai/evidently): concrete drift metrics (PSI, KS, distribution tests) and report tooling; the methods implemented and runnable. *(tooling)*

@@ -220,6 +220,37 @@ These are validated reference graphs at real dimensions, shape-checked end to en
 
 Real systems that ship the patterns above. Each is a first-party engineering writeup; read them for what an interview answer skips: who the system serves, the product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Despite different tasks, these systems share one skeleton: a canonical ingest stage feeds a pretrained backbone whose features drive a task-specific head, and a human review loop turns its decisions into fresh labels. The backbone is where the transfer-learning leverage lives; the head is swapped per task (classify, detect, segment, or embed). Whether the output gates a publish, tags a photo, or lands in an index is the only part that really varies.
+
+```mermaid
+flowchart LR
+  IMG[Image ingest\ndecode / EXIF / resize] --> BB[Pretrained backbone\nCNN or transformer]
+  BB --> HEAD[Task head\nclassify / detect / segment / embed]
+  HEAD --> DEC{Decision}
+  DEC -->|score vs threshold| SURF[Product surface\nmoderate / tag]
+  DEC -->|vector to ANN index| IDX[(ANN index)]
+  IDX --> SURF
+  SURF --> REV[Human review]
+  REV --> LBL[(Labels)]
+  LBL -.retrain.-> BB
+```
+
+### How they differ
+
+| System | Task | Backbone | Serving | Headline metric |
+| --- | --- | --- | --- | --- |
+| Airbnb categorize | Classification | CNN (ResNet-50) | Batch | Per-class precision / recall |
+| Airbnb amenity | Detection | CNN | Batch | mAP |
+| Meta Mask R-CNN | Instance segmentation | CNN | Batch | COCO mask AP |
+| Pinterest unified | Embedding | CNN (SE-ResNeXt) | Offline index | Retrieval + engagement |
+| Google Africa buildings | Segmentation | CNN (U-Net) | Batch | mAP |
+| Netflix in-video | Embedding | Image-text (CLIP-style) | Offline index | Recall on text queries |
+| Bumble Private Detector | Binary classification | CNN (EfficientNetV2) | Real-time gate | Accuracy at fixed precision / recall |
+
+### The systems
+
 - **Airbnb** [Categorizing Listing Photos at Airbnb](https://medium.com/airbnb-engineering/categorizing-listing-photos-at-airbnb-f9483f3ab7e3): ResNet-50 classifies 500M+ listing photos by room type to organize home tours. *(product design)*
 - **Airbnb** [Amenity Detection and Beyond](https://medium.com/airbnb-engineering/amenity-detection-and-beyond-new-frontiers-of-computer-vision-at-airbnb-144a4441b72e): Object detection finds amenities in listing photos for moderation and consumer features. *(product design)*
 - **Meta (FAIR)** [Mask R-CNN](https://ai.meta.com/research/publications/mask-r-cnn/): Instance segmentation extending Faster R-CNN with a mask branch; top COCO results. *(eval bar)*

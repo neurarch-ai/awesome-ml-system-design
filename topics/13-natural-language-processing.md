@@ -305,6 +305,47 @@ Real systems that ship the patterns above. Each is a first-party engineering
 writeup; read them for what an interview answer skips: who the system serves, the
 product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Under the product framing, these systems share one skeleton. Free text is normalized
+and tokenized once, then fed to a task backbone: a fine-tuned encoder (or an earlier
+CNN/LSTM) for classification and tagging, or a seq2seq model for translation. A thin
+task head turns the representation into a decision (classify, tag, route, translate),
+which a threshold either auto-acts on or hands to human review, and those reviews feed
+labels back for retraining.
+
+```mermaid
+flowchart LR
+  TXT["free text"] --> TOK["tokenize + normalize<br/>(language ID)"]
+  TOK --> ENC["encoder<br/>(fine-tuned BERT-family<br/>or CNN / LSTM)"]
+  TOK --> S2S["seq2seq<br/>(translation)"]
+  ENC --> HEAD["task head<br/>(classify / NER / route)"]
+  S2S --> HEAD
+  HEAD --> GATE{"threshold?"}
+  GATE -->|"confident"| ACT["auto-route / auto-block / emit"]
+  GATE -->|"uncertain"| REV["human review"]
+  REV --> LBL["labels"]
+  LBL --> ENC
+```
+
+### How they differ
+
+| System | Task | Model | Multilingual | Labels / supervision |
+|---|---|---|---|---|
+| Uber Maps | classification (ticket routing) | WordCNN + Word2Vec | English (planned expansion) | manual labels, unsupervised embeddings |
+| Airbnb Listings | NER / extraction | CNN tagger | not stated | taxonomy-mapped labels |
+| Meta hate speech | classification | RIO + Linformer | not stated | proactive, adversarial |
+| Google GNMT | translation | seq2seq RNN + attention | many language pairs | bilingual human ratings |
+| Meta NMT | translation | LSTM + attention | 2,000+ directions | bilingual corpora |
+| LinkedIn Knowledge Graph | entity resolution | standardization / matching | not stated | canonical taxonomy |
+| Pinterest spam | classification | DNN + clustering + graph label-prop | not stated | graph label propagation |
+| LinkedIn abuse | sequence classification | LSTM over activity | not stated | behavioral labels |
+| Uber COTA | classification / routing | NLP + ML | not stated | ticket labels |
+| Airbnb voice support | classification (contact reason) | NLP classifier | not stated | contact-reason labels |
+| Grammarly GECToR | token tagging (GEC) | BERT-based tagger | English | synthetic + real learner data |
+
+### The systems
+
 - **Uber** [Applying Customer Feedback: NLP and Deep Learning Improve Uber's Maps](https://www.uber.com/gb/en/blog/nlp-deep-learning-uber-maps/): Word2Vec plus a word-level CNN classify support tickets to find map-data errors. *(product design)*
 - **Airbnb** [Building Airbnb's Listing Knowledge from big text data](https://medium.com/airbnb-engineering/wisdom-of-unstructured-data-building-airbnbs-listing-knowledge-from-big-text-data-7c533466a63c): A CNN-based NER extracts amenities and facilities from free-text listings into a taxonomy. *(product design)*
 - **Meta** [How AI is getting better at detecting hate speech](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/): RIO plus Linformer proactively detect toxic text and image content at scale. *(deployment)*

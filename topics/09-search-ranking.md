@@ -336,6 +336,43 @@ Real systems that ship the patterns above. Each is a first-party engineering
 writeup or a foundational paper; read them for what an interview answer skips: who
 the system serves, the product design, the eval bar, and the deployment shape.
 
+### The shared pipeline
+
+Under the product-specific detail these systems share one skeleton. A raw query is
+first understood (intent, category or entity mapping, spelling, rewrites), then run
+through retrieval that almost always fuses a lexical arm with an embedding arm,
+often in two stages. The surviving candidates flow into a learning-to-rank stage,
+and human judgments plus debiased engagement logs feed the labels that train it.
+The differences are in which arm dominates and where each team spends its labeling
+budget, not in the shape.
+
+```mermaid
+flowchart TD
+  Q["query"] --> QU["query understanding<br/>(intent, rewrite, spell)"]
+  QU --> LEX["lexical retrieval<br/>(inverted index)"]
+  QU --> EMB["embedding retrieval<br/>(ANN, two-stage)"]
+  LEX --> M["union + dedupe"]
+  EMB --> M
+  M --> LTR["learning-to-rank"]
+  LTR --> R["results"]
+  R -.engagement + judgments.-> LBL["relevance labels"]
+  LBL -.train.-> LTR
+```
+
+### How they differ
+
+| System | Query understanding | Retrieval | Ranking model | Relevance-label source |
+|---|---|---|---|---|
+| Amazon | Structured query parse | Learning-to-rank-and-retrieve (unified) | Contextual-bandit LTR | Logged engagement |
+| LinkedIn | IQL query translation | Hybrid (lexical + embedding EBR) | GBDT first pass, neural second pass | Crowdsourced ratings + click/engagement |
+| Pinterest SearchSage | DistilBERT query encoder | Neural ANN (HNSW) blended with text | Multi-objective relevance/engagement | Query-to-engaged-Pin pairs (saves, long clicks) |
+| Instacart (hybrid) | Category and attribute parse | Hybrid text + embedding | Two-stage ranker | Engagement + conversion logs |
+| Instacart (intent engine) | LLM intent + category mapping | Feeds downstream retrieval | Downstream LTR | LLM-labeled intents + engagement |
+| Yelp | Business-matching features | Lexical business match | Learning-to-rank (from hand-tuned) | Human labels + engagement |
+| Wayfair WANDS | n/a (eval dataset) | n/a | n/a | Human-judged relevance labels |
+
+### The systems
+
 - **Wang et al.** [DCN V2: Improved Deep & Cross Network](https://arxiv.org/abs/2008.13535): Explicit, efficient feature crosses in a ranking model used at web scale. *(ranking model)*
 - **Cheng et al.** [Wide & Deep Learning](https://arxiv.org/abs/1606.07792): Memorization (wide linear over crossed features) plus generalization (deep net) for ranking. *(ranking model)*
 - **Burges** "From RankNet to LambdaRank to LambdaMART: An Overview": the canonical learning-to-rank reference, walking from a pairwise RankNet loss to LambdaRank's NDCG-weighted gradients to the LambdaMART tree ensemble. The clearest single source on why ranking losses are pairwise and listwise rather than pointwise. *(learning-to-rank)*

@@ -349,6 +349,41 @@ interview answer skips: how positives and negatives are mined in practice, how
 graph structure is folded in, and how the learned vectors are routed into an
 index.
 
+### The shared pipeline
+
+Every one of these systems runs the same skeleton: mine positive pairs from
+behavioral logs (clicks, bookings, co-purchases, browsing sessions, or neighbor
+edges), learn an encoder that pulls related entities together, batch-embed the
+whole entity set, and load the vectors into an ANN index that many downstream
+tasks share. What varies is only the join that defines "related" and the entity
+that gets a vector; the store-and-reuse tail is common. That reuse is the
+economic point: learn the space once, serve retrieval, ranking, and fraud from
+the same vectors.
+
+```mermaid
+flowchart LR
+  E["entities + interactions<br/>(sessions, clicks, graph edges)"] --> RL["representation learning<br/>(contrastive / graph / two-tower / sequence)"]
+  RL --> ST["embedding store + ANN index<br/>(FAISS / HNSW / IVF-PQ)"]
+  ST --> RET["retrieval"]
+  ST --> RK["ranking"]
+  ST --> FR["fraud / other tasks"]
+```
+
+### How they differ
+
+| System | Learning method | Entity embedded | Index / serving | Cross-task reuse |
+|---|---|---|---|---|
+| GraphSAGE | Graph (inductive) | Graph nodes | ANN lookup | Node classification, retrieval |
+| LightGCN | Graph (transductive) | Users and items | Dot-product retrieval | Recommendation |
+| SimCSE | Contrastive (sentence) | Sentences | ANN lookup | Semantic similarity, retrieval |
+| PinSage | Graph (inductive) | Pins (items) | Nearest-neighbor index | Recommendation, retrieval |
+| Airbnb | Sequence (skip-gram negatives) | Listings | Similarity features | Similar-listing carousel, search ranking |
+| Spotify | Two-tower (dense) | Query and episode | ANN index | Semantic podcast search |
+| Instacart | Two-tower contrastive | Query and product | FAISS ANN, cached queries | Search retrieval and ranking |
+| Wayfair | Sequence (self-supervised) | Customer sessions | Feature store | Fraud detection |
+
+### The systems
+
 - **Stanford / Hamilton et al.** [GraphSAGE: Inductive Representation Learning on Large Graphs](https://arxiv.org/abs/1706.02216): inductive node embeddings by aggregating neighbor features. *(graph embeddings)*
 - **He et al.** [LightGCN](https://arxiv.org/abs/2002.02126): simplified graph convolution for recommendation embeddings. *(graph embeddings)*
 - **Gao et al.** [SimCSE: Simple Contrastive Learning of Sentence Embeddings](https://arxiv.org/abs/2104.08821): contrastive representation learning with in-batch negatives. *(contrastive learning)*

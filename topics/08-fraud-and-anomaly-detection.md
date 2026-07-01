@@ -312,6 +312,42 @@ Real systems and references that ship the patterns above. Read them for what an
 interview answer skips: the imbalance handling, the cost-driven threshold, the
 delayed-label reality, and how teams keep models ahead of an adversary.
 
+### The shared pipeline
+
+Under the branding, these systems share one skeleton: an event stream feeds
+real-time features (velocity aggregates plus graph and entity signals over shared
+devices, cards, and addresses), a model scores it (a supervised classifier, an
+unsupervised anomaly detector, or both), a cost-sensitive threshold turns the
+score into allow, block, or route-to-review, and analyst verdicts plus settled
+outcomes flow back as labels. The only fast feedback is the human queue; the
+ground-truth chargeback loop closes weeks later.
+
+```mermaid
+flowchart TD
+  EV["transaction / event"] --> FEAT["real-time features<br/>(velocity + graph / entity signals)"]
+  FEAT --> MODEL["model<br/>(supervised classifier and/or anomaly)"]
+  MODEL --> THRESH{"cost-sensitive threshold"}
+  THRESH -->|"low"| ALLOW["allow"]
+  THRESH -->|"high"| BLOCK["block"]
+  THRESH -->|"borderline"| REVIEW["route to review"]
+  REVIEW --> HUMAN["human review"]
+  HUMAN --> LABELS["labels"]
+  ALLOW --> LABELS
+  BLOCK --> LABELS
+  LABELS -->|"feed back"| MODEL
+```
+
+### How they differ
+
+| System | Learning | Features | Latency | Optimizes for |
+|---|---|---|---|---|
+| PayPal (graph DB) | Supervised + unsupervised embeddings | Graph / entity | Real-time (sub-second) | Speed vs comprehensiveness; links repeat rings live |
+| Uber (RGCN) | Supervised | Graph | Batch scores into risk model | Precision at low added false positives |
+| Grab (GraphBEAN) | Unsupervised | Graph (bipartite) | Batch | Catching novel fraud over known-fraud accuracy |
+| SMOTE (Chawla et al.) | Supervised training technique | Tabular | Offline | Minority recall under extreme imbalance |
+
+### The systems
+
 - **Chawla et al.** [SMOTE: Synthetic Minority Over-sampling Technique](https://arxiv.org/abs/1106.1813): the classic approach to extreme class imbalance, synthesizing minority samples instead of naive oversampling. *(class imbalance)*
 - **Cheng et al.** [Wide & Deep Learning](https://arxiv.org/abs/1606.07792): the sparse-embedding-plus-dense tabular shape fraud models often use when they go deep. *(model)*
 - **Stripe** [Radar engineering writeups](https://stripe.com/blog): how Stripe scores card fraud in real time with continuously retrained models. *(deployment)*
