@@ -16,6 +16,14 @@ In this chapter, we will cover:
 
 By the end, you will be able to walk an interviewer from "my model wins offline" to a costed, powered, trustworthy experiment, and defend every statistical choice along the way.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs used as figures in this chapter. Each is a shape-checked architecture from the Neurarch model zoo that opens live in the editor at real dimensions:
+
+- [wide-and-deep](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/wide-and-deep/model.json)
+
+The full collection lives in the [model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
+
 ## Clarify and scope before you draw anything
 
 The strongest opening move is to refuse to jump to test size. An experiment is defined by its metric, its unit, and its randomization long before its duration. The questions worth asking:

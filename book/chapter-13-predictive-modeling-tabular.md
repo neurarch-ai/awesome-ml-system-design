@@ -17,6 +17,16 @@ In this chapter, we will cover:
 
 By the end, you will be able to walk an interviewer from "score this applicant" to a calibrated, auditable, decision-feeding system, and defend why the production model is usually a tree that has no layer diagram at all.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs used as figures in this chapter. Each is a shape-checked architecture from the Neurarch model zoo that opens live in the editor at real dimensions:
+
+- [wide-and-deep](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/wide-and-deep/model.json)
+- [deepfm](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/deepfm/model.json)
+- [dlrm](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/dlrm/model.json)
+
+The full collection lives in the [model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
+
 ## Clarify and scope before you draw anything
 
 The single strongest opening move is to refuse to treat "predict default" as a prediction problem in isolation. It is a definition problem, a decision problem, and a data problem before it is a modeling problem. The questions worth asking:

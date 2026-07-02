@@ -16,6 +16,19 @@ In this chapter, we will cover:
 
 By the end, you will be able to walk an interviewer from "upload a photo" to a costed, evaluable, multi-task system, and defend every metric choice along the way.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs used as figures in this chapter. Each is a shape-checked architecture from the Neurarch model zoo that opens live in the editor at real dimensions:
+
+- [resnet-50](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/resnet-50/model.json)
+- [efficientnet-b0](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/efficientnet-b0/model.json)
+- [unet](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/unet/model.json)
+- [vit-b16](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/vit-b16/model.json)
+- [swin-tiny](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/swin-tiny/model.json)
+- [clip-vit-b32](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/clip-vit-b32/model.json)
+
+The full collection lives in the [model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
+
 ## Clarify and scope before you draw anything
 
 The single strongest opening move is to refuse to treat "tag, moderate, search" as one problem. It hides four or five distinct model types, and you want to enumerate them so you can size labeling and serving per task rather than in aggregate. The questions worth asking:

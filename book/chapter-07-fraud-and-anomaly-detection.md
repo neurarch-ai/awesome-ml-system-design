@@ -16,6 +16,10 @@ In this chapter, we will cover the following topics:
 
 By the end of the chapter, you will be able to reason about a rare-event, cost-sensitive detection system end to end, and to defend each design choice against the follow-up questions an interviewer will push on.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs referenced in this chapter from the [Neurarch model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo), where each architecture opens live at real dimensions. No datasets or installs are required to read the chapter.
+
 ## Clarifying and scoping the problem
 
 Do not start modeling. Start by pinning down the numbers and the actions, because they change the entire design. Here are the questions worth asking, and why each one matters.

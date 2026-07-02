@@ -19,6 +19,18 @@ In this chapter, we will cover the following topics:
 
 By the end of the chapter, you will be able to reason about a production NLP portfolio end to end, and to defend each design choice against the follow-up questions an interviewer will push on.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs used as figures in this chapter. Each is a shape-checked architecture from the Neurarch model zoo that opens live in the editor at real dimensions:
+
+- [bert-base](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/bert-base/model.json)
+- [modernbert-base](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/modernbert-base/model.json)
+- [t5-small](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/t5-small/model.json)
+- [all-minilm-l6](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/all-minilm-l6/model.json)
+- [bge-base-en](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/bge-base-en/model.json)
+
+The full collection lives in the [model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
+
 ## Clarifying and scoping the problem
 
 Do not start modeling. "NLP" is a family, not a task, and the wrong first move is to design one model for a sentence that hides five different problems. Here are the questions worth asking, and why each one changes the design.

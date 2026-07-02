@@ -18,6 +18,10 @@ In this chapter, we will cover the following topics:
 
 By the end, you will be able to design a search ranking system end to end and defend the modeling choices that separate a search answer from a recommendation answer.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs referenced in this chapter from the [Neurarch model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo), where each architecture opens live at real dimensions. No datasets or installs are required to read the chapter.
+
 ## Clarifying and scoping
 
 Before drawing a single box, pin down the shape of the problem. Search has a few parameters that quietly decide the whole design, and a strong candidate surfaces them first.

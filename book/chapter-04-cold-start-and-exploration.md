@@ -21,6 +21,10 @@ In this chapter, we will cover the following topics:
 - Warm-up strategies and the long-term value of exploration
 - Bottlenecks, failure modes, and the evaluation bar
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs referenced in this chapter from the [Neurarch model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo), where each architecture opens live at real dimensions. No datasets or installs are required to read the chapter.
+
 ## Clarifying and scoping the problem
 
 Before drawing anything, it is worth pinning down which version of the problem you are actually solving. A few questions reshape the design substantially:

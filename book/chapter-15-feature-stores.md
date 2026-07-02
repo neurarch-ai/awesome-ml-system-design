@@ -17,6 +17,14 @@ In this chapter, we will cover:
 
 By the end, you will be able to walk an interviewer from "a dozen models need the same features" to a costed, consistent, leak-free platform, and defend every guard along the way.
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs used as figures in this chapter. Each is a shape-checked architecture from the Neurarch model zoo that opens live in the editor at real dimensions:
+
+- [dlrm](https://www.neurarch.com/?import=https://raw.githubusercontent.com/neurarch-ai/awesome-llm-model-zoo/main/architectures/dlrm/model.json)
+
+The full collection lives in the [model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
+
 ## Clarify and scope before you draw anything
 
 The strongest opening move is to refuse to treat "a feature platform" as one undifferentiated thing. Batch aggregates and real-time signals live on completely different infrastructure, and the value of the whole exercise depends on how many teams reuse it. The questions worth asking:

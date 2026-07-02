@@ -33,6 +33,10 @@ In this chapter we will cover the following topics:
 - Spatiotemporal forecasting for ETA
 - Bottlenecks, failure modes, and the eval gate
 
+## Technical requirements
+
+You need a modern web browser to open the validated reference graphs referenced in this chapter from the [Neurarch model zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo), where each architecture opens live at real dimensions. No datasets or installs are required to read the chapter.
+
 ## Clarifying the decision and scoping the problem
 
 The single most important question comes before any model: **what decision does
