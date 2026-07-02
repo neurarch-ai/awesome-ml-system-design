@@ -1353,6 +1353,263 @@ _Not reachable: none_
 
 ---
 
+## Cold start and exploration
+
+### Spotify: pure-exploration infinitely-armed bandit for surfacing new podcasts ([source](https://research.atspotify.com/publications/identifying-new-podcasts-with-high-general-appeal-using-a-pure-exploration-infinitely-armed-bandit-strategy))
+
+Spotify wanted to identify newly released podcasts with broad audience appeal, but supervised methods failed because new shows have almost no content or consumption signal and inherit popularity bias from historical data. They instead built a non-contextual bandit in the fixed-budget, infinitely-armed, pure-exploration setting: each new podcast is an arm drawn from a reservoir, and a fixed impression budget is spent on best-arm identification rather than on maximizing immediate engagement. In simulation the algorithm efficiently sorts podcasts into groups by increasing appeal and beats several state-of-the-art alternatives, decoupling discovery from the exploit feed so popularity does not dominate.
+
+```mermaid
+flowchart TD
+  NEW[Reservoir of new podcasts] --> DRAW[Draw arm from reservoir]
+  DRAW --> PULL[Spend impression from fixed budget]
+  PULL --> REWARD[Observe engagement reward]
+  REWARD --> UPDATE[Update per-arm appeal estimate]
+  UPDATE --> DECIDE{Budget remaining?}
+  DECIDE -->|yes| DRAW
+  DECIDE -->|no| RANKED[Podcasts sorted by general appeal]
+  RANKED --> FEED[Feed high-appeal new podcasts to exploit system]
+```
+
+**Interview questions this design invites**
+- Why is pure exploration decoupled from the exploit feed instead of folded into one ranker?
+- What does "infinitely-armed" mean and why does a reservoir formulation fit new-podcast discovery?
+- How does a fixed-budget best-arm-identification objective differ from regret minimization?
+- How does this design avoid popularity bias that supervised ranking would reproduce?
+- How would you set the exploration budget, and who pays the short-term cost?
+- How do you validate a discovery bandit offline before it touches real users?
+
+**Tricks and gotchas**
+- Best-arm identification optimizes final selection quality, not cumulative reward, so classic UCB regret intuition does not transfer directly.
+- Reservoir distribution assumptions drive performance; a skewed arm-quality reservoir changes how aggressively you should sample.
+- Pure exploration is a separate channel; it needs its own guardrail so bad new content does not flood the main feed.
+
+**Common mistakes and how to fix them**
+- Treating new-item discovery as a supervised ranking problem: it inherits popularity bias; use a dedicated exploration channel instead.
+- Optimizing cumulative clicks during discovery: switch the objective to best-arm identification under a fixed budget.
+- Assuming a fixed arm set: model new supply as an infinite reservoir so fresh podcasts keep entering the pool.
+
+### Spotify: calibrated content-type mix on the homepage with a contextual bandit ([source](https://research.atspotify.com/2025/9/calibrated-recommendations-with-contextual-bandits-on-spotify-homepage))
+
+Spotify's homepage must balance music, podcasts, and audiobooks per user, and simply mirroring a user's historical consumption ratio ignores context (time of day, device, session intent). They frame calibration as supervised learning with bandit feedback: a contextual bandit picks a target content-type distribution to maximize engagement, using temporal signals, device type, and user/content embeddings as context. Slates are built sequentially, adding items with a Kullback-Leibler divergence penalty that keeps the realized mix near the chosen target, and an epsilon-greedy branch supplies exploration. Offline the method beat a 7-day historical baseline by 35 percent on podcast accuracy and a multinomial blend by 16.6 percent; the March 2025 A/B lifted podcast impression-to-stream ratio 36.6 percent and total consumption 1.28 percent.
+
+```mermaid
+flowchart TD
+  CTX[Context: time, day, device, user and content embeddings] --> CB[Contextual bandit]
+  CB --> TARGET[Target content-type distribution]
+  TARGET --> SLATE[Sequential slate builder]
+  CAND[Candidate items: music, podcast, audiobook] --> SLATE
+  SLATE --> KL[Add item minimizing KL to target mix]
+  KL --> EPS{Epsilon-greedy?}
+  EPS -->|explore| RAND[Random content-type choice]
+  EPS -->|exploit| FEED[Calibrated homepage feed]
+  RAND --> FEED
+  FEED --> LOG[(Log context, action, reward)]
+  LOG --> CB
+```
+
+**Interview questions this design invites**
+- What does "calibration" mean here and why is the historical ratio a bad target?
+- Why frame it as supervised learning with bandit feedback rather than full RL?
+- How does the KL penalty translate a target distribution into an actual slate?
+- Why epsilon-greedy over UCB or Thompson for this surface?
+- How do offline accuracy gains relate to the online impression-to-stream lift?
+- How would you keep calibration from starving a content type a user genuinely dislikes?
+
+**Tricks and gotchas**
+- The bandit chooses a distribution, not individual items; slate construction is a separate greedy KL step.
+- Historical-ratio calibration is context-blind; the same user wants a different mix by time and device.
+- Epsilon-greedy explores uniformly, so on a high-traffic homepage the flat tax must be small and bounded.
+
+**Common mistakes and how to fix them**
+- Calibrating to long-run historical ratios: add context features so the target mix shifts with session and device.
+- Optimizing per-item score and hoping the mix works out: enforce the target with an explicit KL divergence penalty during slate assembly.
+- Judging only on offline accuracy: confirm with an online impression-to-stream and total-consumption A/B before trusting it.
+
+### Spotify: Impatient Bandits, acting on delayed long-term reward ([source](https://research.atspotify.com/publications/impatient-bandits-optimizing-for-the-long-term-without-delay))
+
+The core tension is that waiting weeks for the true long-term reward slows learning, while a myopic proxy like an immediate click reflects the real goal only imperfectly. Impatient Bandits models the reward-formation process itself: a Bayesian filter fuses partial short and medium-term observations with occasional full observations into a probabilistic belief about the eventual delayed reward, and the bandit acts on that belief rather than waiting. Tested on podcast recommendations targeting shows users engage with repeatedly over two months, it substantially beat both short-term-proxy optimization and waiting for the fully realized long-term outcome.
+
+```mermaid
+flowchart TD
+  ACTION[Recommend item] --> OBS[Partial signals: day 1, day 3, week 1]
+  OBS --> FILTER[Bayesian filter over reward formation]
+  FULL[Occasional full long-term labels] --> FILTER
+  FILTER --> BELIEF[Probabilistic belief about delayed reward]
+  BELIEF --> BANDIT[Bandit balances explore and exploit]
+  BANDIT --> ACTION
+  BANDIT --> PICK[Pick items predicted to drive 2-month engagement]
+```
+
+**Interview questions this design invites**
+- Why not just optimize the immediate click proxy, and why not wait for the true reward?
+- How does modeling the reward-formation process let you act on partial observations?
+- What role does the Bayesian filter play, and what does it output to the bandit?
+- How do you validate that the early belief actually predicts the 2-month outcome?
+- How does delayed reward interact with exploration and off-policy evaluation?
+- What breaks if the reward-formation model is miscalibrated?
+
+**Tricks and gotchas**
+- The learned early signal is a belief with uncertainty, not a point proxy; the bandit should use the whole posterior.
+- You still need occasional full long-term labels to anchor the filter, or the belief drifts.
+- A well-fitting proxy today can decouple from the true target as content or behavior shifts.
+
+**Common mistakes and how to fix them**
+- Optimizing a myopic click: it produces clickbait; model an early signal predictive of long-term value instead.
+- Blocking updates until the full reward lands: fuse partial observations through a filter so learning keeps pace.
+- Treating the proxy as ground truth: keep long-horizon holdouts to detect proxy-to-target drift.
+
+### Yahoo: LinUCB contextual bandit for news, with offline replay ([source](https://arxiv.org/abs/1003.0146))
+
+Yahoo Front Page has a dynamic pool of news articles unsuited to collaborative filtering, so the paper models article selection as a contextual bandit and introduces LinUCB: the expected click reward is linear in a user-article feature vector, and a closed-form confidence bonus derived from that linear model directs exploration toward uncertain choices. Because the reward model is shared across arms via features, a brand-new article still gets an uncertainty estimate from its features rather than needing per-arm history. Evaluated by offline replay on 33M-plus Yahoo events with logged uniformly-random exploration traffic, LinUCB delivered a 12.5 percent click lift over a context-free bandit, with the advantage growing as data got sparser.
+
+```mermaid
+flowchart TD
+  USER[User features] --> X[User-article feature vector x]
+  ART[Article features] --> X
+  X --> MEAN[Linear reward estimate: theta dot x]
+  X --> BONUS[Confidence bonus: sqrt of x A-inv x]
+  MEAN --> SCORE[Optimistic score = mean + alpha times bonus]
+  BONUS --> SCORE
+  SCORE --> PICK[Pick argmax article]
+  PICK --> CLICK[Observe click]
+  CLICK --> UPDATE[Update A and b for chosen arm]
+  UPDATE --> MEAN
+  LOG[(Logged random-exploration traffic)] --> REPLAY[Offline replay: score only matching events]
+```
+
+**Interview questions this design invites**
+- Why does LinUCB scale to a changing article pool where collaborative filtering does not?
+- Where does the closed-form confidence bonus come from in the linear model?
+- Why does sharing parameters across arms via features solve item cold start?
+- Why does offline replay require uniformly-random logged traffic to be unbiased?
+- What does the alpha exploration coefficient trade off?
+- Why does LinUCB's advantage grow as data becomes sparser?
+
+**Tricks and gotchas**
+- Replay only scores events where the new policy's choice matches the logged choice, so you burn most of the log; you need lots of random traffic.
+- Linearity is an assumption; real reward can be nonlinear, motivating neural-linear extensions that keep a linear uncertainty head.
+- The confidence bonus depends on the feature-covariance inverse, which must stay well-conditioned as features grow.
+
+**Common mistakes and how to fix them**
+- Using per-arm independent parameters: it cannot cold-start new articles; share a feature-parameterized model across arms.
+- A/B testing every candidate policy: use unbiased offline replay on logged random traffic first.
+- Deterministic argmax serving with no logged randomness: you lose the unbiased-replay guarantee; log stochastic exploration with known propensities.
+
+### Stitch Fix: Thompson-sampling bandits as a first-class experiment type ([source](https://multithreaded.stitchfix.com/blog/2020/08/05/bandits/))
+
+Stitch Fix extended its existing experimentation platform so multi-armed bandits run alongside classic A/B tests instead of as a bespoke service. Data scientists ship a reward model as a microservice via the Model Envelope tool, returning posterior parameters (for example Beta alpha and beta) that a Thompson-sampling allocator queries; batch ETLs refresh those estimates. The allocator samples each arm's posterior and shifts traffic toward winners while the experiment runs, chosen for Thompson sampling's convergence and instantaneous self-correction and its low regret. Crucially, client apps need no changes: they keep requesting configuration parameters from the platform's deterministic SHA1-hash allocation engine as if nothing changed, so propensity logging and metric computation come for free.
+
+```mermaid
+flowchart TD
+  CLIENT[Client requests config parameter] --> ALLOC[Allocation engine SHA1 hashing]
+  ALLOC --> BANDIT[Thompson-sampling allocator]
+  RS[Reward service microservice: Model Envelope] --> BANDIT
+  ETL[Batch ETL refreshes posteriors] --> RS
+  BANDIT --> SAMPLE[Sample each arm posterior, pick max]
+  SAMPLE --> ASSIGN[Assign arm to request]
+  ASSIGN --> CLIENT
+  ASSIGN --> LOG[(Log assignment, propensity, reward)]
+  LOG --> ETL
+```
+
+**Interview questions this design invites**
+- Why deliver bandits inside the experimentation platform instead of as a standalone ranker feature?
+- Why Thompson sampling over UCB or epsilon-greedy for adaptive experiments?
+- How does the reward service return posteriors and how are they refreshed?
+- How does client-transparent config delivery keep propensity logging honest?
+- What does batch (rather than streaming) posterior updates cost you in adaptivity?
+- How do you govern and audit exploration when it lives in the experiment platform?
+
+**Tricks and gotchas**
+- Thompson sampling gives clean stochastic propensities for free, which is exactly what off-policy evaluation needs.
+- Batch ETL refresh means the posteriors lag reality; fast-moving arms adapt only as often as the ETL runs.
+- Deterministic SHA1 assignment must be reconciled with stochastic sampling so logged propensities match what actually served.
+
+**Common mistakes and how to fix them**
+- Building a separate bandit service: reuse the experiment platform so logging, assignment, and metrics are already handled.
+- Hardcoding fixed traffic splits: let the Thompson allocator shift traffic toward better arms during the run.
+- Forgetting to log propensities: emit the sampling probability per assignment so OPE stays valid.
+
+### Instacart: contextual bandits over a large action space ([source](https://company.instacart.com/tech-innovation/using-contextual-bandit-models-in-large-action-spaces-at-instacart))
+
+A standard discrete-action contextual bandit needs many examples per action across contexts, which is infeasible with millions of products. Instacart made the action space tractable by not treating individual products as arms: instead the bandit selects among a small set of ranking strategies. One model chose between ranking formulas (linear popularity ranking for precise queries like "milk" versus personalized models for broad queries like "healthy snack"), and another chose among eight weighted combinations of objectives (relevance, popularity, price, availability). They trained with XGBoost (action as a categorical feature), an X-learner for treatment effects, and Ray RLlib for neural variants, evaluating counterfactually with IPS and doubly-robust estimators before A/B. An XGBoost bandit lifted CAPS about 0.6 percent for Android users.
+
+```mermaid
+flowchart TD
+  QUERY[User query and context] --> CB[Contextual bandit]
+  CB --> CHOICE{Select ranking strategy}
+  CHOICE -->|precise query| POP[Popularity linear ranker]
+  CHOICE -->|broad query| PERS[Personalized ranker]
+  CHOICE -->|objective mix| WEIGHTS[One of 8 weighted objective blends]
+  POP --> RANK[Rank candidate products]
+  PERS --> RANK
+  WEIGHTS --> RANK
+  RANK --> SERVE[Serve results]
+  SERVE --> LOG[(Log context, chosen strategy, propensity, reward)]
+  LOG --> OPE[IPS and doubly-robust offline eval]
+  OPE --> CB
+```
+
+**Interview questions this design invites**
+- Why is a per-product discrete-action bandit infeasible at catalog scale?
+- How does choosing among ranking strategies shrink the action space while staying useful?
+- Why parameterize arms by features so a never-seen product still gets an estimate?
+- What do IPS and doubly-robust estimators each buy you before an A/B?
+- Why might XGBoost-as-bandit beat a neural RLlib variant in practice here?
+- How do you decide the granularity of the strategy action set?
+
+**Tricks and gotchas**
+- The arms are ranking policies, not items, so exploration cost is bounded to a handful of strategies.
+- Doubly-robust estimation guards against either a bad reward model or bad propensities, but not both at once.
+- Query type is itself a strong context feature; misclassifying precise versus broad queries mis-routes the ranker.
+
+**Common mistakes and how to fix them**
+- Enumerating products as arms: collapse the action space to a small set of ranking strategies or objective blends.
+- Trusting a single offline estimator: combine IPS and doubly-robust to hedge model and propensity error.
+- Reaching for a neural bandit by default: a categorical-action XGBoost model can win on data efficiency; benchmark it first.
+
+### Google: quantifying the long-term value of exploration ([source](https://arxiv.org/abs/2305.07764))
+
+Standard A/B tests show exploration as neutral or negative on short-term engagement, so its real benefit stays invisible. This work introduces experiment designs that measure exploration's effect on the content corpus, connecting corpus growth to sustained user-experience gains: by exploring beyond high-performing items the system discovers new content and breaks the ossification loop where greedy serving narrows the corpus. Algorithmically they adopt a Neural Linear Bandit as a general framework to inject principled exploration into any deep ranking system, keeping a linear uncertainty head on learned features. Live experiments on a short-form video platform serving billions of users validate both the corpus-level measurement methodology and the algorithm.
+
+```mermaid
+flowchart TD
+  ITEM[Item and user features] --> DEEP[Deep feature extractor]
+  DEEP --> HEAD[Linear uncertainty head]
+  HEAD --> MEAN[Reward point estimate]
+  HEAD --> UNC[Uncertainty estimate]
+  MEAN --> EXPLORE[Neural-linear exploration score]
+  UNC --> EXPLORE
+  EXPLORE --> SERVE[Serve, favoring uncertain items]
+  SERVE --> FEEDBACK[New impressions on new content]
+  FEEDBACK --> CORPUS[Corpus grows]
+  CORPUS --> METRIC[Long-horizon corpus and retention metric]
+  FEEDBACK --> DEEP
+```
+
+**Interview questions this design invites**
+- Why do standard A/B tests fail to capture exploration's value?
+- What is corpus growth and how do you measure it as a first-class metric?
+- Why does a neural-linear head give cheap per-candidate uncertainty at serving latency?
+- How does exploration break the feedback-loop ossification from greedy serving?
+- Why judge exploration on a long horizon rather than session-level engagement?
+- How do you bound exploration so short-term engagement loss stays acceptable?
+
+**Tricks and gotchas**
+- Exploration is expected to slightly lower short-term engagement by construction; measuring it on session metrics will always look bad.
+- The neural-linear head keeps uncertainty a cheap closed form over learned features, avoiding a full Bayesian posterior per request.
+- Corpus-level experiment designs are the real contribution; without them the algorithm looks like a loss.
+
+**Common mistakes and how to fix them**
+- Killing exploration because the A/B is flat: measure corpus growth and long-horizon retention, not just session clicks.
+- Using an expensive full posterior for uncertainty: use a neural-linear head for closed-form, latency-safe bonuses.
+- Letting exploration run unbounded: cap it with a quality floor so the worst exploratory impression stays acceptable.
+
+_Not reachable: Netflix (Artwork Personalization; Infra for Contextual Bandits), DoorDash (Personalized Cuisine Filter), Duolingo (Sleeping/Recovering Bandit)_
+
+---
+
 ## Ads CTR prediction
 
 ### Meta: DLRM, the canonical CTR architecture with explicit dot-product interactions ([source](https://arxiv.org/abs/1906.00091))
@@ -3123,6 +3380,292 @@ _Not reachable: none_
 
 ---
 
+## Speech and audio
+
+### Google: An all-neural on-device RNN-T speech recognizer for Gboard voice typing ([source](https://research.google/blog/an-all-neural-on-device-speech-recognizer/))
+
+Google shipped an end-to-end RNN-Transducer that runs streaming ASR entirely on Pixel phones, replacing the cloud round trip for Gboard voice typing. The encoder is 8 LSTM layers (2048 units, 640-dim projection), the prediction network is 2 LSTM layers, and a feedforward joint network fuses them to emit characters incrementally. Parameter quantization plus hybrid kernels shrank the model from 450MB to 80MB (a 4x compression) with a 4x runtime speedup, letting it run faster than real time on a single CPU core. Accuracy matched the server recognizer despite being fully offline, initially for American English.
+
+```mermaid
+flowchart TD
+  A[Mic 16 kHz] --> B[Log-mel features]
+  B --> C[Encoder: 8 LSTM x 2048, 640 proj]
+  D[Previous chars] --> E[Prediction net: 2 LSTM]
+  C --> F[Joint feedforward network]
+  E --> F
+  F --> G[Softmax over chars + blank]
+  G --> H[Emit char, stream]
+  H --> D
+```
+
+**Interview questions this design invites**
+- Why RNN-T over CTC or attention seq2seq for on-device streaming dictation?
+- What does the prediction network buy you that CTC lacks, and at what cost?
+- How does quantization achieve 4x compression, and how do you validate the WER hit?
+- Why does the joint network combine encoder and prediction outputs instead of a single stack?
+- How do you handle endpointing so the model knows the user stopped talking?
+- What breaks when you move from American English to multilingual on the same budget?
+
+**Tricks and gotchas**
+- RNN-T commits monotonically left to right, so it cannot revise a bad early hypothesis the way batch attention can.
+- Quantization gains are architecture-dependent; LSTM state and kernel fusion matter as much as int8 weights.
+- On-device means no audio logging, so you lose the retraining signal and need on-device or federated metrics.
+- Decoder state and beam width must stay tiny to fit the memory and power envelope.
+
+**Common mistakes and how to fix them**
+- Proposing one giant Conformer for on-device streaming; fix by picking RNN-T sized to the NPU and memory budget.
+- Assuming quantization is free; fix by measuring per-slice WER before and after, not assuming a small hit.
+- Ignoring endpointing latency because WER looks good; fix by tracking endpoint latency and false cutoffs separately.
+- Forgetting the retraining data wall on-device; fix by designing federated or on-device metric collection up front.
+
+### AssemblyAI: Conformer-1, a batch ASR trained on 650K hours for noise robustness ([source](https://www.assemblyai.com/blog/conformer-1))
+
+AssemblyAI built Conformer-1, a full-context batch ASR that interleaves self-attention and convolution and was scaled on a 650K-hour, 60TB English dataset drawn from proprietary and internet sources. They made three architecture changes to the base Conformer: progressive downsampling to shorten the encoded sequence, grouped attention to make attention cost independent of sequence length, and modified sparse attention using moving-median thresholds instead of averaging so noise contributions get pruned rather than amplified. These changes gave 29 percent faster inference and 36 percent faster training. The result showed 43 percent fewer errors on noisy real-world audio versus competitors, generalizing across call centers, podcasts, broadcasts, and webinars, with a streaming variant reporting a 24.3 percent relative accuracy gain.
+
+```mermaid
+flowchart TD
+  A[Audio] --> B[Log-mel features]
+  B --> C[Progressive downsampling]
+  C --> D[Conformer blocks: grouped attention + conv]
+  D --> E[Modified sparse attention, moving-median threshold]
+  E --> F[Decoder head]
+  F --> G[Transcript]
+```
+
+**Interview questions this design invites**
+- Why does the Conformer mix convolution and attention, and what does each capture in speech?
+- What problem does grouped attention solve as utterances get long?
+- Why replace averaging with a moving-median threshold in sparse attention for noisy audio?
+- How do you scale data and model together, and how do you know 650K hours was worth it?
+- How do you evaluate noise robustness without overfitting to one noisy test set?
+- Why is a full-context batch model a poor fit for live dictation?
+
+**Tricks and gotchas**
+- Aggregate WER hides subgroup collapse; robustness claims need slicing by noise, domain, and accent.
+- Progressive downsampling trades some temporal resolution for speed, which can hurt short or fast speech.
+- Sparse attention that prunes too aggressively can drop real low-energy speech, not just noise.
+- Internet-sourced training data carries label noise that must be weakly supervised, not trusted verbatim.
+
+**Common mistakes and how to fix them**
+- Claiming a single WER number proves robustness; fix by reporting per-condition slices as a release gate.
+- Using a batch Conformer for streaming; fix by deriving a causal streaming variant with bounded look-ahead.
+- Scaling model without scaling data; fix by following proportional data-and-model scaling.
+- Ignoring inference cost on transcription farms; fix by measuring throughput per GPU, not just WER.
+
+### OpenAI: Whisper, weakly supervised multitask speech recognition and translation ([source](https://github.com/openai/whisper))
+
+Whisper is a Transformer encoder-decoder trained on large-scale weak supervision rather than curated labels, aiming for zero-shot robustness across domains without dataset-specific fine-tuning. Audio becomes a log-mel spectrogram processed in 30-second windows, the encoder embeds it, and the decoder autoregressively predicts a token stream that jointly encodes the task. A single model handles multilingual ASR, speech-to-English translation, spoken language identification, and voice activity detection, with the task selected by special tokens in the decoder sequence. Six sizes span 39M (tiny) to 1.55B (large) parameters, plus a faster 809M turbo, and evaluation reports WER and CER across Common Voice and Fleurs by language.
+
+```mermaid
+flowchart TD
+  A[Audio, 30s window] --> B[Log-mel spectrogram]
+  B --> C[Transformer encoder]
+  D[Task tokens: lang, transcribe/translate, timestamps] --> E[Transformer decoder]
+  C --> E
+  E --> F[Autoregressive token stream]
+  F --> G[Transcript or translation]
+```
+
+**Interview questions this design invites**
+- What does large-scale weak supervision buy versus clean labeled data, and what does it cost?
+- How does encoding tasks as decoder tokens replace a multi-stage pipeline?
+- Why is zero-shot cross-dataset WER a fairer robustness signal than in-domain WER?
+- What causes hallucinated transcript on silence, and how do you gate it?
+- How does the 30-second window constrain long-audio transcription, and how do you stitch chunks?
+- When would you not use Whisper (latency, on-device, streaming)?
+
+**Tricks and gotchas**
+- Weakly supervised models can emit fluent transcript for non-speech; add speech/no-speech gating and confidence thresholds.
+- Attention decoders can loop, repeat, or truncate; monitor for degenerate output.
+- Identical text normalization is required before comparing WER against any other system.
+- The 30-second window makes precise long-form timestamps and streaming awkward.
+
+**Common mistakes and how to fix them**
+- Treating Whisper as a streaming dictation model; fix by using a causal RNN-T/CTC for live latency.
+- Trusting fluent output on noisy or silent audio; fix with VAD gating and confidence filtering.
+- Comparing WER across systems with different normalizers; fix by normalizing identically first.
+- Assuming one model size fits all; fix by matching size to the latency and cost budget of the surface.
+
+### Amazon: A metadata-aware on-device Alexa wake word plus cloud verification ([source](https://www.amazon.science/blog/amazon-alexas-new-wake-word-research-at-interspeech))
+
+Amazon runs a two-stage wake word: a small always-on on-device model that must fit a tight memory footprint, and a heavier cloud verifier that confirms triggers. The on-device model embeds device metadata (device type, whether audio is playing) into a vector and injects it two ways, concatenating it with flattened audio features before classification and modulating channel-normalization parameters, which cut the false-reject rate 14.6 percent versus a baseline CNN. When the device fires, a half-second snippet goes to the cloud to absorb start-time misalignment, where a Convolutional-Recurrent-Attention model re-checks it. On noisily aligned audio the CRA verifier reduced false accepts 60 percent versus 31 percent for a CNN-only approach.
+
+```mermaid
+flowchart TD
+  A[Always-on mic] --> B[On-device wake word CNN]
+  M[Device metadata: type, playback] --> N[Metadata embedding]
+  N --> B
+  B -- no trigger --> B
+  B -- trigger --> C[Send 0.5s snippet to cloud]
+  C --> D[CRA verifier: conv + recurrent + attention]
+  D -- confirm --> E[Activate Alexa]
+  D -- reject --> F[Discard]
+```
+
+**Interview questions this design invites**
+- Why split wake word into a loose on-device stage and a strict cloud verifier?
+- How does device metadata improve detection, and why modulate normalization rather than only concatenate?
+- Why send a half-second snippet instead of just the detected frame to the cloud?
+- What operating point on the DET curve do you pick, and how does it differ by device class?
+- How do you measure false accepts meaningfully (per hour of ambient audio, not recall)?
+- What are the privacy implications of always-on capture and cloud verification?
+
+**Tricks and gotchas**
+- The on-device stage is deliberately loose to avoid false rejects; the cloud stage kills the resulting false accepts.
+- Wake word start times are noisily aligned, so the verifier must tolerate timing offset.
+- Metadata that helps one device class can hurt generalization if not embedded and modulated carefully.
+- Thresholds must be tuned per device (phone vs far-field), not globally.
+
+**Common mistakes and how to fix them**
+- Using one strict on-device threshold; fix with a loose first stage plus second-stage verification.
+- Reporting recall only; fix by measuring false accepts per hour of ambient audio.
+- Sending a single frame to the cloud; fix by sending a short window to cover misalignment.
+- Sharing one threshold across device classes; fix by tuning per device tolerance and acoustics.
+
+### Apple: Personalized Hey Siri with on-device speaker-recognition embeddings ([source](https://machinelearning.apple.com/research/personalized-hey-siri))
+
+Apple adds a personalization stage so the device responds to its owner, not similar phrases or other voices. First a speaker-independent DNN detector spots the "Hey Siri" trigger; then a speaker-recognition stage extracts a voice embedding and compares it to the user's profile. Enrollment is both explicit (five recorded phrases yield five speaker vectors) and implicit (later accepted utterances update the profile up to 40 vectors, adapting to real acoustic variation). Each utterance is turned into a 442-dimensional supervector (26 MFCCs by 17 HMM states) then transformed by a DNN of four 256-neuron sigmoid layers plus a 100-neuron linear layer, quantized to 8-bit; cosine similarity above threshold lambda activates. The 4x256 model hit 4.3 percent equal error rate and cut false accepts to about one per month end to end.
+
+```mermaid
+flowchart TD
+  A[Always-on mic] --> B[Speaker-independent Hey Siri detector]
+  B -- trigger --> C[Supervector: 26 MFCC x 17 HMM states = 442-dim]
+  C --> D[DNN: 4 x 256 sigmoid + 100 linear, 8-bit]
+  D --> E[Speaker embedding]
+  P[Enrolled profile: up to 40 vectors] --> F[Cosine similarity]
+  E --> F
+  F -- avg score > lambda --> G[Activate Siri]
+  F -- below --> H[Reject]
+```
+
+**Interview questions this design invites**
+- Why separate key-phrase detection from speaker recognition into two phases?
+- What does personalization fix that a speaker-independent wake word cannot?
+- Why combine explicit and implicit enrollment, and what is the risk of implicit updates?
+- How does equal error rate summarize the false-accept vs false-reject tradeoff?
+- Why cosine similarity on embeddings rather than a classifier over raw features?
+- How does 8-bit quantization affect the embedding quality and EER?
+
+**Tricks and gotchas**
+- Implicit enrollment can drift the profile if it absorbs an impostor or bad-acoustic utterance.
+- Averaging scores across stored vectors stabilizes the decision but can mask a single strong match.
+- The supervector fixes variable-length audio to a fixed size before the DNN, which constrains what it can model.
+- EER is a single operating summary; the product still needs a chosen threshold lambda.
+
+**Common mistakes and how to fix them**
+- Relying on the trigger detector alone for personalization; fix by adding a speaker-verification stage.
+- Enrolling only explicitly; fix by adapting the profile implicitly within a bounded vector count.
+- Optimizing EER but ignoring end-to-end false accepts; fix by measuring accepts per unit time in situ.
+- Letting implicit updates run unbounded; fix by capping stored vectors and gating updates by score.
+
+### Spotify: Unsupervised, overlap-aware speaker diarization via sparse optimization ([source](https://research.atspotify.com/2022/09/unsupervised-speaker-diarization-using-sparse-optimization))
+
+Spotify built a diarization method that is unsupervised, language-agnostic, and overlap-aware, so it scales to podcasts without labeled data or language-specific features. YAMNet voice-activity detection finds voiced regions, VGGVox embeddings are computed over overlapping segments to form an embedding signal, and diarization is framed as a sparse matrix factorization that reconstructs that signal from as few distinct speaker embeddings as possible. Overlapping speech is modeled as a linear combination of existing embeddings, so the sparsity penalty naturally handles overlap instead of forcing new speakers. Speaker count is estimated tuning-free via SVD with knee detection on the singular values (scaled by 2.5 for margin). On hour-long podcasts averaging 18 speakers it beat Google Cloud diarization on error rate, purity, and coverage.
+
+```mermaid
+flowchart TD
+  A[Podcast audio] --> B[VAD: YAMNet, keep voiced regions]
+  B --> C[VGGVox embeddings over overlapping segments]
+  C --> D[Embedding signal matrix]
+  D --> E[SVD + knee detection: estimate speaker count]
+  D --> F[Sparse matrix factorization]
+  E --> F
+  F --> G[Few speaker embeddings, overlap as linear combos]
+  G --> H[Speaker turns with overlap]
+```
+
+**Interview questions this design invites**
+- Why frame diarization as sparse matrix factorization rather than clustering?
+- How does the sparsity penalty make the method overlap-aware for free?
+- Why is unsupervised and language-agnostic a scaling advantage for podcasts?
+- How does SVD knee detection estimate an unknown speaker count without tuning?
+- What is diarization error rate, and why report purity and coverage alongside it?
+- Where do short turns and unknown speaker count still break this pipeline?
+
+**Tricks and gotchas**
+- Modeling overlap as linear combinations avoids spawning phantom speakers, unlike naive clustering.
+- The 2.5 safety multiplier on estimated count trades over-segmentation risk against missing speakers.
+- Embedding quality bounds everything downstream; VAD errors propagate into false or missed turns.
+- Tuning-free does not mean assumption-free; the knee heuristic can misfire on very balanced spectra.
+
+**Common mistakes and how to fix them**
+- Assuming a known speaker count; fix by estimating it from the singular-value knee.
+- Clustering that assigns overlap to one speaker; fix by modeling overlap as embedding combinations.
+- Relying on language-specific features; fix by using audio-only embeddings for scalability.
+- Reporting DER alone; fix by adding purity and coverage to expose the error composition.
+
+### Google: Tacotron 2, seq2seq mel-spectrogram acoustic model plus WaveNet vocoder ([source](https://research.google/blog/tacotron-2-generating-human-like-speech-from-text/))
+
+Tacotron 2 is a two-stage neural TTS pipeline. A sequence-to-sequence model maps letters to an 80-dimensional mel-spectrogram at 12.5 millisecond frames, encoding pronunciation, volume, speed, and intonation, and a WaveNet-style vocoder renders that spectrogram into a 24 kHz waveform. Splitting the problem lets each stage train and swap independently: the mel-spectrogram is a compact learnable target that decouples what to say and how to prosody it from high-fidelity sample rendering. It learns directly from speech and transcripts with no hand-crafted linguistic features, and reached mean opinion scores comparable to professional recordings. Known limits: hard words, occasional artifacts, no real-time synthesis, and no control of emotion or speaking style.
+
+```mermaid
+flowchart TD
+  A[Input text / letters] --> B[Seq2seq encoder-decoder with attention]
+  B --> C[80-dim mel-spectrogram, 12.5 ms frames]
+  C --> D[WaveNet-style neural vocoder]
+  D --> E[24 kHz waveform]
+```
+
+**Interview questions this design invites**
+- Why split TTS into an acoustic model and a separate vocoder?
+- Why is a mel-spectrogram a good intermediate target versus predicting samples directly?
+- Why judge TTS by MOS from humans rather than a spectrogram loss?
+- What causes an autoregressive acoustic model to skip or repeat words, and how do you catch it?
+- Where does most of the compute sit, and what blocks real-time synthesis?
+- How would you add prosody or speaking-style control to this pipeline?
+
+**Tricks and gotchas**
+- Autoregressive attention can lose alignment monotonicity, producing skipped or repeated words.
+- Spectrogram-domain loss can look good while MOS is poor; only human ratings track naturalness.
+- The vocoder carries most of the compute and most of the naturalness, so it dominates cost and quality.
+- Decoupling stages helps iteration but a mismatch between acoustic model and vocoder degrades output.
+
+**Common mistakes and how to fix them**
+- Optimizing spectrogram reconstruction loss as the quality metric; fix by evaluating with human MOS.
+- Assuming autoregressive synthesis is robust; fix by monitoring alignment and preferring non-autoregressive variants where stability matters.
+- Expecting real-time output from a WaveNet vocoder; fix by swapping in a faster vocoder (WaveRNN, HiFi-GAN).
+- Ignoring rare-word pronunciation; fix with phoneme inputs or a lexicon for hard words.
+
+### Google: VoiceFilter-Lite, a 2.2MB streaming speaker-conditioned separation model ([source](https://research.google/blog/improving-on-device-speech-recognition-with-voicefilter-lite/))
+
+VoiceFilter-Lite suppresses overlapping voices on-device by conditioning on the enrolled user's speaker embedding, cleaner than blind source separation because you already know whose voice you want. It operates on stacked log-mel filterbank features (not raw waveform) plus a d-vector, and predicts a mask that enhances the target speaker and suppresses everything else, feeding directly into the recognizer. TensorFlow Lite quantization brings it to a 2.2MB footprint suitable for mobile, and it degrades gracefully to a passthrough when no enrollment exists. It improves WER 25.1 percent on additive overlapping speech and 14.7 percent on reverberant overlap while preserving single-speaker and quiet performance, using asymmetric loss (penalizing over-suppression harder) and runtime noise classification to avoid deleting real speech.
+
+```mermaid
+flowchart TD
+  A[Audio] --> B[Stacked log-mel filterbanks]
+  E[Enrolled user d-vector] --> C[VoiceFilter-Lite mask net, 2.2MB]
+  B --> C
+  C --> D[Predicted enhancement mask]
+  B --> F[Apply mask]
+  D --> F
+  F --> G[Cleaned features to ASR]
+  N[Runtime noise classifier] --> C
+```
+
+**Interview questions this design invites**
+- Why condition on a target-speaker embedding instead of doing blind source separation?
+- Why operate on filterbank features rather than raw waveform for an on-device separator?
+- What is over-suppression, and why does asymmetric loss penalize it more?
+- How does the model stay a no-op when no enrollment exists, and why does that matter?
+- How do you keep single-speaker and quiet WER from regressing while helping overlap?
+- What is the interplay between the separator and the downstream ASR model?
+
+**Tricks and gotchas**
+- Feature-domain masking keeps it tiny and streamable but limits how much it can reconstruct.
+- Over-suppression can remove the target user's own speech; the asymmetric loss guards against it.
+- Runtime noise classification adapts suppression strength so quiet audio is not over-filtered.
+- It needs a reliable d-vector; a bad enrollment embedding degrades separation.
+
+**Common mistakes and how to fix them**
+- Using blind separation when you know the target speaker; fix by conditioning on the enrolled d-vector.
+- Penalizing over- and under-suppression equally; fix with an asymmetric loss favoring speech preservation.
+- Applying fixed suppression strength; fix with runtime noise classification to adapt by condition.
+- Regressing clean-audio WER to help overlap; fix by validating on single-speaker and quiet sets as a gate.
+
+_Not reachable: none_
+
+---
+
 ## Natural language processing
 
 ### Uber: NLP ticket classification to find map-data errors ([source](https://www.uber.com/gb/en/blog/nlp-deep-learning-uber-maps/))
@@ -3782,3 +4325,1372 @@ flowchart TD
 - Ignoring spatial granularity choice: tune geohash and slot size to the rebalancing action.
 
 _Not reachable: Uber Engineering Uncertainty Estimation (not attempted, 8-case cap), Lyft Causal Forecasting Part 1 (off-host redirect)_
+
+---
+
+## Predictive modeling on tabular data
+
+### Nubank: risk model for scalable credit limit increases ([source](https://building.nubank.com/how-nubank-models-risk-for-smarter-scalable-credit-limit-increases/))
+
+Nubank runs a two-stage risk framework to decide credit line increases for 122M+ customers across Brazil, Mexico, and Colombia. A robust ranking model provides a stable relative-risk ordering that updates less often, then survival curves model time-to-default (default defined as not paying within a 60 to 180 day window) and recalibrate more frequently on top of the ranking signal. They deliberately chose simple, robust methods over pure parametric or non-parametric models for scalability and to adapt across countries and macro cycles, backed by feature stores, CI/CD, and drift monitoring.
+
+```mermaid
+flowchart LR
+  F["point-in-time customer features"] --> RANK["ranking model<br/>(stable relative risk, slow updates)"]
+  RANK --> SURV["survival curves<br/>(time-to-default, frequent recalibration)"]
+  SURV --> DEC["decision layer<br/>(credit limit increase)"]
+  DEC --> ACT["approved line increase"]
+  ACT -.->|"default matures over 60-180 days"| F
+  DRIFT["drift + macro monitoring"] --> SURV
+```
+
+**Interview questions this design invites**
+- Why split into a slow ranking model plus a faster-recalibrated survival layer instead of one model?
+- How do survival curves let you read risk at any horizon versus a fixed-window binary label?
+- How do you keep a single framework valid across Brazil, Mexico, and Colombia with different populations?
+- What breaks when a macroeconomic cycle shifts the applicant mix, and how does monitoring catch it?
+- Why is calibration first-class when the score sets an actual credit limit, not just an approve/decline sort?
+- How do you handle immature accounts whose default label has not resolved yet?
+
+**Tricks and gotchas**
+- Survival modeling keeps censored (not-yet-defaulted) accounts contributing instead of discarding recent vintages.
+- Decoupling ranking from calibration lets each update on its own cadence, cheaper than retraining one monolith.
+- "Simple but robust" is a deliberate hedge against distribution shift, complex models drift harder in credit.
+- A stable rank signal guides the survival calibration so the two stages do not fight each other.
+
+**Common mistakes and how to fix them**
+- Counting immature accounts as good biases risk downward; restrict to matured vintages or use survival censoring.
+- Treating a regulated credit score as a pure sorter ignores calibration; the absolute probability sets the money.
+- Building one global model ignores per-country base rates; make the framework modular and recalibrate per market.
+- Ignoring macro drift triggers silent miscalibration; monitor feature, score, and label-maturation drift on a ladder.
+
+### Block (Square): conditional survival forest for subscription churn timing ([source](https://developer.squareup.com/blog/pysurvival-tutorial-churn-modeling/))
+
+Square models SaaS subscription churn as a time-to-event problem with a conditional survival forest of 200 trees, reaching a C-index of 0.83 and an Integrated Brier Score of 0.13. Five categoricals (product type, region, company size) are one-hot encoded alongside satisfaction scores, product usage, and support interaction time; censoring is handled via a months-active duration plus a churned event flag so still-active customers still inform the fit. Predicted survival curves stratify customers into low, medium, and high risk tiers to time proactive retention.
+
+```mermaid
+flowchart LR
+  F["subscription features<br/>(usage, satisfaction, support time)"] --> ENC["one-hot encode categoricals"]
+  ENC --> CSF["conditional survival forest<br/>(200 trees)"]
+  CSF --> CURVE["per-customer survival curve"]
+  CURVE --> TIER["risk tiers<br/>(low / med / high)"]
+  TIER --> ACT["timed retention action"]
+  CENS["months_active + churned flag"] --> CSF
+```
+
+**Interview questions this design invites**
+- Why frame churn as time-to-event instead of a fixed-window "churned in 30 days" binary?
+- What does the C-index measure and why is 0.83 a meaningful bar here?
+- How does the survival forest use censored (still-active) customers rather than dropping them?
+- What does the Integrated Brier Score add beyond the C-index?
+- How does a survival curve improve retention timing versus a single churn probability?
+- Which features risk leakage (support-call volume that only spikes once churn is imminent)?
+
+**Tricks and gotchas**
+- Survival forests capture non-linear interactions a Cox model would miss while still handling censoring.
+- The output is a curve, not a scalar; you can read risk at any horizon and drive intervention timing.
+- One-hot encoding low-cardinality categoricals is fine; high-cardinality ids would need embeddings or target encoding.
+- C-index rewards ranking, Brier rewards calibration; report both because one alone hides failure modes.
+
+**Common mistakes and how to fix them**
+- Collapsing to a fixed-window binary discards when churn happens and mishandles active customers; keep survival framing.
+- Dropping censored rows biases the training set toward early churners; encode duration plus event flag.
+- Using post-churn features (final support blitz) leaks; audit features for point-in-time correctness.
+- Acting on rank alone wastes retention budget; time the intervention off the survival curve's hazard.
+
+### Airbnb: ML framework for listing lifetime value ([source](https://medium.com/airbnb-engineering/how-airbnb-measures-listing-lifetime-value-a603bf05142c))
+
+Airbnb built a three-tier LTV framework over a 365-day horizon. A baseline layer predicts total bookings a listing makes in the next year from listing attributes (availability, pricing, location, host tenure), discounted to present value; an incremental layer subtracts bookings cannibalized from existing supply using production-function modeling of supply-demand balance per segment; and a marketing-induced layer isolates value attributable to internal campaigns. COVID exposed drift, so they shifted to shorter training windows, granular geo features, LightGBM for high-cardinality, and daily correction with realized bookings.
+
+```mermaid
+flowchart LR
+  F["listing attributes<br/>(availability, price, location, host)"] --> BASE["baseline LTV model<br/>(365-day bookings, discounted)"]
+  BASE --> INC["incremental LTV<br/>(subtract cannibalized supply)"]
+  SEG["supply-demand production function"] --> INC
+  INC --> MKT["marketing-induced incremental LTV"]
+  MKT --> DEC["decision layer<br/>(marketing / LTV budget)"]
+  REAL["realized bookings"] -.->|"daily correction over horizon"| BASE
+```
+
+**Interview questions this design invites**
+- Why separate baseline, incremental, and marketing-induced LTV instead of predicting one number?
+- What is cannibalization in a two-sided marketplace and why does it change the budget decision?
+- How do you evaluate a 365-day-horizon model without waiting a full year?
+- Why is incremental (causal) LTV the right input for a marketing spend, not baseline LTV?
+- How did COVID break the model and what made the fix (shorter windows, daily correction) work?
+- Why LightGBM for high-cardinality geography features over plain one-hot?
+
+**Tricks and gotchas**
+- Raw historical revenue is not LTV; survivorship bias and horizon-blindness inflate it, so model forward bookings.
+- Daily updates with realized bookings progressively shrink the initial-estimate error across the horizon.
+- Incremental LTV needs a production function, not just a per-listing prediction, because supply cannibalizes supply.
+- Marketing spend must be justified on incremental, not baseline, value or you pay for organic growth.
+
+**Common mistakes and how to fix them**
+- Regressing raw revenue and calling it LTV; predict discounted forward bookings over an explicit horizon.
+- Using baseline LTV to size marketing budget; that is a causal question, use incremental / marketing-induced LTV.
+- Assuming a pre-shock training window still holds; shorten windows and add granular geo when the world shifts.
+- Ignoring cannibalization; subtract bookings shifted from existing listings via supply-demand modeling.
+
+### Airbnb: XGBoost home value prediction with a productionized pipeline ([source](https://medium.com/airbnb-engineering/using-machine-learning-to-predict-value-of-homes-on-airbnb-9272d3d4739d))
+
+Airbnb predicts listing value from 150+ tabular features (location, pricing, availability, booking history, review scores, amenities) using XGBoost, chosen by AutoML over baseline models for accuracy over interpretability. Features come from Zipline, their internal feature repository of pre-vetted features at multiple granularities; scikit-learn pipelines guarantee identical transforms across training and scoring. The headline is productionization: ML Automator translates a data scientist's notebook (fit and transform functions) into Airflow DAGs handling serialization, scheduled retraining, and distributed scoring without data-engineering work.
+
+```mermaid
+flowchart LR
+  Z["Zipline feature repo<br/>(150+ features, multi-granularity)"] --> PIPE["sklearn pipeline<br/>(consistent train/score transforms)"]
+  PIPE --> AUTOML["AutoML model selection"] --> XGB["XGBoost model"]
+  XGB --> AUTO["ML Automator<br/>(notebook -> Airflow DAG)"]
+  AUTO --> RETRAIN["scheduled retraining"]
+  AUTO --> SCORE["distributed scoring"]
+  SCORE --> VAL["listing value estimate"]
+```
+
+**Interview questions this design invites**
+- Why XGBoost over a deep net for 150+ heterogeneous tabular features?
+- How does a shared feature repository (Zipline) prevent training-serving skew?
+- Why wrap transforms in a pipeline object rather than applying them ad hoc?
+- What does ML Automator buy you, and what is the risk of auto-translating notebooks to DAGs?
+- When is trading interpretability for accuracy acceptable, and when is it not?
+- How would this pipeline change if the target were a regulated credit decision?
+
+**Tricks and gotchas**
+- The same transform object in train and score is what kills skew; do not recompute features separately at serving.
+- AutoML shortcuts model search but you still own feature quality and leakage audits.
+- Notebook-to-DAG tooling lowers the barrier but hides scheduling and serialization failures if unmonitored.
+- Multi-granularity features from a repo save work but inherit any leakage baked into the shared definitions.
+
+**Common mistakes and how to fix them**
+- Transforming data differently in training and scoring; use one pipeline object across both paths.
+- Rebuilding features from scratch per project; reuse a vetted repo to cut cost and skew.
+- Shipping accuracy-first models where the domain needs reasons; pick the model family to fit the decision.
+- Treating "notebook works" as production-ready; automate DAGs, retraining, and monitoring explicitly.
+
+### Expedia Group: cross-brand CatBoost customer lifetime value ([source](https://medium.com/expedia-group-tech/expedia-groups-customer-lifetime-value-prediction-model-7927cdd44342))
+
+Expedia predicts customer lifetime value across brands with CatBoost, chosen for native high-cardinality categorical and missing-value handling. The system segments customers into 30 models by five geographic regions plus recency and frequency, ingesting 200+ engineered booking and engagement features under a cutoff-date scheme (pre-cutoff data makes features, post-cutoff cash flows are targets). It runs on a unified platform: Spark on Kubernetes over federated Hive/S3, Airflow monthly retrain and daily scoring for hundreds of millions of customers, with Datadog/Splunk monitoring. Eval combines ranking (Lorenz/Gini) and calibration plots plus RMSE across segments.
+
+```mermaid
+flowchart LR
+  F["200+ features<br/>(bookings + engagement)"] --> CUT["cutoff date split<br/>(pre = features, post = target)"]
+  CUT --> SEG["30 segment models<br/>(5 regions x recency/frequency)"]
+  SEG --> CB["CatBoost CLV"]
+  CB --> EVAL["eval: Gini rank + calibration + RMSE"]
+  EVAL --> DEC["decision layer<br/>(acquisition / retention budget)"]
+  DEC -.->|"long-horizon cash flows mature"| F
+```
+
+**Interview questions this design invites**
+- Why CatBoost specifically over other GBDTs for this feature mix?
+- Why segment into 30 models by region and recency/frequency instead of one global model?
+- How does the cutoff-date scheme enforce point-in-time correctness for a CLV target?
+- Why report both Gini (ranking) and calibration when the score feeds a budget?
+- How do monthly retrain and daily scoring split the freshness-versus-cost tradeoff?
+- What leakage risk hides in aggregating booking history across a window that touches the target period?
+
+**Tricks and gotchas**
+- Segmenting by region and RFM lets each cohort get tailored features and its own base rate.
+- The cutoff date is the leakage firewall; features only see pre-cutoff data, targets only post-cutoff cash flow.
+- CatBoost's native categorical handling avoids manual target encoding and its leakage traps.
+- A CLV budget reads absolute value, so calibration plots matter as much as Gini ranking.
+
+**Common mistakes and how to fix them**
+- One global CLV model washes out regional base rates; segment by geography and RFM.
+- Letting feature windows overlap the target period leaks; enforce a strict cutoff-date split.
+- Reporting only ranking metrics; add calibration and segment-wise RMSE since the number sets budget.
+- Retraining too rarely on a shifting travel market; schedule monthly retrain with daily scoring.
+
+### Wayfair: propensity plus uplift for programmatic marketing (WayLift) ([source](https://www.aboutwayfair.com/careers/tech-blog/building-scalable-and-performant-marketing-ml-systems-at-wayfair))
+
+Wayfair's WayLift platform layers three model types. General propensity models predict buy/engage likelihood from observational data, cheap and scalable, retrained quarterly or yearly. Channel-specific uplift models target persuadables whose conversions are caused by the ad, which needs RCT data and costs more but performs better per program. A decision-optimization layer picks treatments per customer context (daily/weekly refresh), and forecasting models generate delayed rewards (60-day revenue, LTV change) to feed reinforcement learners. The explicit tradeoff: propensity scales but over-messages, uplift is precise but hard to scale across hundreds of campaigns.
+
+```mermaid
+flowchart LR
+  OBS["observational data"] --> PROP["propensity models<br/>(buy/engage, quarterly retrain)"]
+  RCT["RCT experiments"] --> UP["uplift models<br/>(persuadables, per channel)"]
+  PROP --> OPT["decision optimization<br/>(treatment selection, daily/weekly)"]
+  UP --> OPT
+  OPT --> ACT["programmatic marketing action"]
+  ACT --> FC["forecast delayed reward<br/>(60-day revenue, LTV)"]
+  FC -.->|"delayed reward to RL"| OPT
+```
+
+**Interview questions this design invites**
+- When do you use propensity versus uplift, and why not always use uplift?
+- Why does uplift require RCT data while propensity trains on observational logs?
+- How does the delayed-reward forecaster let reinforcement learning optimize a 60-day KPI?
+- What is the cost of over-messaging and how does a decision layer prevent it?
+- How do you scale uplift to hundreds of campaigns without an RCT for each?
+- Why refresh scoring models daily/weekly but propensity only quarterly?
+
+**Tricks and gotchas**
+- Propensity is cheap and scalable but targets sure things too, wasting impressions; uplift finds persuadables.
+- Uplift needs randomized treatment to identify the causal effect; observational data alone confounds it.
+- Forecasting delayed rewards turns a slow business KPI into a trainable near-term signal for RL.
+- Separate the scoring cadence from the treatment-optimization cadence; they change at different speeds.
+
+**Common mistakes and how to fix them**
+- Using a propensity score to decide interventions; switch to uplift so budget hits persuadables not sure things.
+- Training uplift on observational data; collect RCT slices or the treatment effect is confounded.
+- Optimizing only near-term clicks; forecast delayed 60-day revenue/LTV as the true reward.
+- Blasting the same high-propensity audience; add a decision layer that caps over-messaging.
+
+### Uber: causally-informed ML plus convex optimization for marketplace budgets ([source](https://arxiv.org/abs/2407.19078))
+
+Uber automates city-level budget allocation across marketplace levers (driver incentives, rider promotions) with an end-to-end causal-ML-plus-optimization pipeline. A deep-learning S-learner estimates how budget changes affect driver supply and rider demand, and a novel tensor B-spline regression gives flexible, interpretable spend-to-outcome curves. Those curves feed convex optimization (ADMM for distributed solving, primal-dual interior point for the constrained problem) that respects real budget constraints. The full loop covers feature engineering, training/serving, solvers, and backtesting; it appeared at KDD 2024's causal-ML-in-practice workshop.
+
+```mermaid
+flowchart LR
+  F["city + marketplace features"] --> SL["S-learner causal DL<br>(treatment effect of budget)"]
+  SL --> BS["tensor B-spline regression<br>(spend to outcome curves)"]
+  BS --> OPT["convex optimization<br>(ADMM + primal-dual interior point)"]
+  BUD["budget constraints"] --> OPT
+  OPT --> ACT["driver incentive / rider promo allocation"]
+  ACT -.->|"business-metric labels"| F
+```
+
+**Interview questions this design invites**
+- Why an S-learner causal estimator instead of a plain predictive model for budget effects?
+- What does the tensor B-spline regression add between the causal estimate and the optimizer?
+- Why separate the ML (estimating response curves) from the optimizer (making the allocation)?
+- When do you reach for ADMM versus interior-point methods in the convex solve?
+- How do you validate a causal-plus-optimization system offline before it moves real budget?
+- What confounds a naive spend-versus-outcome regression and how does causal framing fix it?
+
+**Tricks and gotchas**
+- The ML produces response curves, an optimizer makes the call; drawing them as separate boxes is the senior move.
+- Convexity of the allocation problem is what makes city-scale solving tractable and provably optimal.
+- B-splines keep the spend-to-outcome relationship flexible yet interpretable for constraint reasoning.
+- Business-metric labels (supply, demand) are the causal targets, not a click proxy.
+
+**Common mistakes and how to fix them**
+- Regressing outcomes on spend without causal correction; use an S-learner to get the treatment effect.
+- Folding allocation into the model; keep a separate convex optimizer that enforces the budget constraint.
+- Ignoring constraints and picking top-scoring cities greedily; solve the constrained convex problem.
+- Skipping backtesting; validate the pipeline offline before it reallocates real money.
+
+### Gojek: deep causal uplift plus knapsack for voucher allocation ([source](https://medium.com/gojekengineering/how-gojek-allocates-personalised-vouchers-at-scale-41cad5d6f218))
+
+Gojek allocates personalized vouchers to hundreds of millions of customers with a deep-learning causal inference model that predicts both uplift and cost per customer-voucher pairing, sorting customers into persuadables, sure things, lost causes, and do-not-disturbs. Those predictions feed a knapsack optimizer that maximizes the business objective under a fixed budget, chosen for efficiency at scale. Infrastructure is dbt for features over hundreds of tables, Elementary for data-quality monitoring, Hydra for per-geography configs, and in-house Merlin plus a Campaign Portal that allocates in minutes.
+
+```mermaid
+flowchart LR
+  F["customer features<br/>(dbt, hundreds of tables)"] --> CI["deep causal model<br/>(predict uplift AND cost)"]
+  CI --> SEG["persuadables / sure things<br/>/ lost causes / do-not-disturbs"]
+  SEG --> KP["knapsack optimizer<br/>(maximize objective, budget cap)"]
+  BUD["voucher budget"] --> KP
+  KP --> ACT["voucher allocation (minutes)"]
+  ACT -.->|"observed treatment effect"| F
+```
+
+**Interview questions this design invites**
+- Why predict both uplift and cost per customer rather than uplift alone?
+- What are the four persuadability segments and why does targeting only persuadables save budget?
+- Why a knapsack formulation for allocation and what makes it efficient at this scale?
+- How do you estimate uplift from observed past treatments without a clean RCT for everyone?
+- What breaks if you target sure things or do-not-disturbs, and how does the model avoid them?
+- How does per-geography config (Hydra) let one system serve many markets?
+
+**Tricks and gotchas**
+- Predicting cost alongside uplift lets the knapsack rank by uplift-per-dollar, not raw uplift.
+- The four-quadrant framing makes do-not-disturbs explicit; a churn/propensity model would miss that they backfire.
+- Knapsack is chosen for computational efficiency; a convex allocation is the alternative when constraints soften.
+- Data-quality monitoring (Elementary) guards a causal model that silently degrades if inputs drift.
+
+**Common mistakes and how to fix them**
+- Ranking by uplift alone; include per-customer cost so the knapsack optimizes uplift-per-dollar.
+- Using a propensity model for interventions; it wastes budget on sure things and lost causes, use causal uplift.
+- Targeting everyone with positive predicted response; do-not-disturbs reduce transactions, exclude them.
+- Letting feature drift silently corrupt causal estimates; monitor data quality upstream of the model.
+
+_Not reachable: none_
+
+---
+
+## Embeddings and representation learning
+
+### Stanford / Hamilton et al.: GraphSAGE, inductive node embeddings on large graphs ([source](https://arxiv.org/abs/1706.02216))
+
+GraphSAGE learns aggregation functions rather than a fixed vector per node: a node's embedding is built by sampling a fixed number of neighbors and pooling their feature vectors (mean, LSTM, or max-pooling aggregators), stacked over K hops. Because embeddings are computed from features, the model generalizes to nodes and even whole graphs unseen at training time, which is the inductive property. It is trained unsupervised with a graph-based contrastive loss (nearby nodes via random walks are positives, negatives sampled with a distribution) or supervised for node classification, and validated on citation networks, Reddit posts, and protein-protein interaction graphs.
+
+```mermaid
+flowchart TD
+  V["target node v"] --> S["sample fixed-size neighborhood<br/>(K hops)"]
+  S --> A1["aggregate hop-1 neighbor features<br/>(mean / pool / LSTM)"]
+  A1 --> A2["aggregate hop-2, concat with self"]
+  A2 --> H["node embedding h_v"]
+  H --> L["contrastive loss:<br/>random-walk positives + sampled negatives"]
+  H --> DS["downstream: classification / retrieval"]
+```
+
+**Interview questions this design invites**
+- Why is learning aggregation functions inductive while learning a per-node vector is transductive?
+- How does neighbor sampling bound the compute and memory cost per node?
+- Compare the mean, pooling, and LSTM aggregators: which are order-invariant and why does that matter?
+- How do positives from random walks and sampled negatives define the unsupervised loss?
+- What breaks when a node has very high degree, and how does fixed-size sampling help?
+- How would you embed a brand-new node at serving time with zero interaction history?
+
+**Tricks and gotchas**
+- Sample a fixed number of neighbors per hop instead of using the full neighborhood so per-batch cost stays bounded regardless of degree.
+- Concatenate the node's own representation with the aggregated neighbor vector at each layer rather than averaging them together.
+- More than 2 or 3 hops rarely helps and blows up the receptive field exponentially.
+- Neighbor sampling is stochastic, so re-embedding the same node twice gives slightly different vectors unless you fix the sample.
+
+**Common mistakes and how to fix them**
+- Assuming you need the whole graph in memory: use localized sampled computation graphs per minibatch.
+- Treating GraphSAGE like a transductive method and retraining for every new node: exploit the inductive encoder to embed new nodes directly from features.
+- Ignoring feature quality: the inductive power comes from features, so poor input features cap embedding quality no matter the depth.
+
+### He et al.: LightGCN, simplified graph convolution for recommendation ([source](https://arxiv.org/abs/2002.02126))
+
+LightGCN strips a standard GCN down to its useful core for collaborative filtering: it removes feature transformation matrices and nonlinear activations, keeping only linear neighborhood aggregation over the user-item interaction graph. Each layer smooths a node's embedding with its neighbors' embeddings; the final representation is a weighted sum of the embeddings from all layers, which captures different aggregation depths without stacking nonlinearities. It is trained with BPR (Bayesian Personalized Ranking) loss, and recommendation is a dot product between user and item vectors, giving roughly a 16 percent gain over NGCF.
+
+```mermaid
+flowchart TD
+  E0["layer-0 embeddings<br/>(user ids, item ids)"] --> L1["layer 1: linear neighbor aggregation"]
+  L1 --> L2["layer 2: linear neighbor aggregation"]
+  L2 --> L3["layer 3: linear neighbor aggregation"]
+  E0 --> C["weighted sum over all layers"]
+  L1 --> C
+  L2 --> C
+  L3 --> C
+  C --> F["final user / item embedding"]
+  F --> D["dot-product score"]
+  D --> BPR["BPR ranking loss"]
+```
+
+**Interview questions this design invites**
+- Which two GCN components does LightGCN remove, and why do they hurt collaborative filtering?
+- Why combine embeddings from all layers instead of only using the last layer's output?
+- Why is LightGCN transductive, and what does that mean for cold-start entities?
+- How does BPR loss differ from a pointwise classification loss for recommendation?
+- What does over-smoothing look like as you stack more propagation layers?
+- Where does LightGCN fit as a baseline versus a two-tower or GraphSAGE encoder?
+
+**Tricks and gotchas**
+- The only trainable parameters are the layer-0 id embeddings; propagation itself has no weights.
+- Symmetric normalization of the adjacency is what keeps embedding magnitudes stable across layers.
+- Layer combination weights are typically fixed to a uniform average rather than learned.
+- Because it is id-based and transductive, a new user or item has no vector until retrain.
+
+**Common mistakes and how to fix them**
+- Adding nonlinearities or feature transforms back in expecting a lift: the paper shows they degrade recommendation quality.
+- Using only the deepest layer's embedding: aggregate across layers to avoid over-smoothing.
+- Expecting cold-start coverage: pair LightGCN with a content-based fallback for unseen entities.
+
+### Gao et al.: SimCSE, simple contrastive sentence embeddings ([source](https://arxiv.org/abs/2104.08821))
+
+SimCSE learns sentence embeddings contrastively. The unsupervised variant feeds the same sentence through the encoder twice with independent dropout masks, treating the two views as a positive pair and other in-batch sentences as negatives, so standard dropout is the entire data augmentation. The supervised variant uses NLI data: entailment pairs are positives and contradiction pairs are explicit hard negatives. Both minimize an InfoNCE objective, and a key finding is that contrastive training regularizes the anisotropic pretrained embedding space toward uniformity, lifting BERT-base to 76.3 (unsupervised) and 81.6 (supervised) Spearman on STS.
+
+```mermaid
+flowchart TD
+  S["input sentence x"] --> E1["encoder, dropout mask A"]
+  S --> E2["encoder, dropout mask B"]
+  E1 --> P["positive pair (two views)"]
+  E2 --> P
+  B["other sentences in batch"] --> N["in-batch negatives"]
+  NLI["NLI entailment / contradiction"] --> HN["supervised hard negatives"]
+  P --> L["InfoNCE contrastive loss"]
+  N --> L
+  HN --> L
+  L --> EMB["sentence embedding for similarity / retrieval"]
+```
+
+**Interview questions this design invites**
+- How does dropout act as data augmentation to build a positive pair from one sentence?
+- What happens to the embeddings if you remove dropout entirely?
+- Where do the negatives come from in the unsupervised versus supervised variants?
+- What is anisotropy in pretrained embeddings and how does contrastive training fix it?
+- Why are NLI contradiction pairs especially valuable as hard negatives?
+- How would you evaluate sentence embeddings beyond STS correlation?
+
+**Tricks and gotchas**
+- The two positive views differ only by the random dropout mask, so both passes must use the same input but independent masks.
+- Larger batches supply more in-batch negatives and usually improve the space.
+- Adding NLI contradictions as hard negatives gives a measurable jump over entailment-only positives.
+- Alignment (positives close) and uniformity (spread over the space) are the two diagnostics to track, not just downstream accuracy.
+
+**Common mistakes and how to fix them**
+- Disabling dropout at training time and wondering why embeddings collapse: dropout is the augmentation, keep it on.
+- Using a single dropout mask for both views: use independent masks so the positive pair is non-trivial.
+- Judging the space only by cosine on a probe set: check uniformity so you catch representation collapse.
+
+### Pinterest: PinSage, web-scale graph convolutional embeddings ([source](https://medium.com/pinterest-engineering/pinsage-a-new-graph-convolutional-neural-network-for-web-scale-recommender-systems-88795a107f48))
+
+PinSage scales GraphSAGE-style convolutions to Pinterest's pin-board graph of roughly 3 billion nodes and 18 billion edges. Instead of fixed K-hop neighborhoods it defines a node's neighborhood by short random walks and weights neighbors by visit counts (importance pooling), building localized computation graphs on the fly so the full graph never has to sit in memory. It trains with a max-margin ranking loss using curriculum hard negatives (progressively harder items resembling the query), and a MapReduce inference pipeline embeds billions of pins in a few hours, feeding a nearest-neighbor index. Reported gains include 40 percent recall and 30 percent engagement lifts.
+
+```mermaid
+flowchart TD
+  Q["query pin q"] --> RW["random walks from q"]
+  RW --> IP["importance pooling<br/>(neighbors weighted by visit count)"]
+  IP --> CONV["localized on-the-fly convolution"]
+  CONV --> EMB["pin embedding"]
+  EMB --> ML["max-margin ranking loss<br/>+ curriculum hard negatives"]
+  EMB --> MR["MapReduce batch inference<br/>(billions of pins)"]
+  MR --> ANN["nearest-neighbor index"]
+  ANN --> REC["Related Pins / Search / Ads"]
+```
+
+**Interview questions this design invites**
+- Why replace fixed K-hop neighborhoods with random-walk sampling and importance pooling?
+- How do localized computation graphs let this scale to billions of nodes without holding the full graph?
+- What is curriculum hard-negative training and why introduce harder negatives over time?
+- How does MapReduce avoid recomputing embeddings for overlapping neighborhoods at inference?
+- How do the learned pin embeddings get served for recommendation retrieval?
+- What offline metrics (recall, MRR) versus online metrics did they use, and why both?
+
+**Tricks and gotchas**
+- Random-walk visit counts give a soft, importance-weighted neighborhood instead of an unweighted hop set, worth a large recall gain.
+- Curriculum hard negatives are added gradually; starting too hard destabilizes training.
+- MapReduce joins reuse neighbor embeddings so overlapping receptive fields are not recomputed.
+- Producer-consumer minibatch construction (CPU builds graphs, GPU trains) keeps the accelerators busy at scale.
+
+**Common mistakes and how to fix them**
+- Trying to materialize the full graph Laplacian: build localized sampled computation graphs per minibatch instead.
+- Using only random negatives so the loss saturates: add curriculum hard negatives to sharpen the boundary.
+- Re-embedding overlapping neighborhoods independently: batch inference with MapReduce to share work.
+
+### Airbnb: listing embeddings from booking sessions ([source](https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e))
+
+Airbnb learns 32-dimensional listing vectors with a skip-gram / word2vec objective run over 800 million click sessions from 4.5 million listings: within a sliding context window, a listing is pulled toward listings clicked nearby and pushed from randomly sampled negatives. Two domain adaptations matter: the final booked listing is kept as a global context that influences every update in the session, and negatives are additionally sampled from the same market so the model learns fine within-market distinctions rather than trivial geography. Cold-start listings get a vector by averaging the three nearest same-type, same-price listings, and the embeddings power a similar-listings carousel and in-session search personalization features.
+
+```mermaid
+flowchart TD
+  SESS["click sessions<br/>(sliding window)"] --> SG["skip-gram with negative sampling"]
+  BOOK["booked listing"] --> GC["global context (all updates)"]
+  MKT["same-market listings"] --> NEG["extra same-market negatives"]
+  GC --> SG
+  NEG --> SG
+  SG --> EMB["32-dim listing embedding"]
+  COLD["new listing"] --> AVG["average 3 nearest same type/price"]
+  AVG --> EMB
+  EMB --> KNN["k-NN similar-listings carousel"]
+  EMB --> PERS["search personalization features<br/>(EmbClickSim, EmbSkipSim)"]
+```
+
+**Interview questions this design invites**
+- Why adapt word2vec skip-gram to listings, and what are "words" versus "sentences" here?
+- Why keep the booked listing as a global context in every window update?
+- What bias do same-market negatives correct, and what would uniform-random negatives learn instead?
+- How do you cold-start a listing with no click history?
+- How do EmbClickSim and EmbSkipSim turn a static space into real-time personalization?
+- Why choose a dimension as small as 32, and what constrains it?
+
+**Tricks and gotchas**
+- The booked listing is treated specially as a persistent positive context rather than one click among many.
+- Same-market negatives are the key trick; random negatives make all out-of-market listings look equally dissimilar.
+- Cold start is handled by geographic-plus-attribute averaging, not by retraining.
+- Both clicked-similarity and skipped-similarity are fed as features so skips carry negative signal in ranking.
+
+**Common mistakes and how to fix them**
+- Sampling negatives uniformly across all markets: draw same-market negatives to learn useful local distinctions.
+- Treating a booking like any other click: promote it to global context so the strongest signal shapes every update.
+- Leaving new listings with no vector: seed from nearest same-type, same-price neighbors until interactions accrue.
+
+### Spotify: natural language podcast search with dense retrieval ([source](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/))
+
+Spotify built semantic podcast search as a dual-encoder: a query encoder and an episode encoder map into a shared space where cosine similarity ranks relevance, initialized from the Universal Sentence Encoder CMLM (chosen over vanilla BERT for sentence-level, multilingual embeddings). Training positives come from historical search successes, query-reformulation pairs, and synthetic queries generated by a BART model fine-tuned on MS MARCO; negatives are in-batch, giving B squared minus B pairs per batch. Episode vectors are precomputed and indexed in Vespa for ANN retrieval, query vectors are computed online on GPU via Vertex AI, and semantic results are merged with Elasticsearch candidates before a final reranker.
+
+```mermaid
+flowchart TD
+  QD["query training data<br/>(search success, reformulations, synthetic BART)"] --> QE["query encoder (USE-CMLM)"]
+  ED["episode text"] --> EE["episode encoder (USE-CMLM)"]
+  QE --> SP["shared embedding space"]
+  EE --> SP
+  SP --> LOSS["contrastive loss, in-batch negatives"]
+  EE --> IDX["precompute episode vectors -> Vespa ANN"]
+  QE --> ON["online query vector (Vertex AI GPU)"]
+  ON --> IDX
+  IDX --> CAND["top-30 semantic candidates"]
+  BM["Elasticsearch / exact match"] --> RR["reranker"]
+  CAND --> RR
+  RR --> RES["final results"]
+```
+
+**Interview questions this design invites**
+- Why a dual-encoder rather than a cross-encoder for this retrieval task?
+- Why start from Universal Sentence Encoder CMLM instead of vanilla BERT?
+- How do you manufacture training positives when you lack explicit relevance labels?
+- What does in-batch negative sampling give you and what is its popularity-bias risk?
+- Why keep semantic search as an additional retrieval source alongside Elasticsearch rather than replacing it?
+- Where is precomputation possible and why does the two-tower factorization enable it?
+
+**Tricks and gotchas**
+- Query reformulation pairs (failed query then successful reformulation) are a cheap, high-signal positive source.
+- Synthetic queries from a fine-tuned BART model expand coverage for episodes with little search traffic.
+- Episode side is precomputed and indexed; only the query side needs online GPU inference.
+- The final cosine similarity is reused as a feature in the reranker, not just as a retrieval filter.
+
+**Common mistakes and how to fix them**
+- Replacing lexical search outright: dense retrieval misses exact-match intents, so run it as an added source and rerank.
+- Relying only on logged clicks for positives: augment with reformulations and synthetic queries for tail coverage.
+- Computing episode embeddings online: precompute and index them so only queries are embedded at request time.
+
+### Instacart: ITEMS, two-tower transformer for search relevance ([source](https://company.instacart.com/how-its-made/how-instacart-uses-embeddings-to-improve-search-relevance))
+
+ITEMS (Instacart Transformer-based Embedding Model for Search) is a two-tower transformer that projects queries and products into one space so relevance is a dot product. It trains on conversion signal from search logs with in-batch negatives plus self-adversarial re-weighting to emphasize the hardest examples, and found that data quality beats quantity: expanding the training set past a point added noise, so they cascade-train (warmup on noisier data, fine-tune on clean). Product embeddings are indexed in FAISS; over 95 percent of query embeddings are served from a FeatureStore cache under 8ms with the rest computed on the fly. The similarity score complements keyword and category retrieval, lifting MRR by 1.2 percent and cart-adds-per-search by 4.1 percent.
+
+```mermaid
+flowchart TD
+  QT["query tower (transformer)"] --> SP["shared vector space"]
+  PT["product tower (transformer)"] --> SP
+  SP --> LOSS["in-batch negatives<br/>+ self-adversarial re-weighting"]
+  LOSS --> CAS["cascade training:<br/>warmup noisy -> fine-tune clean"]
+  PT --> FAISS["product embeddings -> FAISS index"]
+  QT --> CACHE["query embeddings -> FeatureStore cache (95%)"]
+  CACHE --> FAISS
+  FAISS --> RETR["semantic retrieval"]
+  RETR --> BLEND["blend with keyword / category retrieval"]
+  BLEND --> RES["search results + ranking"]
+```
+
+**Interview questions this design invites**
+- Why treat off-diagonal in-batch pairs as negatives, and what noise does that risk introduce?
+- What is self-adversarial re-weighting and why up-weight hard examples?
+- Why does adding more training data eventually hurt, and how does cascade training fix it?
+- How does query caching hit sub-8ms latency, and what is the fallback for cache misses?
+- Why blend embedding retrieval with keyword and category retrieval rather than replace them?
+- Which offline metrics map to the online cart-add and GMV gains?
+
+**Tricks and gotchas**
+- Unconverted products are noisy negatives because preference is personal, so in-batch negatives are safer than treating all non-clicks as hard negatives.
+- Self-adversarial re-weighting sharpens distinctions between similar products without a separate hard-negative mining stage.
+- The query distribution is heavy-headed, so caching over 95 percent of query vectors makes online cost tiny.
+- Embeddings double as a semantic-dedup signal for autocomplete suggestions.
+
+**Common mistakes and how to fix them**
+- Assuming more data is always better: filter and cascade-train because low-quality pairs degrade the space.
+- Treating every unconverted product as a hard negative: use in-batch negatives with re-weighting to avoid false negatives.
+- Computing query embeddings fresh every request: cache the head of the query distribution in a FeatureStore.
+
+### Wayfair: Melange, customer-journey embeddings for fraud ([source](https://www.aboutwayfair.com/careers/tech-blog/introducing-melange-a-customer-journey-embedding-system-for-improving-fraud-and-scam-detection))
+
+Melange is a self-supervised sequence model that turns a customer's browsing journey into a single behavioral vector. The pretext task predicts the next page type from prior session interactions, so the encoder learns temporal patterns of behavior with no fraud labels. An hourly Vertex pipeline pulls each customer's last three sessions, encodes them, and aggregates the session vectors into one customer embedding stored in a feature store. Those embeddings become additional input features to downstream fraud and scam models, delivering up to 18 percent relative PR-AUC improvement over hand-engineered features alone.
+
+```mermaid
+flowchart TD
+  SESS["customer browsing sessions<br/>(page-type sequences)"] --> ENC["self-supervised sequence encoder"]
+  ENC --> PRE["pretext task: predict next page type"]
+  PRE --> VEC["per-session embedding"]
+  VEC --> AGG["aggregate last 3 sessions -> customer vector"]
+  AGG --> FS["feature store (hourly Vertex pipeline)"]
+  FS --> FRAUD["fraud / scam detection models"]
+```
+
+**Interview questions this design invites**
+- Why use a self-supervised next-page pretext task instead of training directly on fraud labels?
+- How does a sequence model capture behavior that hand-engineered features miss?
+- Why aggregate the last three sessions into one vector, and what does that lose or gain?
+- How do embeddings-as-features compose with an existing fraud model rather than replace it?
+- Why measure with PR-AUC rather than accuracy for fraud?
+- What refresh cadence does fraud detection need, and why hourly here?
+
+**Tricks and gotchas**
+- Fraud labels are scarce and lagging, so a label-free pretext task lets you learn from abundant session logs.
+- Aggregating a fixed window of recent sessions gives a stable per-customer vector without unbounded history.
+- Embeddings are consumed as features by existing models, so no need to rebuild the fraud stack.
+- Hourly refresh matters because fraud behavior is fast-moving; a stale customer vector misses in-progress attacks.
+
+**Common mistakes and how to fix them**
+- Trying to supervise directly on rare fraud labels: pretrain self-supervised on sessions, then attach the fraud head.
+- Judging the embedding by accuracy on imbalanced data: use PR-AUC so the minority fraud class is not hidden.
+- Letting customer vectors go stale: refresh on a short cadence so recent behavior is represented.
+
+_Not reachable: none_
+
+---
+
+## Feature store and training-serving skew
+
+### Uber: Michelangelo and the Palette feature store ([source](https://www.uber.com/blog/michelangelo-machine-learning-platform/))
+
+Michelangelo is Uber's end-to-end ML platform, and its centralized Palette feature store holds roughly 10,000 shared features that teams create, discover, and reuse. Offline, transactional and log data lands in HDFS and is processed by scheduled Spark and Hive jobs to build training data; online, features are precomputed and served from Cassandra at low latency because production models cannot read HDFS directly. Real-time signals flow through Kafka into Samza streaming jobs that write aggregates to Cassandra while also logging to HDFS so the same values can rebuild training sets. A Scala-subset DSL expresses feature transformations as part of the model config, and because the identical DSL expressions run at both training and prediction time, the final feature set stays consistent.
+
+```mermaid
+flowchart TD
+  LOGS["transactional and log data"] --> HDFS["HDFS<br/>(offline history)"]
+  EVENTS["live metrics"] --> KAFKA["Kafka"]
+  KAFKA --> SAMZA["Samza streaming jobs"]
+  HDFS --> SPARK["Spark / Hive batch jobs"]
+  DSL["shared DSL feature definitions<br/>(part of model config)"] --> SPARK
+  DSL --> SAMZA
+  SPARK -->|"batch precompute"| CASS["Cassandra<br/>(online store, P95 under 10ms)"]
+  SAMZA -->|"near-real-time aggregates"| CASS
+  SAMZA -->|"log back for training"| HDFS
+  SPARK --> TRAIN["training dataset"]
+  CASS --> SERVE["online model serving"]
+```
+
+**Interview questions this design invites**
+- Why serve from Cassandra instead of reading features from HDFS at request time?
+- How does running the same DSL expressions at train and predict time kill code skew?
+- When would you choose batch precompute over the Kafka plus Samza near-real-time path for a given feature?
+- How does logging streaming aggregates back to HDFS enable point-in-time-correct training data?
+- What does the backfill tool have to guarantee so a newly added feature is safe to train on?
+- How do you keep 10,000 features from becoming an undiscoverable swamp?
+
+**Tricks and gotchas**
+- The DSL lives inside the model configuration, so the feature transformation is versioned with the model, not as separate glue code.
+- Near-real-time features must be logged to HDFS at compute time, otherwise you cannot reconstruct what was actually served for training.
+- Batch precompute is fine only when a feature tolerates hourly or daily staleness (for example a seven-day average prep time).
+- Cassandra is chosen for its low-latency point reads, not for the bulk historical scans that training needs.
+
+**Common mistakes and how to fix them**
+- Writing separate offline SQL and online service code for the same feature: fix by driving both from one shared definition (the DSL).
+- Backfilling with today's logic but stamping rows as historical: this leaks the future; recompute with as-of logic and correct timestamps.
+- Assuming batch precompute is fresh enough for session signals: route fast-moving features through the streaming path.
+- Treating the feature store as a dumping ground: attach owner, description, and SLA metadata so features stay reusable.
+
+### LinkedIn: Feathr, one definition serving offline, streaming, and online ([source](https://github.com/feathr-ai/feathr))
+
+Feathr is LinkedIn's open-sourced feature store built on a unified data transformation API that runs the same feature definition across offline batch, streaming, and online environments. Its transformation APIs include time-based aggregations and sliding-window joins with point-in-time correctness, so training rows never absorb values from after the label time. Offline data sits in stores like S3, ADLS, Snowflake, or SQL warehouses while online serving runs from Redis or Cosmos DB, and streaming sources such as Kafka and EventHub feed real-time features. A built-in registry enables named, reusable transformations with lineage and governance through Azure Purview, and the compute runs on Apache Spark (Databricks or Synapse).
+
+```mermaid
+flowchart TD
+  DEF["unified transformation API<br/>(one feature definition)"] --> SPARK["Apache Spark<br/>(Databricks / Synapse)"]
+  SRC["offline sources<br/>(S3, ADLS, Snowflake, SQL)"] --> SPARK
+  STREAM["streaming sources<br/>(Kafka, EventHub)"] --> SPARK
+  SPARK -->|"point-in-time joins"| OFF["offline store<br/>(training data)"]
+  SPARK -->|"materialize"| ON["online store<br/>(Redis, Cosmos DB)"]
+  REG["feature registry<br/>(Purview lineage / reuse)"] -.governs.-> DEF
+  OFF --> TRAIN["training dataset"]
+  ON --> SERVE["online serving"]
+```
+
+**Interview questions this design invites**
+- What does a sliding-window aggregation need to store so it stays point-in-time correct?
+- Why split online serving (Redis or Cosmos) from the offline training store technology?
+- How does a single transformation API prevent the offline and online computations from drifting?
+- What role does the registry play beyond discovery, in terms of lineage and reuse?
+- How would you onboard a streaming feature so it matches its offline backfill exactly?
+- Why run the heavy transformations on Spark rather than in the serving path?
+
+**Tricks and gotchas**
+- The same definition must compile to three runtimes (batch, streaming, online), so the transformation language has to stay backend-agnostic.
+- Point-in-time correctness on sliding windows requires timestamped history, not just the latest aggregate.
+- Online stores hold the latest value per entity; do not expect to run historical joins against Redis.
+- Governance through Purview is what keeps named transformations reusable rather than duplicated per team.
+
+**Common mistakes and how to fix them**
+- Defining a streaming feature and its batch backfill separately: unify them under one transformation so both compute the identical aggregate.
+- Joining current feature values onto past labels: use the as-of join APIs so no future data leaks.
+- Serving heavy transformations at request time: precompute and materialize to the online store instead.
+- Skipping the registry and letting teams re-derive the same feature: register named transformations for reuse and lineage.
+
+### Feast: open-source reference design for the dual store and point-in-time joins ([source](https://github.com/feast-dev/feast))
+
+Feast is a production-ready open-source feature store that gives a clean reference for the dual-store pattern: an offline store for historical batch training data and an online store for low-latency real-time retrieval, plus a feature server that serves the precomputed vectors. It generates point-in-time-correct feature sets so teams avoid leakage instead of hand-debugging join logic. Materialization loads features from offline to online in three modes (incremental, which is recommended; full with timestamps; and simple without event timestamps), and storage is abstracted so backends like Redis, DynamoDB, Postgres, Snowflake, and vector stores (Qdrant, Milvus) plug in. A registry and Python SDK drive discovery and governance, integrating with Amundsen and DataHub, with native drift and serving-log monitoring.
+
+```mermaid
+flowchart TD
+  SRC["data sources"] --> DEF["feature definitions<br/>(Python SDK)"]
+  DEF --> OFFP["offline processing<br/>(batch)"]
+  OFFP --> OFF["offline store<br/>(Snowflake / Postgres / warehouse)"]
+  OFF -->|"materialize<br/>(incremental / full / simple)"| ON["online store<br/>(Redis / DynamoDB)"]
+  OFF -->|"point-in-time correct join"| TRAIN["training dataset"]
+  ON --> FS["feature server"]
+  FS -->|"feature vector"| SERVE["online serving"]
+  REG["registry<br/>(Amundsen / DataHub)"] -.-> DEF
+```
+
+**Interview questions this design invites**
+- What is the difference between incremental, full, and simple materialization, and when would you pick each?
+- How does Feast generate point-in-time-correct feature sets, and why does that prevent leakage?
+- Why abstract the online store behind an interface instead of coupling to one database?
+- What role does the feature server play between the online store and the model at serving time?
+- How does the registry plus Amundsen and DataHub integration enable governance without heavy process?
+- When is a full feature store overkill relative to writing features into Redis directly?
+
+**Tricks and gotchas**
+- Simple materialization without event timestamps is convenient but drops the point-in-time guarantee; use it only when you truly do not need history.
+- Incremental materialization is recommended because full recomputation gets expensive fast as history grows.
+- Storage abstraction lets the same definitions target Redis for serving and Snowflake for training without rewriting logic.
+- Native serving-log monitoring is the built-in hook for detecting skew (served vs computed), not an afterthought.
+
+**Common mistakes and how to fix them**
+- Reaching for full materialization every run: default to incremental and reserve full for corrections and backfills.
+- Joining current feature values onto past labels: use Feast's as-of join so training only sees data available at event time.
+- Treating the online store as source of truth: the offline store holds timestamped history, the online store holds the latest value.
+- Deploying without a registry: register features so they are discoverable and owned before other teams consume them.
+
+### Google: Rules of Machine Learning, the discipline that stops skew ([source](https://developers.google.com/machine-learning/guides/rules-of-ml))
+
+Google's Rules of ML is not a store but the discipline every store encodes: train the way you serve. Its headline guidance is to reuse code between the training and serving pipelines so a single computation cannot drift, and, most reliably, to log the exact features used at serving time and pipe them back for training. It stresses temporal testing (measure on data gathered after your training data ends, since that reflects production) and warns that external tables joined into features can change between train and serve, so snapshot them or log at serving time. Skew should be monitored across three gaps: training vs holdout, holdout vs next-day, and next-day vs live.
+
+```mermaid
+flowchart TD
+  CODE["shared code<br/>(reused train + serve)"] --> SERVE["serving pipeline"]
+  CODE --> TRAIN["training pipeline"]
+  SERVE -->|"log features used at serving time"| LOG["feature log"]
+  LOG -->|"pipe to training"| TRAIN
+  EXT["external tables"] -->|"snapshot to avoid drift"| SERVE
+  TRAIN --> HOLD["holdout eval"]
+  HOLD --> NEXT["next-day data eval"]
+  NEXT --> LIVE["live traffic"]
+  HOLD -.->|"monitor skew gap"| NEXT
+  NEXT -.->|"monitor skew gap"| LIVE
+```
+
+**Interview questions this design invites**
+- Why is logging serving-time features the most reliable way to train the way you serve?
+- How does reusing code between training and serving pipelines eliminate a whole class of skew?
+- Why test on data gathered after the training window rather than a random holdout?
+- What goes wrong when an external table changes between training and serving, and how do you prevent it?
+- What are the three skew gaps to monitor (train/holdout, holdout/next-day, next-day/live) and what does each catch?
+- How do these rules translate into concrete feature store requirements?
+
+**Tricks and gotchas**
+- Logging features at serving time is more reliable than recomputing them identically offline; recomputation always risks drift.
+- Random holdouts hide time leakage; only post-training-window data reveals what production will actually see.
+- External tables are a silent skew source because they mutate between train and serve; snapshot or log to pin them.
+- Monitoring must cover three sequential gaps, not just offline accuracy, or slow live degradation goes unseen.
+
+**Common mistakes and how to fix them**
+- Maintaining separate training and serving feature code: reuse one code path so there is nothing to drift.
+- Recomputing serving features offline and hoping they match: log actual served features and train on those.
+- Evaluating only on a random split: add a next-day and live comparison to catch temporal skew.
+- Joining live external tables blindly: snapshot them at serving time so training and serving see the same values.
+
+_Not reachable: Tecton (engineering blog redirected off-host to databricks.com)_
+
+---
+
+## Real-time serving and deployment
+
+### Berkeley RISELab: Clipper, a low-latency online prediction serving system ([source](https://arxiv.org/abs/1612.03079))
+
+Clipper is a general-purpose serving layer that sits between applications and heterogeneous ML frameworks, exposing one thin predict API. It hides framework differences behind a model abstraction layer, then applies adaptive request batching, prediction caching, and adaptive model selection to cut latency and raise throughput without modifying the underlying frameworks. It reaches throughput comparable to TensorFlow Serving while additionally supporting model composition and online correction for more robust predictions.
+
+```mermaid
+flowchart TD
+  APP["application"] --> QUERY["query interface<br/>(predict API)"]
+  QUERY --> CACHE["prediction cache"]
+  CACHE -->|"miss"| BATCH["adaptive batch queue"]
+  CACHE -->|"hit"| APP
+  BATCH --> MABS["model abstraction layer<br/>(per-framework containers)"]
+  MABS --> M1["model container<br/>(TensorFlow)"]
+  MABS --> M2["model container<br/>(scikit-learn)"]
+  MABS --> M3["model container<br/>(Caffe / other)"]
+  M1 --> SELECT["model selection layer<br/>(pick / ensemble)"]
+  M2 --> SELECT
+  M3 --> SELECT
+  SELECT --> APP
+```
+
+**Interview questions this design invites**
+- Why put a serving layer between the app and the framework instead of calling the framework directly?
+- How does adaptive batching decide its window, and what latency does it add?
+- When does prediction caching help and when does it hurt (input cardinality, staleness)?
+- How does the model selection layer improve accuracy or robustness at serve time?
+- What breaks when you host each framework in its own container (cold start, resource isolation)?
+- How would you extend Clipper's abstraction to GPU models or to LLMs?
+
+**Tricks and gotchas**
+- Adaptive batching tunes the window per model to hold a latency target rather than maximizing raw throughput.
+- Caching pays off only when identical inputs recur; high-cardinality queries make it dead weight and memory cost.
+- The abstraction layer isolates frameworks in containers, which trades a little RPC overhead for uniform observability and swaps.
+- Model composition and online selection add robustness but also add a hop and a failure mode to reason about.
+
+**Common mistakes and how to fix them**
+- Treating caching as free: bound cache size and measure hit rate before relying on it.
+- Batching for peak throughput: size the window against the p99 budget, not against idle-hardware benchmarks.
+- Assuming one predict path fits every framework: keep per-framework containers so a slow model cannot stall others.
+- Ignoring warm-up: pre-load and warm each model container before it takes traffic.
+
+### Uber: Michelangelo online prediction service with sub-10ms P95 ([source](https://www.uber.com/us/en/blog/michelangelo-machine-learning-platform/))
+
+Michelangelo deploys models to an online prediction cluster of hundreds of machines behind a load balancer, taking single or batched RPC scoring requests. Models that need no feature store lookup hit P95 under 5 ms; those reading the Cassandra online store hit P95 under 10 ms, with top models exceeding 250k predictions per second. Each model is identified by UUID plus optional tags so several versions run in one container, enabling A/B tests and staged traffic shifts without client changes when feature signatures match.
+
+```mermaid
+flowchart TD
+  REG["model artifact<br/>(UUID + tags, ZIP)"] --> DC["distribute across data centers"]
+  DC --> SRV["online prediction cluster<br/>(hundreds of machines, load balanced)"]
+  CLIENT["client service"] -->|"single or batched RPC"| SRV
+  SRV --> FEAT["Cassandra online feature store<br/>(optional lookup)"]
+  FEAT --> SRV
+  SRV --> PRED["prediction<br/>(P95 under 5 to 10 ms)"]
+  PRED --> LOG["log preds + latency"]
+  SRV -. "multiple UUIDs / tags in one container" .-> AB["A/B and staged traffic shift"]
+```
+
+**Interview questions this design invites**
+- How does serving many model versions in one container enable A/B tests without touching clients?
+- Where does the 5 ms vs 10 ms P95 split come from, and what does the feature lookup cost?
+- How do tags (aliases) make a version swap or rollback a pointer change?
+- What has to be true about feature signatures for two versions to share traffic transparently?
+- How do you distribute a multi-megabyte artifact across data centers without a slow deploy?
+- How would you scale past 250k predictions per second on the hottest models?
+
+**Tricks and gotchas**
+- Tags decouple "which version is live" from client code, so promotion and rollback are alias moves.
+- The feature store lookup is the swing factor in the latency budget, so co-locate or cache it.
+- Packing several versions in one container makes side-by-side comparison cheap but shares blast radius.
+- Artifacts are ZIP bundles (metadata, params, compiled DSL) pushed to disk so servers auto-load updates.
+
+**Common mistakes and how to fix them**
+- Quoting average latency: Michelangelo reports P95 precisely because tails breach SLAs.
+- Coupling model version to app release: use UUID plus tag so redeploys are independent of the client.
+- Assuming feature fetch is free: budget the Cassandra hop explicitly and cache hot keys.
+- Ignoring signature compatibility: verify feature signatures match before routing shared traffic across versions.
+
+### Grab: Catwalk, TensorFlow Serving on Kubernetes for hundreds of models ([source](https://engineering.grab.com/catwalk-serving-machine-learning-models-at-scale))
+
+Catwalk runs TensorFlow Serving containers on Kubernetes wired into Grab's observability stack, giving data scientists a self-service path from a saved model to a live endpoint. Scientists export via tf.saved_model to an S3 path and TensorFlow Serving auto-loads it; Kubernetes handles autoscaling, load balancing, and rollout. New versions load while the current version keeps serving, so deploys are zero-downtime and rollback is simple, cutting the deploy cycle from days to minutes.
+
+```mermaid
+flowchart TD
+  DS["data scientist"] -->|"tf.saved_model export"| S3["S3 bucket<br/>(model path)"]
+  S3 --> TFS["TensorFlow Serving container"]
+  TFS --> K8S["Kubernetes cluster<br/>(autoscale + load balance)"]
+  K8S --> EP["prediction endpoint<br/>(HTTP/1.1)"]
+  TFS -. "new version loads while old serves" .-> SWAP["zero-downtime swap / rollback"]
+  K8S --> OBS["observability<br/>(Datadog, Filebeat DaemonSets)"]
+```
+
+**Interview questions this design invites**
+- How does version-served-while-loading give zero-downtime deploys and easy rollback?
+- Why is an S3 folder path a good self-service contract for data scientists?
+- What signal should drive Kubernetes autoscaling for a TF Serving pod?
+- What are the tradeoffs of HTTP/1.1 today versus adding gRPC later?
+- How do you keep hundreds of models observable through shared DaemonSets?
+- Where does cold start show up when a pod loads a large saved model?
+
+**Tricks and gotchas**
+- TensorFlow Serving auto-discovers new version dirs, so promotion is a file drop, not a redeploy.
+- The old version keeps serving until the new one is ready, which is what makes rollback boring.
+- A minimal interface (just an S3 path) is what collapses the deploy cycle from days to minutes.
+- Observability rides on Kubernetes DaemonSets (Datadog, Filebeat) so every model is monitored uniformly.
+
+**Common mistakes and how to fix them**
+- Scaling on CPU: prefer a serving-specific signal so autoscaling tracks real inference load.
+- Cutting over before the new version is warm: rely on load-while-serving so traffic never hits a half-loaded model.
+- Per-team bespoke serving: centralize on one platform so monitoring and rollback are standard.
+- Forgetting protocol limits: plan the gRPC path if HTTP/1.1 becomes a throughput ceiling.
+
+### Pinterest: GPU-accelerated ML inference for large recommenders ([source](https://medium.com/@Pinterest_Engineering/gpu-accelerated-ml-inference-at-pinterest-ad1b6a03a16d))
+
+Pinterest moved recommender serving from CPU to GPU to run 100x larger models at neutral cost, landing 30 percent lower latency, 20 percent more throughput, and a 16 percent Homefeed engagement lift. The wins came from removing per-op overhead: merging embedding lookups via hash tables, copying batched tensors into one pre-allocated buffer to the GPU (10 ms down to under 1 ms), and capturing inference as a CUDA graph so kernels launch in one batch. They also redesigned batching away from CPU-era scatter-gather toward larger GPU batches, backed by hybrid DRAM and SSD caching.
+
+```mermaid
+flowchart TD
+  REQ["scoring request<br/>(many candidates)"] --> BATCH["larger GPU batch<br/>(replaces CPU scatter-gather)"]
+  BATCH --> COPY["batched tensors to one<br/>pre-allocated buffer, single GPU copy"]
+  COPY --> EMB["merged embedding lookups<br/>(hash table consolidation)"]
+  EMB --> CACHE["hybrid DRAM + SSD cache"]
+  CACHE --> CG["CUDA graph<br/>(kernels launched in one batch)"]
+  CG --> GPU["GPU inference<br/>(Transformer-based recommender)"]
+  GPU --> RESP["prediction<br/>(30 percent lower latency)"]
+```
+
+**Interview questions this design invites**
+- Why does a single request underuse a GPU, and how does dynamic batching fix it?
+- What is sub-linear latency scaling with batch size and why does GPU serving exploit it?
+- How do CUDA graphs cut kernel launch overhead versus eager op-by-op execution?
+- Why merge embedding lookups, and what does hash-table consolidation buy?
+- What is the memory tradeoff when GPU cache capacity is smaller than CPU DRAM?
+- How do you keep p99 flat when batch sizes grow to fill the accelerator?
+
+**Tricks and gotchas**
+- One pre-allocated buffer plus a single host-to-device copy turns many small transfers into a sub-1 ms step.
+- CUDA graphs amortize launch overhead only for a static graph, so dynamic shapes need care.
+- Larger GPU batches beat CPU-era scatter-gather but shrink effective cache, so DRAM plus SSD tiering compensates.
+- Neutral cost was the constraint: the goal was 100x model size at the same spend, not raw speed alone.
+
+**Common mistakes and how to fix them**
+- Porting CPU batching to GPU unchanged: redesign for large batches rather than many small ones.
+- Leaving kernels eager: capture a CUDA graph to remove per-op launch cost.
+- Copying tensors piecemeal: coalesce into one buffer and do a single device copy.
+- Ignoring embedding-table memory: use hybrid DRAM and SSD caching when the tables outgrow GPU memory.
+
+### Shopify: Merlin, a Ray-on-Kubernetes service per use case ([source](https://shopify.engineering/shopifys-machine-learning-platform-real-time-predictions))
+
+Merlin Online Inference runs each use case as its own Kubernetes (GKE) service that loads its dedicated model from the registry and is independently autoscaled. Teams choose a serving layer by effort: no-code MLServer with pre-built runtimes, low-code MLServer custom serving, or full-custom FastAPI, with MLServer providing REST plus gRPC and built-in request batching under the V2 inference protocol. Services declare GPU (for example NVIDIA T4), CPU, memory, and replica counts per environment, and ship through automated CI/CD (Buildkite plus internal Shipit) after iterating in isolated Merlin Workspaces.
+
+```mermaid
+flowchart TD
+  REG["model registry"] --> SVC["dedicated GKE service<br/>(one per use case)"]
+  subgraph LAYER["serving layer choice"]
+    NOCODE["MLServer no-code"]
+    LOWCODE["MLServer custom"]
+    CUSTOM["FastAPI full custom"]
+  end
+  SVC --> LAYER
+  LAYER --> BATCH["MLServer request batching<br/>(REST + gRPC, V2 protocol)"]
+  BATCH --> RAY["Ray on Kubernetes<br/>(GPU/CPU/replicas configured)"]
+  RAY --> RESP["real-time prediction"]
+  WS["Merlin Workspace<br/>(isolated test endpoint)"] --> CICD["CI/CD<br/>(Buildkite, Shipit)"]
+  CICD --> SVC
+```
+
+**Interview questions this design invites**
+- What do you gain and lose by giving each use case its own dedicated serving service?
+- When would a team pick MLServer no-code over FastAPI full-custom?
+- How does per-service resource config (GPU, CPU, replicas) control both latency and cost?
+- What role do isolated Workspaces play before a model reaches production?
+- How does the V2 inference protocol standardize batching and transport across services?
+- How do you monitor drift when serving is decentralized across many services?
+
+**Tricks and gotchas**
+- Per-service isolation limits blast radius but multiplies the number of things to autoscale and monitor.
+- The no-code to full-custom ladder lets simple models ship fast without blocking complex ones.
+- MLServer batching and gRPC come out of the box under V2, so teams do not reinvent the predict path.
+- Workspaces expose temporary endpoints so teams validate live behavior before CI/CD promotes.
+
+**Common mistakes and how to fix them**
+- Over-customizing early: start on MLServer no-code and drop to FastAPI only when the use case demands it.
+- One-size resource config: tune GPU, CPU, and replicas per environment to avoid paying for idle capacity.
+- Skipping the workspace step: validate on an isolated endpoint before promoting through CI/CD.
+- Losing sight of drift in a decentralized fleet: standardize monitoring across every dedicated service.
+
+### Booking.com: multi-phase ranking with shadow mirroring under p999 ([source](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6))
+
+Booking.com's ranking platform sits behind the Availability Search Engine, scoring matching properties across verticals on three Kubernetes clusters with hundreds of pods each. It splits scoring into multiple phases, each with its own criteria and model complexity, and must finish under a fraction of a second at p999 while handling a fan-out problem where call volume multiplies by worker shards and property batches range from dozens to thousands. Safety and speed come from pre-calculated fallback static scores, production shadow-traffic mirroring for benchmarking, and inference optimizations like quantization, pruning, and hardware acceleration.
+
+```mermaid
+flowchart TD
+  SEARCH["Availability Search Engine"] --> PH1["phase 1<br/>(cheap, wide scoring)"]
+  PH1 --> PH2["phase 2<br/>(richer model, fewer items)"]
+  PH2 --> PH3["phase 3<br/>(most personalized, top items)"]
+  PH3 --> RESP["ranked properties<br/>(p999 under a fraction of a second)"]
+  SEARCH -. "fan-out x worker shards, payload chunking" .-> PH1
+  FALLBACK["pre-calculated static fallback scores"] --> RESP
+  LIVE["live traffic"] --> MIRROR["shadow / production mirroring<br/>(benchmark, no user impact)"]
+  FEAT["features: static, slow-changing, real-time<br/>(feature store + streams)"] --> PH1
+```
+
+**Interview questions this design invites**
+- Why split ranking into phases instead of scoring everything with one model?
+- What is the fan-out problem and how does payload chunking bound it?
+- Why measure at p999 rather than p99 for a search-time ranker?
+- What does shadow-traffic mirroring catch that offline eval cannot, and what can it not measure?
+- Why keep pre-calculated static fallback scores, and when do they kick in?
+- Which inference optimizations (quantization, pruning, hardware acceleration) fit which phase?
+
+**Tricks and gotchas**
+- Cheap early phases cut the candidate set so the expensive model only scores a few items.
+- Fan-out multiplies request volume by shard count, so batch sizes and chunking must be sized deliberately.
+- Shadow mirroring runs only in production because the benchmark needs real traffic shape.
+- Static fallback scores keep search answering even when the live model path fails.
+
+**Common mistakes and how to fix them**
+- Running one heavy model over all candidates: use multi-phase scoring to spend compute where it matters.
+- Budgeting to p99 for a fan-out service: hold to p999 because the tail dominates at search scale.
+- No degradation path: pre-compute static fallback scores so a model failure does not blank the results.
+- Trusting shadow alone: it proves no breakage but cannot measure user impact, so still canary before widening.
+
+_Not reachable: Lyft LyftLearn Serving, Netflix Kayenta_
+
+---
+
+## Online experimentation and A/B testing
+
+### Uber: XP, a company-wide experimentation platform with CUPED and sequential monitoring ([source](https://www.uber.com/blog/xp/))
+
+Uber runs over 1,000 concurrent experiments across rider, driver, Eats, and Freight on one platform (XP) that supports A/B/N tests, causal inference, and multi-armed-bandit continuous experiments. They squeeze variance with CUPED (valuable for small user bases or early termination) and monitor cumulatively with a mixture Sequential Probability Ratio Test (mSPRT), using delete-a-group jackknife and block bootstrap variance estimation to handle observations correlated across days. Two data-quality gates run continuously: sample-imbalance detection (control/treatment ratio deviating from intended) and flicker exclusion (a user who crosses arms, e.g. switching from an iPhone to an Android when treatment is iOS-only, is dropped from analysis). Guardrails on app crash rate and trip-frequency rate pause or alert when a significant degradation appears.
+
+```mermaid
+flowchart TD
+  U["user-level assignment"] --> Q{"quality gates"}
+  Q -->|"sample imbalance / flicker"| EX["exclude / alert"]
+  Q -->|"clean"| M["collect decision + guardrail metrics"]
+  M --> CV["CUPED variance reduction"]
+  CV --> SEQ["mSPRT sequential monitoring<br/>(jackknife / block bootstrap variance)"]
+  SEQ --> G{"guardrails safe?<br/>(crash rate, trip frequency)"}
+  G -->|"no degradation"| SHIP["continue / ship"]
+  G -->|"degradation"| KILL["alert or pause"]
+```
+
+**Interview questions this design invites**
+- Why does continuous (sequential) monitoring need mSPRT instead of a fixed-horizon t-test, and what does that buy you?
+- What is a flicker, why does it bias results, and how would you detect and exclude flickers safely?
+- Why use delete-a-group jackknife or block bootstrap variance when observations span multiple days?
+- How does CUPED reduce variance, and when does it fail to help?
+- How would you set auto-pause thresholds on crash rate vs trip frequency so you do not pause on noise?
+- With 1,000 concurrent experiments, how do you keep assignments orthogonal so tests do not confound each other?
+
+**Tricks and gotchas**
+- Sequential monitoring lets you look continuously without the peeking penalty, but only if you use a method (mSPRT) built for it; a normal test still inflates false positives.
+- Within-user observations across days are correlated, so naive variance underestimates uncertainty; jackknife/bootstrap at the right unit fixes the intervals.
+- Flicker users are contaminated by both arms; keeping them dilutes and biases the effect.
+- CUPED gains depend on a pre-period metric that correlates with the in-experiment metric; low correlation means little reduction.
+
+**Common mistakes and how to fix them**
+- Reading a sequential dashboard as if it were a fixed-horizon test. Fix: use always-valid p-values / mSPRT boundaries, not a raw 5% cutoff.
+- Ignoring sample-ratio mismatch because the primary looks good. Fix: gate every readout on the observed-vs-intended ratio and refuse to read on failure.
+- Treating request-level rows as independent. Fix: cluster variance at the diversion unit (user).
+- Pausing on the first guardrail blip. Fix: require statistically significant degradation before auto-kill.
+
+### Airbnb: experimentation guardrails that flag harmful experiments before and during launch ([source](https://medium.com/airbnb-engineering/designing-experimentation-guardrails-ed6a976ec669))
+
+Airbnb built a company-wide guardrail framework (2019) that triggers an escalation review when an experiment risks harming a critical metric, flagging roughly 25 experiments per month; about 80% still launch after review and 20% are stopped. Three guardrail types work together: an Impact Guardrail escalates when the global average treatment effect is more negative than a preset threshold (catching large harm regardless of significance); a Power Guardrail requires enough sample (standard error of the percent-change estimate below a bound) so the Impact Guardrail keeps reasonable power and false-positive rates before approval; and a Stat-Sig-Negative Guardrail escalates any statistically significant negative move on top-priority metrics like revenue even when small. The system adjusts escalation thresholds by experiment coverage (lower-coverage tests face higher percent-change thresholds but stricter global-impact requirements) and auto-approves clearly positive experiments whose confidence intervals pass a non-inferiority test.
+
+```mermaid
+flowchart TD
+  E["experiment request"] --> P{"power guardrail:<br/>SE below bound?"}
+  P -->|"no, underpowered"| WAIT["run longer / hold"]
+  P -->|"yes"| I{"impact guardrail:<br/>ATE below -threshold?"}
+  I -->|"too negative"| ESC["escalate for review"]
+  I -->|"ok"| S{"stat-sig-negative<br/>on priority metric?"}
+  S -->|"yes"| ESC
+  S -->|"no, CI passes non-inferiority"| AUTO["auto-approve"]
+  ESC --> DEC{"stakeholder decision"}
+  DEC -->|"80%"| LAUNCH["launch"]
+  DEC -->|"20%"| STOP["stop"]
+```
+
+**Interview questions this design invites**
+- Why have both a magnitude-based Impact Guardrail and a significance-based Stat-Sig-Negative Guardrail; what does each catch that the other misses?
+- Why does the Power Guardrail exist, and what breaks if you run the Impact Guardrail on an underpowered test?
+- How would you set the Impact threshold (e.g. -0.5%) and per-metric priorities?
+- Why scale escalation thresholds with experiment coverage?
+- How do non-inferiority tests enable safe auto-approval without human review?
+- What is the cost of over-escalation, and how do you tune the flag rate?
+
+**Tricks and gotchas**
+- A large negative point estimate can be non-significant on a small test; without a power gate the Impact Guardrail either misses harm or fires on noise.
+- Non-inferiority (not superiority) is the right frame for guardrails: you must prove "not meaningfully worse," not "better."
+- Coverage-adjusted thresholds prevent tiny experiments from tripping global-impact alarms while still protecting at scale.
+
+**Common mistakes and how to fix them**
+- Only checking the primary and ignoring harm to protected metrics. Fix: pre-declare guardrails with per-metric thresholds and priorities.
+- Gating on significance alone, so a big but noisy regression slips through. Fix: add a magnitude (Impact) guardrail independent of significance.
+- Escalating everything, drowning reviewers. Fix: auto-approve confidently-safe experiments via non-inferiority CIs.
+- Approving tests too early to launch. Fix: require the power guardrail (SE bound) before launch.
+
+### Booking.com: experimentation quality as the platform's north-star KPI ([source](https://medium.com/booking-product/why-we-use-experimentation-quality-as-the-main-kpi-for-our-experimentation-platform-f4c1ce381b81))
+
+Booking.com argues that "running bad experiments is just a very expensive and convoluted way to make unreliable decisions," so instead of optimizing experiment volume or a satisfaction score, they make experimentation quality the platform's main KPI. Quality is defined as adherence to standardized experimentation protocols across three phases: Design (power calculations, pre-registering expected metric movements), Execution (sticking to the planned duration), and Shipping (deciding against predetermined criteria). Rule adherence in each phase yields a three-point quality rating that rolls up to team and department level, letting them track quality over time and see which specific rules teams struggle with, which in turn informs platform improvements. The rule set is intentionally extensible as practices evolve.
+
+```mermaid
+flowchart TD
+  D["Design phase<br/>(power calc, pre-register metrics)"] --> EX["Execution phase<br/>(hold planned duration)"]
+  EX --> SH["Shipping phase<br/>(decide vs preset criteria)"]
+  D --> R1["rule adherence score"]
+  EX --> R2["rule adherence score"]
+  SH --> R3["rule adherence score"]
+  R1 --> Q["3-point quality rating per experiment"]
+  R2 --> Q
+  R3 --> Q
+  Q --> ROLL["roll up to team / department KPI"]
+  ROLL --> IMP["identify weak rules -> improve platform"]
+```
+
+**Interview questions this design invites**
+- Why is decision quality a better platform KPI than experiment count or velocity?
+- How would you operationalize "quality" into an auditable, per-experiment score?
+- What Design-phase rules (power, pre-registration) most reduce false decisions, and why?
+- How does pre-registering expected metric movements curb HARKing and post-hoc rationalization?
+- How do you roll individual scores up to team level without gaming?
+- What is the risk of optimizing a process-adherence metric instead of business outcomes?
+
+**Tricks and gotchas**
+- Pre-registering the expected direction and the shipping criteria before launch is what removes hindsight bias from the ship call.
+- A three-phase rating localizes failure (design vs execution vs shipping), so fixes target the actual weak point.
+- The rubric must stay extensible; freezing the rule set makes it stale as practices change.
+
+**Common mistakes and how to fix them**
+- Measuring the platform by number of experiments run. Fix: measure whether experiments produce reliable decisions.
+- Letting teams choose metrics and stopping rules after seeing data. Fix: enforce pre-registration in the Design phase.
+- Stopping experiments off-plan when a result looks good. Fix: score Execution-phase duration adherence.
+- No feedback loop from scores to tooling. Fix: aggregate weak rules to drive platform improvements.
+
+### Spotify: risk-aware ship decisions across multiple metrics ([source](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics))
+
+Spotify ships only when all conditions hold: the treatment is significantly superior on at least one success metric, significantly non-inferior on every guardrail metric, shows no evidence of harm on success/guardrail/deterioration metrics, and passes quality tests. They organize metrics into four roles: success (superiority tests), guardrail (non-inferiority tests for expected-stable metrics), deterioration (inferiority tests protecting critical business metrics), and quality (sample-ratio-mismatch and pre-exposure-bias checks). Rather than a loss function, they control error rates for the combined decision: false-positive rate alpha (shipping something that does not help) and false-negative rate beta (missing a real win). A key subtlety is that false-positive rates are not adjusted for guardrail metrics because you require all guardrails to pass, but power must be corrected, powering each metric at beta_star = beta / (G + 1) where G is the number of guardrail metrics so the joint decision hits the intended power.
+
+```mermaid
+flowchart TD
+  A["A/B test with 4 metric roles"] --> QT{"quality tests<br/>(SRM, pre-exposure bias)"}
+  QT -->|"fail"| INVALID["invalid, do not read"]
+  QT -->|"pass"| SUP{"success:<br/>significantly superior?"}
+  SUP -->|"no"| HOLD["hold"]
+  SUP -->|"yes"| GR{"guardrails:<br/>non-inferior on all?"}
+  GR -->|"no"| HOLD
+  GR -->|"yes"| DET{"deterioration:<br/>no harm on critical metrics?"}
+  DET -->|"harm"| HOLD
+  DET -->|"clear"| SHIP["ship"]
+```
+
+**Interview questions this design invites**
+- Why frame guardrails as non-inferiority tests rather than testing for a significant negative?
+- Why are false-positive rates not adjusted across guardrails, while power must be corrected?
+- Derive why per-metric power target becomes beta / (G + 1) with G guardrails.
+- What is the difference between a guardrail metric and a deterioration metric here?
+- Why gate the whole decision on quality tests (SRM, pre-exposure bias) first?
+- How does controlling error rates for the combined decision differ from correcting each test independently?
+
+**Tricks and gotchas**
+- Requiring all guardrails to pass means their false-positive risks do not compound the way independent tests would, so no alpha correction is needed there, but the joint power drops and must be boosted.
+- Non-inferiority needs a pre-set margin; "not significant" is not the same as "not worse."
+- Quality tests run first: a failed SRM or pre-exposure bias invalidates everything downstream.
+- Separating deterioration (critical, inferiority-tested) from ordinary guardrails lets you apply stricter protection where harm is unacceptable.
+
+**Common mistakes and how to fix them**
+- Declaring a win on any metric that turns significant. Fix: pre-declare success metrics and require superiority only on those.
+- Reading "guardrail not significant" as "guardrail safe." Fix: use non-inferiority tests with an explicit margin.
+- Ignoring that testing many metrics erodes joint power. Fix: power each metric at beta / (G + 1).
+- Skipping SRM / pre-exposure checks. Fix: make quality tests a hard pre-gate on reading results.
+
+### LinkedIn: detecting network-effect interference with an A/B test of A/B tests ([source](https://www.linkedin.com/blog/engineering/ab-testing-experimentation/detecting-interference-an-a-b-test-of-a-b-tests))
+
+LinkedIn detects interference by running two experimental designs in parallel and comparing them: if there is no network effect, an individual-level randomization and a cluster-level randomization should estimate the same effect, so a gap between them reveals leakage. In the individual arm, members are randomized within clusters (standard A/B); in the cluster arm, whole network communities move to the same treatment so a treated user's connections are also mostly treated. To make the comparison powerful across hundreds of millions of members they partition roughly 10,000 balanced clusters with the reLDG algorithm, stratify clusters by similar characteristics before randomizing, and apply CUPED (per-user in-experiment-minus-pre-experiment differencing) to cut variance. They compute delta = individual effect minus cluster effect and test whether it differs from zero with a Hausman-inspired test; a significant delta signals interference that needs specialized measurement (egoClusters, ELEMENT).
+
+```mermaid
+flowchart TD
+  POP["hundreds of millions of members"] --> CL["reLDG: ~10,000 balanced clusters"]
+  CL --> ST["stratify clusters by characteristics"]
+  ST --> IND["individual arm:<br/>randomize members within clusters"]
+  ST --> CLU["cluster arm:<br/>randomize whole clusters"]
+  IND --> CV1["CUPED differencing"]
+  CLU --> CV2["CUPED differencing"]
+  CV1 --> HT["delta = individual effect - cluster effect<br/>(Hausman-inspired test)"]
+  CV2 --> HT
+  HT --> DEC{"delta significant?"}
+  DEC -->|"yes"| INTF["interference present -> egoClusters / ELEMENT"]
+  DEC -->|"no"| OK["standard A/B valid"]
+```
+
+**Interview questions this design invites**
+- Why should individual and cluster randomization agree when there is no interference, and diverge when there is?
+- What does the Hausman-inspired test on delta actually test, and what are its assumptions?
+- Why cluster with a balanced-partition algorithm (reLDG) rather than arbitrary groups?
+- How does CUPED differencing help when cluster-level tests have so few effective units?
+- What are the power costs of cluster randomization, and how does stratification recover some?
+- Once interference is detected, why do you still need a separate method (egoClusters/ELEMENT) to measure the true effect?
+
+**Tricks and gotchas**
+- Cluster randomization drastically cuts effective sample size (units become clusters, not members), so variance reduction (CUPED, stratification) is essential to keep the comparison powered.
+- Balanced clustering matters: if clusters differ systematically, the two arms are not comparable and the delta test is confounded.
+- A non-significant delta does not prove zero interference; it may just be underpowered, so report the interval.
+
+**Common mistakes and how to fix them**
+- Assuming SUTVA and running a plain member-level test on a social graph. Fix: run the dual-design check to detect leakage first.
+- Comparing individual vs cluster arms without balancing/stratifying clusters. Fix: use reLDG plus stratification so arms are comparable.
+- Reading tiny cluster-arm effects as null. Fix: apply CUPED and report power/CIs before concluding no interference.
+- Stopping at detection. Fix: switch to an interference-robust estimator (egoClusters/ELEMENT) to measure the real effect.
+
+_Not reachable: Netflix Interleaving, Netflix Reimagining Experimentation Analysis, Lyft Ridesharing Marketplace (Medium login-redirect loop)_
+
+---
+
+## ML monitoring and drift
+
+### Evidently AI: open-source ML and LLM observability framework ([source](https://github.com/evidentlyai/evidently))
+
+Evidently is an open-source library that evaluates, tests, and monitors ML and LLM systems on tabular and generative tasks. Its drift detection compares a current window against a reference using PSI, the Kolmogorov-Smirnov test, chi-square, and 20+ other distance and statistical tests, picking the method per feature type. Results surface as Reports (100+ built-in metrics for data quality, classification and regression performance, and text descriptors) or Test Suites that add explicit pass/fail conditions. The same metrics run offline for experiments and feed a live self-hosted or cloud monitoring dashboard, and custom metrics plug in via a Python interface.
+
+```mermaid
+flowchart TD
+  REF["reference dataset<br/>(training / healthy baseline)"] --> COMP["metric computation<br/>(per-feature test selection)"]
+  CUR["current production window"] --> COMP
+  COMP --> PSI["PSI / KS / chi-square<br/>drift stats"]
+  COMP --> DQ["data-quality metrics<br/>(nulls, dups, ranges)"]
+  COMP --> PERF["performance metrics<br/>(when labels present)"]
+  PSI --> TS["Test Suite<br/>(gt / lt pass-fail)"]
+  DQ --> TS
+  PERF --> TS
+  TS --> OUT["Report (HTML / JSON / dict)"]
+  TS --> DASH["live monitoring dashboard"]
+```
+
+**Interview questions this design invites**
+- How do you choose between PSI, KS, and chi-square for a given feature?
+- Where does the reference distribution come from, and when do you refresh it?
+- How do Reports differ from Test Suites, and when would you gate a pipeline on a Test Suite?
+- How do you turn a per-run Report into continuous monitoring over a stream of windows?
+- What thresholds make a drift test pass or fail, and how do you set them from history?
+- How would you extend the 100+ metrics with a domain-specific custom metric?
+
+**Tricks and gotchas**
+- Per-feature test selection matters: KS suits continuous features, chi-square suits categorical; a one-size test misfires.
+- Reports are point-in-time; naive daily runs against a stale reference will flag benign seasonal movement.
+- Drift stats are label-free, so a green data-quality run plus drift can still precede a real performance drop.
+- PSI and KS answer "did it move," not "does it matter"; a drifted feature the model barely uses is noise.
+
+**Common mistakes and how to fix them**
+- Treating any detected drift as actionable: add pass/fail thresholds calibrated from historical variation, not defaults.
+- Comparing against the original training set forever: periodically re-anchor the reference to a recent healthy window.
+- Monitoring aggregate only: run the tests per segment so a single-cohort regression is not averaged away.
+- Skipping data-quality checks: run nulls/schema/range first so a pipeline bug is not misread as distribution drift.
+
+### Uber: D3, an automated data-drift detection system ([source](https://www.uber.com/blog/d3-an-automated-system-to-detect-data-drifts/))
+
+D3 (Dataset Drift Detector) watches over 1,000 tier-1 datasets with 100,000+ monitors. A Spark-based Compute Layer generates column-level statistics (null percentage, false percentage, P50/P75/P99 percentiles, standard deviation, mean, distinct count), sliced by dimensions like city_id, app version, and device OS, on the columns that offline usage shows are important. A Prophet time-series model predicts the expected range for each monitor and flags values outside conservative bounds, with user outlier-tagging feedback to cut false positives. Alerts route through PagerDuty and Databook; query optimization dropped from 200+ to 8 queries per dataset (a 100x resource cut, $1.50 to $0.01), and time-to-detect improved 20x, from 45 days to 2, at 95.23% accuracy.
+
+```mermaid
+flowchart TD
+  DS["tier-1 datasets"] --> CL["Compute Layer<br/>(Spark column stats)"]
+  CL --> STATS["null% / false% / percentiles<br/>stddev / mean / distinct<br/>sliced by city, version, OS"]
+  STATS --> PROPHET["Prophet anomaly detection<br/>(dynamic predicted limits)"]
+  PROPHET --> THRESH{"outside conservative bound?"}
+  FB["user outlier tagging"] --> PROPHET
+  ORCH["Orchestrator<br/>(resources + lifecycle)"] --> CL
+  THRESH -->|"yes"| PD["PagerDuty + Databook alert"]
+  PD --> RESP["manual investigation / response"]
+```
+
+**Interview questions this design invites**
+- Why Prophet for thresholds instead of static bounds or a moving average?
+- How does D3 decide which columns of a wide dataset are worth monitoring?
+- Why slice by city_id, app version, and device OS rather than monitor aggregates?
+- How does the user outlier-tagging feedback loop reduce false positives over time?
+- How did they cut 200+ queries per dataset to 8 without losing coverage?
+- What is time-to-detect and why is a 45-day to 2-day change so valuable?
+
+**Tricks and gotchas**
+- Prophet handles trend and seasonality, so it will not flag a normal weekly cycle the way a flat threshold would.
+- Conservative bounds layered on the prediction trade a slower fire for far fewer false pages.
+- Naturally noisy time series need a diagnosis job to filter, or they generate junk alerts.
+- Cost scales with monitors times datasets; without query batching, 100,000 monitors is unaffordable.
+
+**Common mistakes and how to fix them**
+- Monitoring every column: rank by offline usage and monitor only the important ones to bound cost.
+- Static thresholds on seasonal data: use a forecast model (Prophet) that learns the expected range.
+- Ignoring localized failures: add dimensional slices so a per-city or per-OS break is caught early.
+- One naive query per stat: batch statistics into few queries to keep per-dataset cost near a cent.
+
+### Uber: raising the bar on ML model deployment safety ([source](https://www.uber.com/us/en/blog/raising-the-bar-on-ml-model-deployment-safety/))
+
+Uber's Michelangelo enforces platform-default safeguards plus team-owned validation across deployment. Shadow testing (endpoint shadowing for custom logic, deployment shadow by default) runs new models on live traffic without affecting user predictions and covers 75%+ of critical online use cases. Gradual rollouts start on a small traffic slice; if error rate, latency, or CPU/GPU utilization breach thresholds, auto-rollback reverts to the last known good version. Real-time data-quality checks scan prediction logs for anomalies and drift, track null rates, detect distribution shifts, and verify online-offline feature parity within minutes, while the Hue observability stack tracks operational metrics plus prediction-level score distributions, calibration, and entropy. A four-metric readiness score (offline-eval, shadow, unit-test, and performance-monitoring coverage) gates control-plane safety.
+
+```mermaid
+flowchart TD
+  NEW["new model version"] --> SHADOW["shadow test<br/>(live traffic, no user impact)"]
+  SHADOW --> READY["readiness score<br/>(eval / shadow / unit-test / monitoring coverage)"]
+  READY -->|"pass"| CANARY["gradual rollout<br/>(small traffic slice)"]
+  DQ["real-time data-quality checks<br/>nulls, drift, online-offline parity"] --> HUE["Hue observability<br/>ops + score dist, calibration, entropy"]
+  CANARY --> HUE
+  HUE --> BREACH{"error / latency / util breach?"}
+  BREACH -->|"yes"| RB["auto-rollback to last good"]
+  BREACH -->|"no"| FULL["promote to full traffic"]
+```
+
+**Interview questions this design invites**
+- What does shadow testing catch that offline evaluation cannot?
+- What signals should trigger an automatic rollback versus a human page?
+- How do you verify online-offline feature parity in near real time?
+- Why monitor score distribution, calibration, and entropy instead of just accuracy?
+- What belongs in a deployment readiness score, and why gate promotion on it?
+- How do platform-default safeguards coexist with team-owned custom validation?
+
+**Tricks and gotchas**
+- Deployment shadow on by default means teams get safety without opting in, but it doubles inference cost during the shadow window.
+- Auto-rollback needs a reliable "last known good" pointer, or a bad revert compounds the incident.
+- Online-offline skew looks like drift but is a serving bug; parity checks separate the two.
+- Prediction-level entropy and calibration move before accuracy does, giving a label-free early warning.
+
+**Common mistakes and how to fix them**
+- Promoting straight to 100%: use gradual rollout with breach-triggered auto-rollback to limit blast radius.
+- Watching only ops metrics: add score-distribution, calibration, and entropy so prediction quality is visible pre-label.
+- Manual rollback only: wire thresholds to a one-step automatic revert so response is minutes not hours.
+- No promotion gate: require a coverage-based readiness score so untested models cannot ship.
+
+### Uber: Model Excellence Scores, SLA-style quality at scale ([source](https://www.uber.com/en-GB/blog/enhancing-the-quality-of-machine-learning-systems-at-scale/))
+
+Model Excellence Scores (MES) adapt SLA concepts from infrastructure reliability to ML, measuring and enforcing quality across prototyping, training, deployment, and prediction rather than only offline AUC or RMSE. The structure has three layers: Indicators (quantifiable quality measures), Objectives (target ranges with update frequencies), and Agreements (collections of indicators that yield a per-use-case PASS/FAIL). Indicators include a composite data-quality score (nulls, cross-region consistency, missing partitions, duplicates), dataset freshness, feature and concept drift, model interpretability (presence and confidence of feature explanations), and production prediction accuracy. Everything normalizes to [0,1] or a percentage for cross-model comparison, and rollout drove a reported 60% improvement in overall prediction performance.
+
+```mermaid
+flowchart TD
+  IND["Indicators<br/>(data quality, freshness, drift,<br/>interpretability, accuracy)"] --> OBJ["Objectives<br/>(target range + update cadence)"]
+  OBJ --> AGR["Agreement<br/>(per use-case indicator set)"]
+  AGR --> STATUS{"PASS / FAIL"}
+  STATUS -->|"fail"| ACT["accountable team acts<br/>(fix data / retrain / explain)"]
+  STATUS -->|"pass"| OK["quality bar met"]
+  NORM["normalize to [0,1] or %"] --> IND
+```
+
+**Interview questions this design invites**
+- How do you translate an SLA from service reliability into an ML quality contract?
+- What are the right indicators for each lifecycle phase (prototype vs prediction)?
+- Why normalize every indicator to a common scale, and what does that enable?
+- How do you set objective target ranges without triggering constant failures?
+- Who owns a failing Agreement, and what action does a FAIL drive?
+- How does an MES-style score prevent teams from optimizing offline AUC alone?
+
+**Tricks and gotchas**
+- Composite scores can hide a single bad indicator; keep the sub-scores inspectable, not just the roll-up.
+- Objectives need update frequencies, or a freshness indicator silently goes stale itself.
+- Normalizing to [0,1] lets you compare models, but a naive average lets one strong dimension mask a weak one.
+- Interpretability as an indicator is only useful if explanation confidence, not just presence, is scored.
+
+**Common mistakes and how to fix them**
+- Scoring offline metrics only: extend indicators across all four lifecycle phases including production prediction.
+- No accountability: attach each Agreement to an owning team so a FAIL has a responder.
+- Un-actionable metrics: design each indicator to point at a fix (retrain, backfill, add explanations).
+- Static objectives: give objectives update cadences so targets track a moving production baseline.
+
+### Shopify: monitoring and feature drift in the scaling playbook ([source](https://shopify.engineering/shopify-playbook-scaling-machine-learning))
+
+Shopify's playbook moves through Starting From Zero, Zero to One, and One to One Hundred, and in the scaling phase stresses that the conditions that once made a feature true can change over time. Its canonical example: early on, mobile transactions correlated strongly with fraud, but once mobile became the primary way to shop the correlation reversed and the feature lost its signal. The defense is systems or humans monitoring feature behavior and distributions, production backtesting by running a model in shadow for a cohort of users, and input/output reconciliation to confirm training-time feature definitions match inference-time observations (where many bugs surface). The fraud pipeline uses Apache Airflow to schedule continuous monitoring across merchant data.
+
+```mermaid
+flowchart TD
+  FEAT["production features<br/>(e.g. mobile-transaction signal)"] --> MON["distribution monitoring<br/>(systems + humans)"]
+  MON --> DRIFT{"feature relationship shifted?"}
+  DRIFT -->|"yes"| RETRAIN["retrain / re-weight feature"]
+  NEW["new model"] --> SHADOW["production backtest<br/>(shadow on user cohort)"]
+  SHADOW --> RECON["input/output reconciliation<br/>(train def == inference obs)"]
+  RECON --> DEPLOY["deploy"]
+  AIRFLOW["Airflow scheduler"] --> MON
+```
+
+**Interview questions this design invites**
+- Why can a strong feature (mobile == fraud) reverse into a useless one, and is that data or concept drift?
+- How would you detect that a feature's relationship to the label has flipped, not just its distribution?
+- What does shadow backtesting on a user cohort catch before full deployment?
+- Why does input/output reconciliation surface so many bugs, and how do you automate it?
+- How does Airflow scheduling fit a continuous monitoring loop for fraud?
+- When a feature loses signal, do you drop it, re-weight it, or retrain the whole model?
+
+**Tricks and gotchas**
+- The mobile-fraud reversal is concept drift, not covariate shift; retraining on fresh data fixes it, re-scaling inputs will not.
+- Distribution monitoring alone misses a relationship flip where the marginal barely moves; watch label correlation too.
+- Shadowing on a cohort limits risk but only covers behavior that cohort exercises.
+- Reconciliation bugs (train vs inference definitions) masquerade as drift; check parity before blaming the world.
+
+**Common mistakes and how to fix them**
+- Trusting a launch-time feature forever: monitor feature-to-label relationships, not just presence, over time.
+- Full deploy with no backtest: run in shadow for a cohort and compare before promoting.
+- Assuming training and serving compute features identically: reconcile input/output definitions explicitly.
+- Manual ad-hoc checks: schedule monitoring (Airflow) so it runs continuously across all merchants.
+
+### Chip Huyen: data distribution shifts and monitoring ([source](https://huyenchip.com/2022/02/07/data-distribution-shifts-and-monitoring.html))
+
+This article is the reference framing for the topic. It separates covariate shift (P(X) moves, P(Y|X) fixed), concept drift (P(Y|X) moves, P(X) fixed), and label shift (P(Y) moves), and centers the label-delay problem: recommender clicks arrive in seconds but fraud disputes take a month, and premature labeling (Twitter ads clicked hours later) underestimates true performance. It prescribes a four-layer monitoring hierarchy from accuracy down to raw inputs, drift statistics (summary stats, KS one-dimensional, MMD multivariate, sliding vs cumulative windows), and a toolbox of logs (distributed tracing, streaming SQL like Flink/KSQL), dashboards (avoiding "dashboard rot"), and alerts (policy plus channel plus runbook). A key production point: Google found 60 of 96 failures were not ML-specific but pipeline and deployment bugs.
+
+```mermaid
+flowchart TD
+  RAW["raw inputs"] --> FEAT["features<br/>(schema, ranges, relationships)"]
+  FEAT --> PRED["predictions<br/>(low-dim, two-sample test)"]
+  PRED --> ACC["accuracy metrics<br/>(natural labels: clicks, buys)"]
+  DELAY["label feedback delay<br/>(seconds to a month)"] --> ACC
+  FEAT --> DRIFT["drift stats<br/>(KS 1-D, MMD, windows)"]
+  PRED --> DRIFT
+  DRIFT --> ALERT["alert<br/>(policy + channel + runbook)"]
+  ACC --> ALERT
+  LOG["logs (tracing, Flink/KSQL)"] --> DASH["dashboards (avoid rot)"]
+  DASH --> ALERT
+```
+
+**Interview questions this design invites**
+- Define covariate shift, concept drift, and label shift, and give a fix for each.
+- How does label-feedback delay change what you can monitor in fraud vs recommendations?
+- Why monitor predictions and features when accuracy is the metric you actually care about?
+- When is a KS test insufficient, and what does MMD buy you (and cost you)?
+- Sliding versus cumulative windows: how does window length trade detection speed for false alarms?
+- Given "60 of 96 failures were not ML," where do you invest monitoring first?
+
+**Tricks and gotchas**
+- Most feature-distribution changes are benign; alerting on every one desensitizes the on-call.
+- Premature labeling biases accuracy low; wait out the feedback window or the metric lies.
+- KS is one-dimensional; applied per feature it misses joint shifts that MMD would catch.
+- Short windows detect fast but fire on seasonality; the window length is a real tuning knob.
+
+**Common mistakes and how to fix them**
+- Monitoring only accuracy: add prediction and feature layers as label-free leading indicators.
+- Blaming "drift" for everything: most incidents are pipeline/deploy bugs, so check data health first.
+- Dashboard rot from too many metrics: abstract low-level signals into task-specific KPIs.
+- Alerts with no runbook: pair every alert with a policy, a channel, and an actionable description.
+
+_Not reachable: Lyft (Full-Spectrum ML Model Monitoring), Netflix (ML Observability)_
