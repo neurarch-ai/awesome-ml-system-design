@@ -257,19 +257,22 @@ flowchart LR
 
 ### How they differ
 
-| System | Model family | Objectives | Calibration |
-|---|---|---|---|
-| Google Wide & Deep | Wide linear plus deep MLP | Single (install) | Implicit |
-| Meta DLRM | Explicit pairwise interactions | Single or multi | Not central |
-| Instacart pCTR | Consolidated wide-and-deep | Single (pCTR) | Explicit, ops-driven |
-| Pinterest home feed | Multi-task DNN, per-action heads | Multi | Logistic regression per head |
-| LinkedIn feed | Multi-task DNN | Multi (click, comment, reshare) | Not central |
-| Airbnb search | GBDT then neural net | Single (booking) | Not central |
-| DoorDash ads | Tree then multi-task DNN | Multi | Not central |
-| Spotify ads | Multi-gate MoE with DCN-v2 | Multi | ECE-monitored (drives pricing) |
-| Pinterest lightweight | XGBoost lightweight ranker | Single | Not central (top of funnel) |
-| Wayfair | Post-hoc calibration layer | Ranking scores in | Time-informed purchase prob |
-| Walmart search | Relevance plus engagement re-ranker | Multi | Not central |
+| System | Model family | Objectives | Calibration | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|
+| Google Wide & Deep | Wide linear plus deep MLP | Single (install) | Implicit | Dense data where frequent crosses reward memorization while the deep side covers the tail | Wide side leans on hand-crafted cross features that go stale |
+| Meta DLRM | Explicit pairwise interactions | Single or multi | Not central | Many sparse ids where second-order crosses dominate and you want them modeled structurally | Embedding tables blow up memory; interaction cost grows with feature count |
+| Instacart pCTR | Consolidated wide-and-deep | Single (pCTR) | Explicit, ops-driven | Many per-surface models to fold into one, cutting serving and ops overhead | One model must fit every surface's distribution; per-surface calibration needs watching |
+| Pinterest home feed | Multi-task DNN, per-action heads | Multi | Logistic regression per head | Several engagement actions to calibrate and blend into one utility score | Negatively-correlated tasks interfere; per-head calibration adds pipeline steps |
+| Pinterest related products | Multi-task DNN, engagement heads | Multi | Not central | Want to retune the utility weighting of actions without retraining the model | Four heads add serving cost; weights still need tuning to a business goal |
+| LinkedIn feed | Multi-task DNN | Multi (click, comment, reshare) | Not central | Multiple feed objectives worth training jointly in a single shared-body ranker | Combining per-task scores needs tuned weights; conflicting tasks can hurt |
+| Airbnb search | GBDT then neural net | Single (booking) | Not central | A mature tree baseline to migrate when you want neural capacity for richer features | The net must clear a strong GBDT bar; deep-learning serving is new operational surface |
+| DoorDash ads | Tree then multi-task DNN | Multi | Not central | A tree ads ranker to upgrade toward multi-objective conversion prediction | Added heads and DNN inference raise per-candidate cost |
+| Spotify ads | Multi-gate MoE with DCN-v2 | Multi | ECE-monitored (drives pricing) | Calibration feeds pricing and auctions, so predicted probabilities must be right | MoE gating and DCN-v2 add complexity; ECE must be monitored as a live metric |
+| Pinterest lightweight | XGBoost lightweight ranker | Single | Not central (top of funnel) | Tight latency budget early in the funnel where a cheap ranker is enough | Less capacity than a DNN; gives an order, not calibrated probabilities |
+| Wayfair | Post-hoc calibration layer | Ranking scores in | Time-informed purchase prob | Raw scores must become time-aware purchase probabilities for downstream use | Only calibrates, does not improve ordering; the time model must track drift |
+| Walmart search | Relevance plus engagement re-ranker | Multi | Not central | Pure engagement ranking erodes relevance and the two need rebalancing | Balancing relevance against engagement is a tuning problem; re-rank adds a stage |
+
+The core dividing line is how each system models feature interactions (implicit MLP, explicit dot-product or DCN, or a memorize-plus-generalize split) and whether it optimizes one objective or blends several, with calibration mattering only once scores feed an auction, a price, or a cross-task utility.
 
 ### The systems
 

@@ -361,15 +361,20 @@ flowchart TD
 
 ### How they differ
 
-| System | Query understanding | Retrieval | Ranking model | Relevance-label source |
-|---|---|---|---|---|
-| Amazon | Structured query parse | Learning-to-rank-and-retrieve (unified) | Contextual-bandit LTR | Logged engagement |
-| LinkedIn | IQL query translation | Hybrid (lexical + embedding EBR) | GBDT first pass, neural second pass | Crowdsourced ratings + click/engagement |
-| Pinterest SearchSage | DistilBERT query encoder | Neural ANN (HNSW) blended with text | Multi-objective relevance/engagement | Query-to-engaged-Pin pairs (saves, long clicks) |
-| Instacart (hybrid) | Category and attribute parse | Hybrid text + embedding | Two-stage ranker | Engagement + conversion logs |
-| Instacart (intent engine) | LLM intent + category mapping | Feeds downstream retrieval | Downstream LTR | LLM-labeled intents + engagement |
-| Yelp | Business-matching features | Lexical business match | Learning-to-rank (from hand-tuned) | Human labels + engagement |
-| Wayfair WANDS | n/a (eval dataset) | n/a | n/a | Human-judged relevance labels |
+| System | Query understanding | Retrieval | Ranking model | Relevance-label source | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| Amazon | Structured query parse | Learning-to-rank-and-retrieve (unified) | Contextual-bandit LTR | Logged engagement | Structured catalog search where one model retrieves and ranks, and the bandit keeps exploring new documents | Bandit exploration needs traffic; thin on cold and tail queries with little engagement |
+| LinkedIn | IQL query translation | Hybrid (lexical + embedding EBR) | GBDT first pass, neural second pass | Crowdsourced ratings + click/engagement | Cheap GBDT casts a wide net, neural second pass adds precision within budget | Two-model stack doubles training and serving complexity; crowdsourced ratings lag |
+| Pinterest SearchSage | DistilBERT query encoder | Neural ANN (HNSW) blended with text | Multi-objective relevance/engagement | Query-to-engaged-Pin pairs (saves, long clicks) | Discovery search rich in engagement pairs, where embeddings bridge the vocabulary gap | Engaged-Pin labels blur relevance with engagement; weak on exact strings and rare terms |
+| Instacart (hybrid) | Category and attribute parse | Hybrid text + embedding | Two-stage ranker | Engagement + conversion logs | Grocery catalog with crisp categories and conversion as a clean downstream label | Conversion optimizes buying, not relevance; sparse signal for new items |
+| Instacart (intent engine) | LLM intent + category mapping | Feeds downstream retrieval | Downstream LTR | LLM-labeled intents + engagement | Broad or ambiguous queries needing intent, where an LLM scales the labeling | LLM cost and latency; LLM label errors propagate without guardrails |
+| Yelp | Business-matching features | Lexical business match | Learning-to-rank (from hand-tuned) | Human labels + engagement | Local business match where lexical plus location signals dominate; migrating off hand-tuned rules | Lexical-only retrieval misses paraphrase; no embedding arm for the vocabulary gap |
+| Wayfair WANDS | n/a (eval dataset) | n/a | n/a | Human-judged relevance labels | Reproducible offline benchmarking of product-search relevance | Static dataset: no engagement, no freshness, not a live serving system |
+| DCN V2 (Wang et al.) | n/a (ranking model) | n/a | Deep & Cross, explicit efficient feature crosses | n/a (ranking model) | Many sparse features where explicit crosses carry the signal, at web scale | Adds cross-layer params; solves ranking only, not retrieval or query understanding |
+| Wide & Deep (Cheng et al.) | n/a (ranking model) | n/a | Wide linear over crossed features + deep net | n/a (ranking model) | Need memorization of seen feature crosses plus generalization to unseen | Wide side needs hand-engineered crosses; two-part training |
+| RankNet to LambdaMART (Burges) | n/a (LTR reference) | n/a | Pairwise/listwise LTR (RankNet, LambdaMART) | Graded relevance / pairwise preferences | Metric is order and position-weighted (NDCG), over tabular ranking features | Pairwise cost grows with pair count; trees weaker on raw dense or text inputs |
+
+The core dividing line is which retrieval arm a team leans on (lexical exactness versus embedding recall) and whether its labels come mostly from scarce human judgments or from abundant debiased engagement.
 
 ### The systems
 

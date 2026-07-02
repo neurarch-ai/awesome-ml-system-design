@@ -339,12 +339,19 @@ flowchart TD
 
 ### How they differ
 
-| System | Learning | Features | Latency | Optimizes for |
-|---|---|---|---|---|
-| PayPal (graph DB) | Supervised + unsupervised embeddings | Graph / entity | Real-time (sub-second) | Speed vs comprehensiveness; links repeat rings live |
-| Uber (RGCN) | Supervised | Graph | Batch scores into risk model | Precision at low added false positives |
-| Grab (GraphBEAN) | Unsupervised | Graph (bipartite) | Batch | Catching novel fraud over known-fraud accuracy |
-| SMOTE (Chawla et al.) | Supervised training technique | Tabular | Offline | Minority recall under extreme imbalance |
+| System | Learning | Features | Latency | Optimizes for | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| PayPal (graph DB) | Supervised + unsupervised embeddings | Graph / entity | Real-time (sub-second) | Speed vs comprehensiveness; links repeat rings live | High-QPS inline scoring where you must resolve shared-entity links (devices, cards, addresses) at decision time | Custom million-QPS graph DB is heavy infrastructure to build and run; only pays off at payment scale |
+| Stripe (Radar) | Supervised | Tabular + embeddings | Real-time (sub-100ms) | Precision inline with continuous retraining and explainability | Card-not-present auth where the score must be fast, explainable, and refreshed against fresh labels | Leans on frequent retrain to stay ahead of drift; explainability adds engineering surface |
+| Uber (RGCN collusion) | Supervised | Graph | Batch scores into risk model | Precision at low added false positives (+15% reported) | Coordinated collusion across the rider-driver graph that per-event models miss | Needs labeled rings; batch cadence lags a fast-moving attack |
+| Uber (Risk Entity Watch) | Unsupervised anomaly | Entity | Batch | Labels-free scoring of novel patterns across business lines | New attacks with no labels yet, scored on entities across many product lines | Unusual is not fraudulent, so more false positives; feeds review rather than auto-blocks |
+| Grab (GraphBEAN) | Unsupervised | Graph (bipartite) | Batch | Catching novel fraud over known-fraud accuracy | Novel fraud with no labels, surfaced from bipartite account-device structure | Trades known-fraud precision for novelty coverage; batch, so not inline |
+| Grab (RGCN) | Supervised | Graph | Batch | Less labeled data via shared-device/address correlations, explainable clusters | Fraud rings sharing devices and addresses, where explainable clusters aid analysts | Relies on meaningful shared-attribute edges; cold entities with no links are invisible |
+| Airbnb (targeted friction) | Supervised | Tabular + entity | Inline | Loss function weighing friction cost vs chargeback cost | Cost-sensitive action choice where blocking outright is too blunt and friction is cheaper | Mis-tuned friction annoys good customers; the friction-vs-loss curve needs constant tuning |
+| Wide & Deep (Cheng et al.) | Supervised | Sparse embeddings + dense | Real-time (inline) | Accuracy on known fraud when the model goes deep | Strong categorical signals (device, merchant, geo, BIN) that reward embeddings plus dense velocity features | Blind to novel attacks it never saw labeled; needs mature labels to train |
+| SMOTE (Chawla et al.) | Supervised training technique | Tabular | Offline | Minority recall under extreme imbalance | Severe imbalance with limited minority data, to lift recall at train time | Interpolated samples can be unrealistic and blur the decision boundary; evaluate on the true base rate |
+
+The core dividing line is whether the system needs labels: supervised methods score known fraud at high precision, while unsupervised anomaly methods trade precision to catch the novel attacks that have no labels yet.
 
 ### The systems
 

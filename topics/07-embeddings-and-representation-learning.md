@@ -371,16 +371,18 @@ flowchart LR
 
 ### How they differ
 
-| System | Learning method | Entity embedded | Index / serving | Cross-task reuse |
-|---|---|---|---|---|
-| GraphSAGE | Graph (inductive) | Graph nodes | ANN lookup | Node classification, retrieval |
-| LightGCN | Graph (transductive) | Users and items | Dot-product retrieval | Recommendation |
-| SimCSE | Contrastive (sentence) | Sentences | ANN lookup | Semantic similarity, retrieval |
-| PinSage | Graph (inductive) | Pins (items) | Nearest-neighbor index | Recommendation, retrieval |
-| Airbnb | Sequence (skip-gram negatives) | Listings | Similarity features | Similar-listing carousel, search ranking |
-| Spotify | Two-tower (dense) | Query and episode | ANN index | Semantic podcast search |
-| Instacart | Two-tower contrastive | Query and product | FAISS ANN, cached queries | Search retrieval and ranking |
-| Wayfair | Sequence (self-supervised) | Customer sessions | Feature store | Fraud detection |
+| System | Learning method | Entity embedded | Index / serving | Cross-task reuse | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| GraphSAGE | Graph (inductive) | Graph nodes | ANN lookup | Node classification, retrieval | Rich node features and new nodes arriving constantly, so cold start is a non-event | Sparse graphs or thin features starve the aggregator; neighbor sampling adds train and serve cost |
+| LightGCN | Graph (transductive) | Users and items | Dot-product retrieval | Recommendation | A fixed user-item interaction graph where a cheap, strong collaborative-filtering baseline is enough | No vector for an unseen entity; a genuinely new user or item needs a retrain or fallback |
+| SimCSE | Contrastive (sentence) | Sentences | ANN lookup | Semantic similarity, retrieval | Text relatedness learned from unlabeled sentences with in-batch negatives | Small batches give too few negatives; generic text drifts from a specialized domain |
+| PinSage | Graph (inductive) | Pins (items) | Nearest-neighbor index | Recommendation, retrieval | Web-scale graphs (billions of nodes) with visual plus graph features | Heavy infrastructure (distributed neighbor sampling, producer-consumer pipelines); high engineering cost |
+| Airbnb | Sequence (skip-gram negatives) | Listings | Similarity features | Similar-listing carousel, search ranking | Strong session co-occurrence signal, with market-aware negatives to shape the space | Thin-history listings are id-only and cold-start weak; negatives must be sampled from the right market |
+| Spotify | Two-tower (dense) | Query and episode | ANN index | Semantic podcast search | Free-text query mapped to items, with one side precomputed and served against ANN | Dot-product scoring caps expressiveness; quality leans on large-batch negatives |
+| Instacart | Two-tower contrastive | Query and product | FAISS ANN, cached queries | Search retrieval and ranking | High-QPS search where caching hot queries hides encoder and ANN latency | Popularity bias without logQ correction; cached query vectors go stale as catalog shifts |
+| Wayfair | Sequence (self-supervised) | Customer sessions | Feature store | Fraud detection | Unlabeled browsing journeys repurposed as features for a downstream task with scarce labels | A space tuned by self-supervision on sessions may not align with the fraud objective it is reused for |
+
+The core dividing line is how each system defines "related" (graph neighborhood, session co-occurrence, or a contrastive tower pair) and whether its encoder is inductive (embeds a brand-new entity straight from features) or transductive (id-bound, so it must retrain to cover new entities).
 
 ### The systems
 

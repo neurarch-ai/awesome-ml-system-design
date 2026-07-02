@@ -244,14 +244,22 @@ flowchart LR
 
 ### How they differ
 
-| System | Sequence model | Real-time vs batch | Long / lifelong history | Funnel position |
-|---|---|---|---|---|
-| Alibaba BST | Self-attention transformer | Batch-built sequence | Recent window | Ranking (CTR) |
-| Alibaba DIN | Attention activation unit (pool per candidate) | Batch | Aggregated interests re-weighted per ad | Ranking (CTR) |
-| Pinterest TransAct | Transformer encoder | Real-time last-100 actions, twice-weekly retrain | Short-term, paired with long-term embeddings | Ranking (Homefeed) |
-| Pinterest PinnerFormer | Transformer, all-action loss | Batch (daily), avoids streaming updates | Long horizon into one user vector | Retrieval + ranking feature |
-| Spotify CoSeRNN | Recurrent net, one embedding per session | Real-time at session start | Session-level, long-term plus per-session offset | Retrieval (ANN over tracks) |
-| Kuaishou TWIN V2 | Two-stage attention (GSU retrieve, ESU score) | Offline clustering, online inference | Lifelong, up to ~10^6 compressed via clustering | Ranking (CTR) |
+| System | Sequence model | Real-time vs batch | Long / lifelong history | Funnel position | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| Alibaba BST | Self-attention transformer | Batch-built sequence | Recent window | Ranking (CTR) | Standard CTR lift over aggregate features with modest engineering, short recent window | No same-session freshness, long histories not modeled |
+| Alibaba DIN | Attention activation unit (pool per candidate) | Batch | Aggregated interests re-weighted per ad | Ranking (CTR) | Many candidate ads where the relevant past interest depends on the specific candidate | Per-candidate attention cost scales with candidate count, no explicit order or time signal |
+| Pinterest TransAct | Transformer encoder | Real-time last-100 actions, twice-weekly retrain | Short-term, paired with long-term embeddings | Ranking (Homefeed) | In-session responsiveness matters, fuses immediate actions onto slower long-term embeddings | Streaming plus retrain infra complexity, real-time path sees only the last-100 window |
+| Pinterest PinnerFormer | Transformer, all-action loss | Batch (daily), avoids streaming updates | Long horizon into one user vector | Retrieval + ranking feature | One durable user vector reusable across retrieval and ranking with no streaming cost | Daily cadence misses same-session intent shifts |
+| Spotify CoSeRNN | Recurrent net, one embedding per session | Real-time at session start | Session-level, long-term plus per-session offset | Retrieval (ANN over tracks) | Strong session and context structure, predict intent at session start | Recurrent path less parallel, reacts at session granularity not per action mid-session |
+| Kuaishou TWIN V2 | Two-stage attention (GSU retrieve, ESU score) | Offline clustering, online inference | Lifelong, up to ~10^6 compressed via clustering | Ranking (CTR) | Ultra-long lifelong histories where relevant past events must be retrieved cheaply before scoring | Two-stage plus clustering pipeline complexity, clustering can blur fine-grained recent detail |
+| Netflix Foundation Model | Large sequence foundation model | Batch, multiple integration paths | Long-horizon pretrained representation | Personalization (retrieval + ranking) | One pretrained sequence model amortized across many personalization applications | Foundation-model training and serving cost, integration effort per surface |
+| Instacart | BERT-style bidirectional encoder | Centralized next-action serving | Recent action context | Retrieval (search, browse, recs) | One centralized model serving several surfaces at once | Bidirectional encoder needs care to stay causal, shared model must fit every surface |
+| Etsy adSformers | Transformer encoder (short-term) | Short-term recent actions | Short-term only | Ranking (ad CTR / CVR) | Cheap short-term intent capture for ad CTR and CVR | Ignores durable long-term preference |
+| Wayfair MARS | Self-attention transformer | Batch over browsed-item sequences | Recent browsing window | Ranking / recommendation | Tracking shifting tastes across browsed items | Browse-only signal, no real-time fusion |
+| LinkedIn Feed SR | Transformer sequential ranker | Batch-trained ranker | Recent feed-interaction sequence | Ranking (feed) | Replacing a feature-cross ranker (DCNv2) with a sequence-native one at feed scale | Large-scale transformer serving cost in the ranking path |
+| Airbnb | Listing embeddings from sessions | Real-time in-session | Session-level | Retrieval / search personalization | Real-time in-session personalization from co-occurrence embeddings under sparse booking signal | Embedding co-occurrence, not an attention sequence model, cold listings need content features |
+
+The core dividing line: how fresh the user state is (real-time streaming fusion versus batch-precomputed vectors) traded against how much history the model carries (a short recent window versus lifelong compressed behavior).
 
 ### The systems
 

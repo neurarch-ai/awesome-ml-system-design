@@ -395,14 +395,17 @@ flowchart TD
 
 ### How they differ
 
-| System | Randomization unit | Variance reduction | Guardrail metrics | Interference handling |
-|---|---|---|---|---|
-| Netflix (interleaving) | Per user, both rankers blended in one list | Interleaving; ~100x fewer subscribers to prune rankers | Business metrics confirmed in the follow-up A/B | Within-user comparison sidesteps cross-user leakage |
-| Uber | Per user, flicker (arm-switching) users excluded | CUPED | App crash rate, trip frequency, sequential monitoring | Sequential monitoring, not marketplace-specific here |
-| LinkedIn | Individual vs cluster randomization | CUPED | Network-effect metrics under test | Cluster randomization to detect and bound interference |
-| Lyft | Session / geo / time (switchback) | Not the focus | Marketplace health metrics | Geo and time switchbacks to contain marketplace spillover |
-| Airbnb | Per user | Power and impact gating | Impact, power, stat-sig-negative guardrails | Guardrails flag harmful tests pre-launch |
-| Spotify | Per user | Not the focus | Success plus quality metrics combined | Risk-aware decision across multiple metrics |
+| System | Randomization unit | Variance reduction | Guardrail metrics | Interference handling | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| Netflix (interleaving) | Per user, both rankers blended in one list | Interleaving; ~100x fewer subscribers to prune rankers | Business metrics confirmed in the follow-up A/B | Within-user comparison sidesteps cross-user leakage | Pruning many ranking algorithms fast when subscribers are scarce | Only measures ranking preference; needs an A/B follow-up for business impact and does not apply outside ranked lists |
+| Uber | Per user, flicker (arm-switching) users excluded | CUPED | App crash rate, trip frequency, sequential monitoring | Sequential monitoring, not marketplace-specific here | Single-app product changes wanting early looks without inflating false positives | Flicker users must be excluded; per-user assignment does not contain rider-driver marketplace spillover |
+| LinkedIn | Individual vs cluster randomization | CUPED | Network-effect metrics under test | Cluster randomization to detect and bound interference | Social and network features where treatment leaks across connected users | Clustering spends power (fewer effective units), so it needs more traffic to reach significance |
+| Lyft | Session / geo / time (switchback) | Not the focus | Marketplace health metrics | Geo and time switchbacks to contain marketplace spillover | Two-sided marketplaces where supply and demand shift under treatment | Coarse switchback units add temporal variance and cut effective sample size |
+| Airbnb | Per user | Power and impact gating | Impact, power, stat-sig-negative guardrails | Guardrails flag harmful tests pre-launch | Stopping harmful or underpowered tests before they ship at scale | Gating can hold back real but low-power wins; guardrails depend on trustworthy baselines |
+| Booking.com | Per user | Not the focus | Experiment quality (SRM and validity checks) as the platform KPI | Quality checks catch broken or invalid experiments | Keeping a very large experiment program trustworthy end to end | Quality-as-KPI grades the platform, not any single test's effect size |
+| Spotify | Per user | Not the focus | Success plus quality metrics combined | Risk-aware decision across multiple metrics | Ship calls that must balance several competing metrics at once | Combining metrics needs risk weights and thresholds that can mask a single-metric regression |
+
+The core dividing line is the randomization unit: per-user assignment is simplest but leaks whenever treatment spills across users, which pushes network and marketplace products toward cluster, geo, or switchback designs that trade statistical power for interference safety.
 
 ### The systems
 

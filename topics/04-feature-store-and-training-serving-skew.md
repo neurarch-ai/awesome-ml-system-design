@@ -254,11 +254,15 @@ flowchart TD
 
 ### How they differ
 
-| System | Online store technology | Streaming vs batch | Point-in-time correctness | Ownership / self-serve |
-|---|---|---|---|---|
-| Uber Michelangelo | Cassandra (P95 under 10ms) | Both: batch precompute from HDFS plus Kafka/Samza near-real-time aggregates | Same data and batch pipeline for training and serving; streaming logged back to HDFS with backfill | ~10,000 shared features, owner/description/SLA metadata, cross-team reuse |
-| Feast | Pluggable: Redis, DynamoDB, Bigtable, Cassandra, Postgres, and 20+ more | Both: scheduled materialization plus push-based streaming ingestion (Kafka/Kinesis) | As-of joins produce point-in-time correct sets so future values do not leak | Python SDK, CLI, web UI registry; DataHub/Amundsen governance |
-| Google Rules of ML | Not a store; guidance for serving systems | Emphasizes logging serving-time features to reuse for training | Test on data gathered after training data ends; watch for external tables changing between train and serve | Discipline: reuse code between training and serving |
+| System | Online store technology | Streaming vs batch | Point-in-time correctness | Ownership / self-serve | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| Uber Michelangelo | Cassandra (P95 under 10ms) | Both: batch precompute from HDFS plus Kafka/Samza near-real-time aggregates | Same data and batch pipeline for training and serving; streaming logged back to HDFS with backfill | ~10,000 shared features, owner/description/SLA metadata, cross-team reuse | Many teams sharing thousands of features at scale, tight serving latency, real-time signals | Heavy in-house platform to build and operate; only pays off at large-org reuse |
+| LinkedIn Feathr | Redis (online) with the same definitions materialized offline | Both: Spark-based transformations for batch plus streaming feature ingestion | Point-in-time joins generate training features so past labels see only past values | One feature definition and registry shared online and offline, UI for discovery | Large Spark shops wanting a single definition to serve both online and offline | Coupled to Spark and its operational weight; smaller stacks pay for machinery they will not use |
+| Feast | Pluggable: Redis, DynamoDB, Bigtable, Cassandra, Postgres, and 20+ more | Both: scheduled materialization plus push-based streaming ingestion (Kafka/Kinesis) | As-of joins produce point-in-time correct sets so future values do not leak | Python SDK, CLI, web UI registry; DataHub/Amundsen governance | Teams wanting an open, storage-agnostic reference design without buying a platform | Framework not a full pipeline; you bring your own compute, transformations, and orchestration |
+| Tecton | Managed low-latency store (DynamoDB / Redis backed) | Both, with strong managed streaming materialization for fresh real-time features | Managed point-in-time correct training-set generation from feature definitions | Managed SaaS, features defined as code, from the Michelangelo team | Teams that want real-time features without operating the streaming and materialization infra | Commercial managed service: vendor dependency and cost versus self-hosting |
+| Google Rules of ML | Not a store; guidance for serving systems | Emphasizes logging serving-time features to reuse for training | Test on data gathered after training data ends; watch for external tables changing between train and serve | Discipline: reuse code between training and serving | Any team, as cheap discipline to apply before building or buying feature infrastructure | Guidance only, no store; without enforcement the discipline quietly erodes and skew returns |
+
+The core dividing line is build-versus-buy against reuse and real-time need: a full self-serve platform earns its cost only when many teams share features and stream them, while at the low end discipline (or a light open framework) beats standing up infrastructure.
 
 ### The systems
 

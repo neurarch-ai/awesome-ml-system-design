@@ -328,16 +328,20 @@ flowchart LR
 
 ### How they differ
 
-| System | Serving stack | Batching / GPU | Deploy safety | Centralized vs decentralized |
-|---|---|---|---|---|
-| Clipper (RISELab) | In-house research system, model abstraction layer | Adaptive batching + prediction caching | Model abstraction for swaps | Centralized layer over frameworks |
-| Uber Michelangelo | In-house platform | Batched RPC, sub-10ms P95 | Registry + staged rollout | Centralized platform |
-| Grab Catwalk | TF Serving on Kubernetes | K8s autoscaling, hundreds of models | Version-served-while-loading, rollback to prior | Centralized self-serve platform |
-| Lyft LyftLearn | In-house serving | Ms-latency predictions | Versioning + shadowing | Decentralized inference platform |
-| Shopify Merlin | Ray-on-Kubernetes, MLServer / FastAPI | GPU-configurable, MLServer request batching | CI/CD, per-service isolation | Decentralized, dedicated service per use case |
-| Pinterest | GPU serving | Dynamic batching, sub-linear latency scaling | (not the focus) | Centralized GPU inference |
-| Netflix Kayenta | Automated canary analysis | (not the focus) | Automated canary gate: baseline vs canary metrics | Centralized rollout gate |
-| Booking.com | Multi-phase ranking platform | Phase-split scoring | Shadow-traffic mirroring, p999 budgets | Centralized ranking platform |
+| System | Serving stack | Batching / GPU | Deploy safety | Centralized vs decentralized | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| Clipper (RISELab) | In-house research system, model abstraction layer | Adaptive batching + prediction caching | Model abstraction for swaps | Centralized layer over frameworks | Many heterogeneous models across frameworks need one low-latency predict API | Research system; caching only pays off when inputs repeat, adaptive batching still trades tail latency |
+| Uber Michelangelo | In-house platform | Batched RPC, sub-10ms P95 | Registry + staged rollout | Centralized platform | One company-wide platform under a tight (sub-10ms P95) budget with registry-backed rollout | Building and owning a full central platform is heavy; a single stack must fit every team |
+| Grab Catwalk | TF Serving on Kubernetes | K8s autoscaling, hundreds of models | Version-served-while-loading, rollback to prior | Centralized self-serve platform | Hundreds of models self-served on shared K8s with autoscaling | Serving-while-loading and hot-swap lean on TF Serving behavior; cold start still bites on big artifacts |
+| Lyft LyftLearn | In-house serving | Ms-latency predictions | Versioning + shadowing | Decentralized inference platform | Many teams own their own inference and shadow a candidate before shipping | Decentralized ownership duplicates serving infra and discipline across teams |
+| Shopify Merlin | Ray-on-Kubernetes, MLServer / FastAPI | GPU-configurable, MLServer request batching | CI/CD, per-service isolation | Decentralized, dedicated service per use case | Each use case wants isolation and its own GPU-configurable, CI/CD-shipped service | Per-service isolation multiplies fleets and cost; no shared batching across use cases |
+| Pinterest | GPU serving | Dynamic batching, sub-linear latency scaling | (not the focus) | Centralized GPU inference | GPU-bound models that exploit sub-linear latency scaling under batching | Needs a GPU fleet; dynamic batching adds tail latency and safe-deploy is not the focus |
+| Netflix Kayenta | Automated canary analysis | (not the focus) | Automated canary gate: baseline vs canary metrics | Centralized rollout gate | Automated, metric-gated rollout decisions at scale without a human in the loop | A rollout gate, not a serving stack; needs comparable baseline vs canary metrics to judge |
+| Booking.com | Multi-phase ranking platform | Phase-split scoring | Shadow-traffic mirroring, p999 budgets | Centralized ranking platform | Multi-phase ranking held to strict p999 with shadow mirroring before ship | Shadow doubles inference cost while it runs; phase-split scoring adds coordination complexity |
+| Google Rules of ML | Guidance, not a system | (not the focus) | Staged rollout discipline, keep serving aligned with training | Guidance for either shape | Teams that need deployment discipline and staged-rollout habits, not a stack | Principles, not runnable infra; nothing enforces them for you |
+| LinkedIn Pensieve | Embedding feature platform | Nearline pre-computation | Versioned embeddings served from a store | Centralized embedding platform | Embedding inference that can be pushed off the critical path into nearline pre-compute | Nearline trades freshness for latency; unsuited to predictions needing real-time context |
+
+The core dividing line is a centralized shared platform versus a decentralized per-team service, and how much of the shadow, canary, and rollback toolkit each one automates rather than leaves to the caller.
 
 ### The systems
 

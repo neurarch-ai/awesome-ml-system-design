@@ -264,13 +264,17 @@ flowchart LR
 
 ### How they differ
 
-| System | Negatives | ANN index | Item tower cadence | What bites at their scale |
-|---|---|---|---|---|
-| YouTube/Google | In-batch + logQ correction | Not the focus | Batch | Power-law sampling bias against head items |
-| Airbnb | Impression-not-booked (journey) | IVF over HNSW | Daily batch | Frequent price/availability updates, filter latency, cluster uniformity |
-| Snap | In-batch | HNSW | Frequent batch refresh | Splitting feed-processing from a sharded retrieval service |
-| Etsy | Hard-negative sampling | HNSW with 4-bit PQ | Batch | Unifying graph, transformer, term embeddings end to end |
-| Pinterest | Sampled softmax, user-level masking | Learned/offline index | Batch | In-batch false negatives, request-level duplication |
+| System | Negatives | ANN index | Item tower cadence | When this shape wins | What bites at their scale | Key result / metric moved |
+|---|---|---|---|---|---|---|
+| YouTube/Google | In-batch + logQ correction | Not the focus | Batch | Massive power-law corpora where in-batch negatives over-sample popular items | Power-law sampling bias against head items | Unbiased softmax, restored retrieval recall |
+| Airbnb | Impression-not-booked (journey) | IVF over HNSW | Daily batch | Inventory that turns over fast (price, availability) with heavy hard filtering | Frequent price/availability updates, filter latency, cluster uniformity | Booking relevance under high listing-update volume |
+| Snap | In-batch | HNSW | Frequent batch refresh | High-QPS feeds where request-processing and retrieval must scale apart | Splitting feed-processing from a sharded retrieval service | Independently scalable serving for video retrieval |
+| Etsy | Hard-negative sampling | HNSW with 4-bit PQ | Batch | Relevance-critical search needing sharp negatives on a memory-tight index | Unifying graph, transformer, term embeddings end to end | +5.58% purchase rate |
+| Pinterest | Sampled softmax, user-level masking | Learned/offline index | Batch | Large-scale retrieval where in-batch false negatives and duplicate requests hurt | In-batch false negatives, request-level duplication | Cleaner training signal, request-level dedup |
+| Uber | Not the focus | Not the focus | Batch | Many near-duplicate models (one per city) collapsible into a single model | Layer-sharing plus bag-of-words history to generalize across cities | One global model replaces thousands of city models |
+| Walmart | Not the focus | Not the focus | Batch | Query-heavy search where typos and weak relevance signal drag plain EBR down | Adding a relevance reward model and typo-aware training onto EBR | Retrieval relevance on noisy queries |
+
+The core dividing line is not the tower architecture (everyone shares it) but which negatives each system trusts and how hard its index has to churn to stay fresh under its own catalog dynamics.
 
 ### The systems
 
