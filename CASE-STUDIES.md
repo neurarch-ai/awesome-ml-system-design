@@ -10,6 +10,8 @@ engineering writeup with a verified link, tagged by what it actually shows you
 This is a roll-up of the **Seen in production** section inside each topic, so you
 can browse the whole set by category in one place. 188 systems and growing.
 
+> Want the design behind these, not just the link? See [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md): each system read from its source and turned into a diagram, interview questions, tricks, and common mistakes.
+
 ---
 ### [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) · 13 systems
 
