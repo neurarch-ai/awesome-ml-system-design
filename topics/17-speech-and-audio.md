@@ -203,6 +203,21 @@ These are validated reference graphs at real dimensions, shape-checked end to en
 
 Real systems that ship the patterns above. Each is a first-party engineering writeup; read them for what an interview answer skips: who the system serves, the product design, the eval bar, and the deployment shape.
 
+### How they differ
+
+The speech stack is not one model but a family of task-specific systems that sit at different points on the latency, size, and privacy surface. This table lines up the main approaches this topic covers so you can see why each is chosen.
+
+| Approach | Best for | Latency profile | When it breaks / watch out | Key metric |
+|---|---|---|---|---|
+| CTC (frame-label, blank) | Cheap streaming, forced alignment | Causal, low latency | Conditional independence, no internal LM, weaker on context | WER (with external LM) |
+| RNN-T (transducer) | On-device streaming dictation | Causal, emits frame by frame | Committed left to right, cannot revise; memory/power envelope on device | WER + endpoint latency |
+| Conformer seq2seq (batch) | Cloud transcription of recordings | Full-context, non-streaming | Attention pathologies (looping, early stop); needs chunking on long audio | WER (entity/numeric sliced) |
+| Whisper-style weak supervision | Zero-shot multilingual ASR and translation | Batch, high latency | Hallucinated text on silence/noise; heavy compute | WER across languages |
+| Wake word / keyword spotting | Always-on trigger phrase | Continuous, sub-second on low-power core | False-accept vs false-reject tradeoff; battery if oversized | False accepts per hour vs false rejects (DET) |
+| TTS (acoustic model + vocoder) | Text to speech output | Offline or streamed synthesis | Autoregressive skip/repeat; robotic prosody or vocoder artifacts | MOS (human 1 to 5) |
+
+The core dividing line is causality: streaming systems (CTC, RNN-T, wake word) can only see audio up to now and must commit, while batch systems (Conformer, Whisper) attend over the whole utterance and trade latency for accuracy.
+
 - **Google** [An All-Neural On-Device Speech Recognizer](https://research.google/blog/an-all-neural-on-device-speech-recognizer/): An RNN-T streaming ASR quantized to 80MB for offline Gboard voice typing. *(deployment)*
 - **AssemblyAI** [Conformer-1: robust speech recognition trained on 650K hours](https://www.assemblyai.com/blog/conformer-1): A Conformer batch ASR scaled on 650K hours for noise robustness. *(product design)*
 - **OpenAI** [Whisper: Robust Speech Recognition via Large-Scale Weak Supervision](https://github.com/openai/whisper): A weakly-supervised multitask model for zero-shot ASR and translation. *(eval bar)*

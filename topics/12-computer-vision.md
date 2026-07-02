@@ -239,15 +239,21 @@ flowchart LR
 
 ### How they differ
 
-| System | Task | Backbone | Serving | Headline metric |
-| --- | --- | --- | --- | --- |
-| Airbnb categorize | Classification | CNN (ResNet-50) | Batch | Per-class precision / recall |
-| Airbnb amenity | Detection | CNN | Batch | mAP |
-| Meta Mask R-CNN | Instance segmentation | CNN | Batch | COCO mask AP |
-| Pinterest unified | Embedding | CNN (SE-ResNeXt) | Offline index | Retrieval + engagement |
-| Google Africa buildings | Segmentation | CNN (U-Net) | Batch | mAP |
-| Netflix in-video | Embedding | Image-text (CLIP-style) | Offline index | Recall on text queries |
-| Bumble Private Detector | Binary classification | CNN (EfficientNetV2) | Real-time gate | Accuracy at fixed precision / recall |
+| System | Task | Backbone | Serving | Headline metric | When it wins | Watch out |
+| --- | --- | --- | --- | --- | --- | --- |
+| Airbnb categorize | Classification | CNN (ResNet-50) | Batch | Per-class precision / recall | Whole-image label from a fixed taxonomy, cheap image-level labels | Long tail sinks macro recall; one global threshold is wrong for multi-label |
+| Airbnb amenity | Detection | CNN | Batch | mAP | The target is a localized object, not the whole scene | Box labels cost more; small or occluded objects drag mAP down |
+| Meta Mask R-CNN | Instance segmentation | CNN | Batch | COCO mask AP | Need per-object masks (count and shape), not just a box | Mask labels are the most expensive; heaviest head to serve |
+| Dropbox OCR | OCR (detect then recognize) | CNN plus corner detection | Batch | Text / search accuracy | The value is the text inside the image, at billions-of-images scale | Two-stage pipeline, not one classifier; orientation-sensitive, flips break it |
+| Pinterest unified | Embedding | CNN (SE-ResNeXt) | Offline index | Retrieval plus engagement | Open, growing catalog with no fixed class list; one trunk feeds many surfaces | Re-embed the whole catalog on retrain; visual similarity is not purchase intent |
+| Zalando Shop the Look | Segmentation plus matching | CNN plus U-Net | Offline index | Retrieval relevance | Isolate a garment from a busy real-world photo, then match to catalog | Two models to keep in sync; segmentation errors propagate into retrieval |
+| Google Africa buildings | Segmentation | CNN (U-Net) | Batch | mAP | Per-pixel maps over huge, static satellite imagery | Domain shift from natural images forces full fine-tune; dense pixel labels |
+| Netflix pixel error | Detection / classification | Full-res CNN over frames | Batch | Defect precision / recall | Find rare, pixel-scale defects that downsizing would erase | Cannot resize away the cost; full-resolution inference is compute-heavy |
+| Netflix in-video | Embedding | Image-text (CLIP-style) | Offline index | Recall on text queries | Text-to-image search over an open set, zero-shot, no label list | Precompute and re-embed cost; needs paired image-text pretraining |
+| Google diabetic eye | Classification | CNN | Batch | F-score at clinician level | High-stakes single-label medical grading against an expert bar | Calibration and slice / fairness gaps are launch blockers; expert labels only |
+| Bumble Private Detector | Binary classification | CNN (EfficientNetV2) | Real-time gate | Accuracy at fixed precision / recall | Fast yes/no gate on the publish path with a tight latency budget | Needs a fail-closed policy and adversarial-evasion defense; accuracy hides recall |
+
+The core dividing line is what the head emits: a fixed-class label, a localized box or mask, or an open-set vector, and that one choice sets the label cost, the serving shape (batch, offline index, or real-time gate), and which metric you report.
 
 ### The systems
 

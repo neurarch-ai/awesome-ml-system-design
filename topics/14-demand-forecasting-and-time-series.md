@@ -328,15 +328,20 @@ flowchart LR
 
 ### How they differ
 
-| System | Model class | Point vs probabilistic | Decision it feeds | Structure |
-|---|---|---|---|---|
-| Uber (forecasting intro) | Classical + ML + deep | Both (prediction intervals stressed) | Driver positioning, capacity, marketing | Plain series |
-| Amazon (hierarchical) | Deep, end-to-end coherent | Probabilistic | Supply-chain / resource planning | Hierarchy |
-| Google DeepMind (Maps ETA) | Graph neural net + temporal | Point | Google Maps routing / ETA | Spatiotemporal graph |
-| Instacart (availability) | Layered general/trending/real-time | Probability of availability | Item availability surfacing | Plain series |
-| Zalando (inventory) | Probabilistic forecast + Monte Carlo | Probabilistic | Replenishment optimization | Plain series |
-| Grab (supply-demand) | Geo-temporal ratios | Point ratios | Matching and rebalancing | Spatiotemporal |
-| Lyft (causal) | Causal-DAG forecasting | Point under confounding | Marketplace policy decisions | Plain series |
+| System | Model class | Point vs probabilistic | Decision it feeds | Structure | When this shape wins | Watch out / key metric |
+|---|---|---|---|---|---|---|
+| Uber (forecasting intro) | Classical + ML + deep | Both (prediction intervals stressed) | Driver positioning, capacity, marketing | Plain series | Broad portfolio of business series where no single family dominates, so you pick per problem | Report interval coverage, not a lone point error |
+| Uber (uncertainty estimation) | Bayesian neural net | Probabilistic (model + misspecification + noise split) | Capacity confidence, anomaly flagging | Plain series | High-stakes calls that need to know why the model is unsure, not just how much | Decomposed variance adds inference cost; the split is the deliverable |
+| Uber (DeepETA) | Transformer residual on a routing baseline | Point (calibrated) | ETA quote inline in the app | Spatiotemporal | A strong routing baseline exists to correct, under a global inline latency budget | p99 serving latency; features must be precomputed lookups |
+| Amazon (hierarchical) | Deep, end-to-end coherent | Probabilistic | Supply-chain / resource planning | Hierarchy | Many levels must reconcile out of the box without a post-hoc step | Coherence and calibration jointly; covariance estimation cost |
+| Google DeepMind (Maps ETA) | Graph neural net + temporal | Point | Google Maps routing / ETA | Spatiotemporal graph | Travel time diffuses across a connected road graph, so geography carries signal | ETA accuracy uplift versus graph build and serve cost |
+| Instacart (Building for Balance) | Unified supply-vs-demand engine | Probabilistic (supply and demand) | Shopper interventions / market balance | Plain series | Two-sided marketplace where the gap between sides drives the action | The imbalance, not either side alone, is the target |
+| Instacart (availability) | Layered general/trending/real-time | Probability of availability | Item availability surfacing | Plain series | Hundreds of millions of items under a tight cost-per-prediction budget | Layered fallback and cost per prediction (about 80% cut) |
+| Zalando (inventory) | Probabilistic forecast + Monte Carlo | Probabilistic | Replenishment optimization | Plain series | The optimizer consumes the full distribution to set safety stock | Monte Carlo over the forecast; realized stockouts and waste |
+| Grab (supply-demand) | Geo-temporal ratios | Point ratios | Matching and rebalancing | Spatiotemporal | Matching where the supply-over-demand ratio per geo-cell is the signal | Ratio stability at sparse cells and short windows |
+| Lyft (causal) | Causal-DAG forecasting | Point under confounding | Marketplace policy decisions | Plain series | Policy changes confound the metric you forecast, so correlation misleads | DAG assumptions hold; forecasts hold under intervention |
+
+The core dividing line is the data's structure (plain series, a hierarchy that must reconcile, or a spatial graph) crossed with whether the decision consumes a point estimate or a full distribution.
 
 ### The systems
 

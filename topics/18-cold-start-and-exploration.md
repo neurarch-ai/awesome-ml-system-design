@@ -168,6 +168,20 @@ These are validated reference graphs at real dimensions, shape-checked end to en
 
 Real systems that ship the patterns above. Each is a first-party engineering writeup; read them for what an interview answer skips: who the system serves, the product design, the eval bar, and the deployment shape.
 
+### How they differ
+
+The topic covers a few distinct levers, and interviewers probe whether you know which one to reach for. This table lines up the main exploration policies against the content-tower cold-start fix across the dimensions that decide between them.
+
+| Approach | Exploration behavior | When it wins | When it breaks / watch out | Serving cost |
+|----------|----------------------|--------------|----------------------------|--------------|
+| Epsilon-greedy | Uniform random on the explore branch, argmax otherwise | A quick baseline; clean uniform propensity for off-policy eval | Pays a flat tax, wastes impressions on obviously-bad arms as often as promising ones | Trivial: one coin flip per request |
+| UCB (upper confidence bound) | Directed toward high-uncertainty arms via an optimistic mean-plus-bonus score | You want deterministic, directed exploration and infra prefers no randomness | Deterministic choice gives no logged propensity, so replay-style OPE is harder | Cheap if the bonus is a closed form over counts / features |
+| Thompson sampling | Directed via posterior draws; wide-posterior arms win often enough to get explored | Robust default; randomness yields clean propensities for logging | Needs a maintainable posterior per arm, which does not scale to millions of raw arms | Cheap with a linear head; costly with a full Bayesian posterior |
+| Contextual bandits (LinUCB, neural-linear) | Directed; reward is a function of context and features, uncertainty comes from the shared model | Large or shifting catalogs; a never-seen item still gets an uncertainty estimate from its features | Linear assumption can underfit; needs a two-stage funnel to bound the arm set | Moderate: shared parametric model plus a closed-form confidence bonus |
+| Content-and-metadata tower (cold-start representation) | Not exploration; places a fresh entity in embedding space from its features | Day-zero retrievability for a brand-new user or item with zero interactions | Underperforms ID embeddings once an entity is warm; only as good as the metadata | Low at serve time; needs an online-insertable ANN index |
+
+The core dividing line is uncertainty-directed spend versus flat spend for the exploration policies, and feature-derived placement versus ID lookup for the cold-start representation.
+
 - **Netflix** [Artwork Personalization at Netflix](https://netflixtechblog.com/artwork-personalization-c589f074ad76): Contextual bandits pick per-member title artwork, small action space, cache-served at scale. *(product design)*
 - **Netflix** [Infra for Contextual Bandits and Reinforcement Learning](https://netflixtechblog.com/ml-platform-meetup-infra-for-contextual-bandits-and-reinforcement-learning-4a90305948ef): Production infra for reward computation, logging, and offline policy evaluation of bandits. *(deployment)*
 - **Spotify** [Identifying New Podcasts with a Pure-Exploration Infinitely-Armed Bandit](https://research.atspotify.com/publications/identifying-new-podcasts-with-high-general-appeal-using-a-pure-exploration-infinitely-armed-bandit-strategy): A pure-exploration bandit surfaces broadly-appealing new podcasts without popularity bias. *(who it serves)*

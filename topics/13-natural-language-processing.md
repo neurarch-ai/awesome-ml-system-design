@@ -330,19 +330,21 @@ flowchart LR
 
 ### How they differ
 
-| System | Task | Model | Multilingual | Labels / supervision |
-|---|---|---|---|---|
-| Uber Maps | classification (ticket routing) | WordCNN + Word2Vec | English (planned expansion) | manual labels, unsupervised embeddings |
-| Airbnb Listings | NER / extraction | CNN tagger | not stated | taxonomy-mapped labels |
-| Meta hate speech | classification | RIO + Linformer | not stated | proactive, adversarial |
-| Google GNMT | translation | seq2seq RNN + attention | many language pairs | bilingual human ratings |
-| Meta NMT | translation | LSTM + attention | 2,000+ directions | bilingual corpora |
-| LinkedIn Knowledge Graph | entity resolution | standardization / matching | not stated | canonical taxonomy |
-| Pinterest spam | classification | DNN + clustering + graph label-prop | not stated | graph label propagation |
-| LinkedIn abuse | sequence classification | LSTM over activity | not stated | behavioral labels |
-| Uber COTA | classification / routing | NLP + ML | not stated | ticket labels |
-| Airbnb voice support | classification (contact reason) | NLP classifier | not stated | contact-reason labels |
-| Grammarly GECToR | token tagging (GEC) | BERT-based tagger | English | synthetic + real learner data |
+| System | Task | Model | Multilingual | Labels / supervision | When it wins | When it breaks / watch out | Key metric it moves |
+|---|---|---|---|---|---|---|---|
+| Uber Maps | classification (ticket routing) | WordCNN + Word2Vec | English (planned expansion) | manual labels, unsupervised embeddings | high-volume tickets where short local phrases signal a map error | vocab/domain drift, non-English tickets before expansion lands | map-error detection precision, routing accuracy |
+| Airbnb Listings | NER / extraction | CNN tagger | not stated | taxonomy-mapped labels | pulling known taxonomy entities (amenities) out of semi-structured free text | entities outside the taxonomy, ambiguous or novel phrasing | extraction precision/recall, taxonomy coverage |
+| Meta hate speech | classification | RIO + Linformer | not stated | proactive, adversarial | adversarial, fast-evolving abuse that must be caught proactively at scale | adversaries adapt, multimodal evasion, false positives on benign speech | proactive detection rate, prevalence of toxic content |
+| Google GNMT | translation | seq2seq RNN + attention | many language pairs | bilingual human ratings | high-resource pairs with ample bilingual data | long sentences, rare words, low-resource pairs | translation quality (BLEU / error rate) |
+| Meta NMT | translation | LSTM + attention | 2,000+ directions | bilingual corpora | maximum breadth of directions at platform scale | low-resource directions, latency at 4.5B translations/day | translation quality plus direction coverage |
+| LinkedIn Knowledge Graph | entity resolution | standardization / matching | not stated | canonical taxonomy | mapping messy user-generated entities to one canonical taxonomy | new or ambiguous entities, taxonomy staleness | entity match precision, dedup rate |
+| Pinterest spam | classification | DNN + clustering + graph label-prop | not stated | graph label propagation | sparse labels and coordinated spam networks visible in the graph | propagation errors spread across the graph, cold-start new accounts | spam catch rate at fixed precision |
+| LinkedIn abuse | sequence classification | LSTM over activity | not stated | behavioral labels | abuse that only shows up across a temporal sequence, not one event | low-and-slow abuse, very long activity sequences | abuse/scraping detection rate |
+| Uber COTA | classification / routing | NLP + ML | not stated | ticket labels | routing tickets to the right issue type and suggested solution | rare issue types, mislabeled historical tickets | ticket resolution time, routing accuracy |
+| Airbnb voice support | classification (contact reason) | NLP classifier | not stated | contact-reason labels | routing a contact to self-serve versus a live agent | ambiguous or multi-issue contacts | self-serve deflection, routing accuracy |
+| Grammarly GECToR | token tagging (GEC) | BERT-based tagger | English | synthetic + real learner data | fast correction where edits are local token transforms | rewrites needing reordering or global restructuring | correction F0.5, inference latency |
+
+The core dividing line is whether the task maps text to a fixed decision (classify, tag, resolve) or generates new text (translate, correct), which decides everything downstream: encoder head versus seq2seq, discrete metrics versus BLEU/F0.5, and how much bilingual or sequential supervision the labels must carry.
 
 ### The systems
 

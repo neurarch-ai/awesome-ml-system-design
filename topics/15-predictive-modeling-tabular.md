@@ -321,17 +321,19 @@ flowchart LR
 
 ### How they differ
 
-| System | Model type | Decision it feeds | Delayed / biased labels | Regulation / explainability |
-|---|---|---|---|---|
-| Nubank | Survival curves + ranking | Credit line increase | Default matures over months | Regulated credit; simple robust methods |
-| Block (Square) | Conditional survival forest | Churn timing | Time-to-event, censored accounts | Low |
-| Airbnb (listing LTV) | ML LTV framework | Marketing / LTV budget | 365-day horizon, incremental vs baseline | Low |
-| Airbnb (home value) | XGBoost, 150+ features | Listing value estimate | Modest | Low |
-| Expedia | CatBoost CLV | LTV budget | Long horizon | Low |
-| Wayfair | Propensity + uplift | Programmatic marketing | Treatment response | Low |
-| Uber | Causal DL (S-learner) + convex opt | Incentive / promotion budget | Causal, business-metric labels | Low |
-| Gojek | Deep causal uplift + knapsack | Voucher allocation | Observed past treatment effects | Low |
-| Zalando | Forecast-then-optimize | Markdown / price steering | Forecast horizon | Low |
+| System | Model type | Decision it feeds | Delayed / biased labels | Regulation / explainability | When it wins | Watch out / where it breaks |
+|---|---|---|---|---|---|---|
+| Nubank | Survival curves + ranking | Credit line increase | Default matures over months | Regulated credit; simple robust methods | Risk that keeps maturing and must be read at any horizon, at 122M-customer scale | Selection bias from approving only some applicants; calibration and adverse-action reasons must hold under audit |
+| Block (Square) | Conditional survival forest | Churn timing | Time-to-event, censored accounts | Low | Churn where **when** it happens matters and censored active accounts still carry signal | C-index scores ranking, not calibration; needs enough matured event history |
+| Airbnb (listing LTV) | ML LTV framework | Marketing / LTV budget | 365-day horizon, incremental vs baseline | Low | Splitting baseline from incremental LTV so a marketing spend is justified honestly | Incremental LTV is a causal (uplift) question, not predictive; horizon truncation and survivorship bias |
+| Airbnb (home value) | XGBoost, 150+ features | Listing value estimate | Modest | Low | Many already-meaningful engineered columns feeding a straightforward point estimate | Leakage risk across 150+ features; estimate drifts as the market moves |
+| Expedia | CatBoost CLV | LTV budget | Long horizon | Low | Cross-brand categoricals unified on one platform for long-horizon CLV | Long-horizon labels go stale; heavy deployment and monitoring burden |
+| Wayfair | Propensity + uplift | Programmatic marketing | Treatment response | Low | Deciding whom to target across a large customer base | Propensity alone spends on sure things and lost causes; needs uplift for persuadables |
+| Uber | Causal DL (S-learner) + convex opt | Incentive / promotion budget | Causal, business-metric labels | Low | Allocating a fixed incentive budget where the ML sets coefficients and an optimizer decides | Causal estimates need experimental variation; S-learner can bias the treatment effect |
+| Gojek | Deep causal uplift + knapsack | Voucher allocation | Observed past treatment effects | Low | Spreading a fixed voucher budget by targeting persuadables via uplift-per-dollar | Uplift from observational treatment is fragile; knapsack is only as good as the calibrated uplift |
+| Zalando | Forecast-then-optimize | Markdown / price steering | Forecast horizon | Low | Price steering across 1M+ products where a demand forecast feeds a pricing optimizer | Forecast-horizon error compounds into prices; the optimizer inherits every forecast miss |
+
+The core dividing line is what the score must answer: rank risk (GBDT), model **when** an event lands (survival), or decide **whether to intervene** (uplift / causal), with calibration required whenever the absolute probability, not the ordering, sets the money.
 
 ### The systems
 

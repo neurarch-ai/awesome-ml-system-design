@@ -349,17 +349,21 @@ flowchart LR
 
 ### How they differ
 
-| System | Model family | Calibration approach | Delayed feedback | Task shape |
-|---|---|---|---|---|
-| Meta DLRM | Embeddings + explicit dot-product interactions | Proper loss (log loss) | Not the paper's focus | Single-task |
-| Facebook GBDT + LR | Boosted-tree leaves feeding a linear model | Naturally calibrated linear head | Data-freshness cadence | Single-task |
-| Wide & Deep (Google Play) | Wide linear + deep embedding MLP | Proper loss on the joint model | Not addressed | Single-task |
-| Pinterest | AutoML shared-bottom, multi-tower MLPs | Per-head Platt scaling (up to 80% error cut) | Not addressed | Multi-task |
-| LinkedIn | Three-tower DNN (wide, deep, shallow) | Isotonic + shallow calibration tower | Not the focus (exposure-bias fix) | Single-task |
-| Instacart | Deep CTR with transfer learning | Transfer-learned calibration to observed rates | Not the focus | Single-task |
-| Twitter | Continuous-training CTR | Proper loss under corrected labels | Fake-negative weighted loss | Single-task |
-| Criteo | Display CTR / CVR | Proper loss on corrected labels | Two-model delay approach | Single-task |
-| Google (Factory Floor) | Large sparse CTR with feature crosses | Calibration as a first-class metric | Bounded windows | Single-task |
+| System | Model family | Calibration approach | Delayed feedback | Task shape | When it wins | When it breaks / watch out |
+|---|---|---|---|---|---|---|
+| Meta DLRM | Embeddings + explicit dot-product interactions | Proper loss (log loss) | Not the paper's focus | Single-task | Massive sparse features where explicit pairwise interactions carry most of the signal | Embedding tables dominate memory and force sharding; raw head still needs a post-hoc calibration step |
+| Facebook GBDT + LR | Boosted-tree leaves feeding a linear model | Naturally calibrated linear head | Data-freshness cadence | Single-task | Moderate feature spaces where tree-discovered crosses beat hand-crafting and a naturally calibrated head is worth keeping | Trees do not scale to billions of sparse ids; retrain cadence caps freshness on fast-moving campaigns |
+| Wide & Deep (Google Play) | Wide linear + deep embedding MLP | Proper loss on the joint model | Not addressed | Single-task | You need both memorization of frequent crosses and generalization to unseen ones in one model | Wide branch still needs hand-picked cross features; two branches to tune and serve |
+| DeepFM (Guo et al.) | FM component + deep MLP in parallel, shared embeddings | Proper loss on the joint model | Not addressed | Single-task | Sparse pairwise crosses matter and you want FM interactions with no manual feature engineering | Captures mostly pairwise interactions; higher-order crosses lean on the MLP and calibration is still post-hoc |
+| DCN V2 (Wang et al.) | Explicit bounded-degree cross layers beside an MLP | Proper loss on the joint model | Not addressed | Single-task | You want explicit, parameter-efficient high-degree feature crosses without a deep stack | Cross depth is a tuning knob; embeddings still dominate params and memory |
+| Pinterest | AutoML shared-bottom, multi-tower MLPs | Per-head Platt scaling (up to 80% error cut) | Not addressed | Multi-task | Several correlated objectives (click, save, and more) can share a bottom and lift each other | Multi-task heads drift apart, so per-head calibration is mandatory; shared bottom risks negative transfer |
+| LinkedIn | Three-tower DNN (wide, deep, shallow) | Isotonic + shallow calibration tower | Not the focus (exposure-bias fix) | Single-task | Moving off a GLMix baseline and needing calibration to hold under exposure bias | Three towers add serving complexity; the calibration tower is another moving part to maintain |
+| Instacart | Deep CTR with transfer learning | Transfer-learned calibration to observed rates | Not the focus | Single-task | Limited in-domain data where transfer learning aligns predictions to observed click rates | Source-to-target mismatch can hurt; calibration must keep tracking the observed-rate shift |
+| Twitter | Continuous-training CTR | Proper loss under corrected labels | Fake-negative weighted loss | Single-task | Continuous training where conversions land late and fake negatives would drag the model down | Fake-negative weighting complicates the loss; the weights must track the true delay distribution |
+| Criteo | Display CTR / CVR | Proper loss on corrected labels | Two-model delay approach | Single-task | Display CVR with long, variable conversion delays that a single label pipeline mishandles | Two-model approach adds pipeline overhead; window choice trades label latency against freshness |
+| Google (Factory Floor) | Large sparse CTR with feature crosses | Calibration as a first-class metric | Bounded windows | Single-task | Industrial-scale sparse CTR that needs reproducibility and calibration treated as a first-class metric | Heavy operational complexity at scale; bounded windows still leak the late-conversion tail |
+
+The core dividing line is how each system carries feature interactions (trees, FM, explicit crosses, dot products, or dual memorize-plus-generalize branches) and how aggressively it defends calibration as labels drift and conversions arrive late.
 
 ### The systems
 

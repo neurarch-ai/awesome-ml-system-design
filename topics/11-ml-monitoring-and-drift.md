@@ -246,14 +246,17 @@ flowchart TD
 
 ### How they differ
 
-| System | Drift type detected | Detection method | Alerting | Action taken |
-|---|---|---|---|---|
-| Evidently AI | Feature + prediction drift | PSI, KS, chi-square distribution tests | Report / dashboard driven | Feeds retrain decision (tooling) |
-| Uber D3 | Partial data / feature drift | Column stats vs Prophet dynamic thresholds | PagerDuty oncall on breach | Detect + alert, manual response |
-| Uber deploy-safety | Feature drift + online-offline skew | Statistical tests, schema validation, shadow testing | Alerts can block promotion | Auto-rollback, gradual rollout, shadow |
-| Lyft | Score + performance drift | Feature validation, anomaly + drift detection | Anomaly-based alerts | Retrain trigger |
-| Netflix | Prediction + data drift | Logging, monitoring, explainability layer | Observability dashboards | Diagnose, then retrain |
-| Shopify | Feature drift | Distribution monitoring (fraud example) | Monitoring surfaces | Retrain on drift |
+| System | Drift type detected | Detection method | Alerting | Action taken | When it wins | Watch out / when it breaks |
+|---|---|---|---|---|---|---|
+| Evidently AI | Feature + prediction drift | PSI, KS, chi-square distribution tests | Report / dashboard driven | Feeds retrain decision (tooling) | Stand up drift metrics fast with no infra to build; rich per-feature reports | Detects but does not act; you still wire alerting, retrain, and rollback around it |
+| Uber D3 | Partial data / feature drift | Column stats vs Prophet dynamic thresholds | PagerDuty oncall on breach | Detect + alert, manual response | Many datasets and seasonal data where static thresholds false-alarm | Stops at detect and page; response is manual, and Prophet baselines need tuning |
+| Uber Model Excellence Scores | Composite quality / performance decay across lifecycle | SLA-style scoring across lifecycle phases | Scorecard / quality-bar breach | Quality gating and prioritization | Standardizing a quality bar across many models and teams | A single composite score can mask which specific signal actually moved |
+| Uber deploy-safety | Feature drift + online-offline skew | Statistical tests, schema validation, shadow testing | Alerts can block promotion | Auto-rollback, gradual rollout, shadow | High-stakes promotions where a bad model must never reach users | Shadow traffic and gradual rollout cost real infra and slow the release |
+| Lyft | Score + performance drift | Feature validation, anomaly + drift detection | Anomaly-based alerts | Retrain trigger | One framework spanning features, scores, and performance | Anomaly detection needs careful calibration or it turns into noise |
+| Netflix | Prediction + data drift | Logging, monitoring, explainability layer | Observability dashboards | Diagnose, then retrain | High-stakes domains (payments) that must explain why a prediction moved | Surfaces diagnosis but a human still closes the loop; no auto-response |
+| Shopify | Feature drift | Distribution monitoring (fraud example) | Monitoring surfaces | Retrain on drift | Adversarial, concept-drift-prone domains (fraud) where retraining is routine | Narrower single-signal focus; less coverage than a full-spectrum setup |
+
+The core dividing line is whether a system stops at detection (leaving the response to a human) or closes the loop itself by gating promotion, triggering retrain, or rolling back automatically.
 
 ### The systems
 

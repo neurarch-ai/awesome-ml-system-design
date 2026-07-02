@@ -230,6 +230,21 @@ These are validated reference graphs at real dimensions, shape-checked end to en
 
 Real systems that ship the patterns above. Each is a first-party engineering writeup; read them for what an interview answer skips: who the system serves, the product design, the eval bar, and the deployment shape.
 
+### How they differ
+
+The stack is not one model but a funnel of detection families, each earning its place on a different axis of cost, modality, and novelty.
+
+| Approach | What it catches | When it wins | When it breaks / watch out | Key metric it moves |
+|---|---|---|---|---|
+| Perceptual hash match (CSAM, known-bad) | Previously-judged content: known CSAM, terrorist media, removed items, spam campaigns | Re-uploads and coordinated re-share of known material; near-zero false positive, cheap, legally actionable | Blind to novel content it has never seen; needs perceptual (not exact) hashing to survive resize and re-encode | Reach-before-action on known harm; compute saved at ingest |
+| Text encoder (BERT, ModernBERT) | Per-policy text harm: hate, harassment, spam, self-harm in posts and comments | High-volume text with obfuscation when normalized and adversarially augmented; ModernBERT on long or obfuscated inputs | Misses cross-modal harm where text alone is benign; slang and code-switching drift continuously | Per-policy recall at the precision floor on text |
+| Image classifier (EfficientNet, ResNet) | Nudity, violence, gore, banned symbols in images and sampled video frames | High-volume ingest filtering; EfficientNet cheap and fast, ResNet when more capacity is needed | Meaning that depends on the caption; adversarial borders, crops, and re-encodes | Ingest compute budget; image recall |
+| Joint vision-language (CLIP-style) | Hateful memes: image benign, caption benign, combination harmful | Cross-modal cases where both unimodal models pass the content | Too expensive to run on everything; must be gated behind cheaper unimodal pre-filters | Recall on cross-modal harm |
+| Audio and speech (wav2vec2, distilled) | Policy-violating speech in live voice chat and the video audio track | Live voice with no pre-publish gate; a distilled small model runs on streaming windows | Latency on rolling windows; you act during rather than before publication | Time-to-action and latency on live voice |
+| Human review and reactive re-scoring | The uncertain middle, high-severity items, appeals, and virality-triggered content | Borderline and context-dependent cases; produces the gold labels that retrain everything else | Finite and expensive capacity; over-flagging by the models directly overloads the queue | Label quality and appeal-overturn rate |
+
+The core dividing line is known-versus-novel crossed with single-modality-versus-cross-modal: hashing catches the known mass, cheap unimodal classifiers catch the novel single-modality tail, joint models catch harm that only exists across modalities, and humans absorb the uncertain, high-severity, and context-dependent remainder.
+
 - **Roblox** [Deploying ML for Voice Safety](https://about.roblox.com/newsroom/2024/07/deploying-ml-for-voice-safety): A distilled transformer audio model flags policy-violating voice chat in real time. *(deployment)*
 - **Roblox** [How Roblox Uses AI to Moderate Content on a Massive Scale](https://about.roblox.com/newsroom/2025/07/roblox-ai-moderation-massive-scale): Billions of daily messages moderated across 25 languages, AI plus human. *(deployment)*
 - **Pinterest** [Fighting misinformation, hate speech, and self-harm content with ML](https://medium.com/pinterest-engineering/how-pinterest-fights-misinformation-hate-speech-and-self-harm-content-with-machine-learning-1806b73b40ef): Batch and online ML models score Pins and boards for policy violations. *(product design)*
