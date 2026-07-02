@@ -359,3 +359,12 @@ flowchart LR
 - **Grammarly** [Grammatical Error Correction: Tag, Not Rewrite](https://www.grammarly.com/blog/engineering/gec-tag-not-rewrite/): GECToR tags word-level transformations instead of generating, for fast correction. *(eval bar)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; this section pulls the ones that map onto this topic.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Embeddings and representation learning](../deep-dives.md#embeddings-and-representation-learning)
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Class imbalance, calibration, and metrics](../deep-dives.md#class-imbalance-calibration-and-metrics)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

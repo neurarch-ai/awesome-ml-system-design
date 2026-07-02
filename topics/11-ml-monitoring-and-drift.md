@@ -269,3 +269,12 @@ flowchart TD
 - **Shopify** [Shopify's Playbook for Scaling Machine Learning](https://shopify.engineering/shopify-playbook-scaling-machine-learning): A scaling playbook covering monitoring and feature drift with a mobile-fraud example. *(who it serves)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; filter for monitoring and observability.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Features, leakage, and training-serving skew](../deep-dives.md#features-leakage-and-training-serving-skew)
+- [Statistics and probability for ML](../deep-dives.md#statistics-and-probability-for-ml)
+- [Class imbalance, calibration, and metrics](../deep-dives.md#class-imbalance-calibration-and-metrics)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

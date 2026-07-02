@@ -394,3 +394,12 @@ flowchart LR
 - **Wayfair** [Melange: a customer-journey embedding system](https://www.aboutwayfair.com/careers/tech-blog/introducing-melange-a-customer-journey-embedding-system-for-improving-fraud-and-scam-detection): Self-supervised customer-journey embeddings from browsing sequences for fraud detection. *(who it serves)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; filter for embeddings and representation learning.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Embeddings and representation learning](../deep-dives.md#embeddings-and-representation-learning)
+- [Modeling depth: which architecture moves which metric](../deep-dives.md#modeling-depth-which-architecture-moves-which-metric)
+- [Distributed training and scaling classic ML](../deep-dives.md#distributed-training-and-scaling-classic-ml)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

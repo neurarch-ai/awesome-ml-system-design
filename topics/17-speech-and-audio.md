@@ -216,3 +216,12 @@ Real systems that ship the patterns above. Each is a first-party engineering wri
 - **PyTorch** [Forced Alignment with Wav2Vec2](https://docs.pytorch.org/audio/stable/tutorials/forced_alignment_tutorial.html): A CTC trellis-backtracking pipeline aligning transcripts to audio timestamps. *(deployment)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; this section pulls the ones that map onto this topic.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Modeling depth: which architecture moves which metric](../deep-dives.md#modeling-depth-which-architecture-moves-which-metric)
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Normalization and regularization](../deep-dives.md#normalization-and-regularization)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

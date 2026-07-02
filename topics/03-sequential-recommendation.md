@@ -305,3 +305,12 @@ dimensions, shape-checked end to end, not screenshots. Browse all in the
 [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo) or the
 [gallery](https://neurarch-ai.github.io/awesome-llm-model-zoo). Built by
 [Neurarch](https://www.neurarch.com).
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Modeling depth: which architecture moves which metric](../deep-dives.md#modeling-depth-which-architecture-moves-which-metric)
+- [Embeddings and representation learning](../deep-dives.md#embeddings-and-representation-learning)
+- [Features, leakage, and training-serving skew](../deep-dives.md#features-leakage-and-training-serving-skew)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

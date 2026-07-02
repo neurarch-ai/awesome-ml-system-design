@@ -245,3 +245,12 @@ More production case studies: the [Evidently AI ML system design database](https
 ```
 
 Written to `16-content-moderation.md`. 241 lines, within the 240 to 300 range, zero em/en dashes, all required deep-dives, the mermaid flowchart, all six architecture ids, and the verbatim "Seen in production" block and closing lines are present.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Class imbalance, calibration, and metrics](../deep-dives.md#class-imbalance-calibration-and-metrics)
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Modeling depth: which architecture moves which metric](../deep-dives.md#modeling-depth-which-architecture-moves-which-metric)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

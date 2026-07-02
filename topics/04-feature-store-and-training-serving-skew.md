@@ -269,3 +269,11 @@ flowchart TD
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): training-serving skew called out directly (reuse code between training and serving, log features at serving time). *(discipline)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; filter for feature stores and data platforms.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Features, leakage, and training-serving skew](../deep-dives.md#features-leakage-and-training-serving-skew)
+- [Statistics and probability for ML](../deep-dives.md#statistics-and-probability-for-ml)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

@@ -181,3 +181,12 @@ Real systems that ship the patterns above. Each is a first-party engineering wri
 - **Google** [Long-Term Value of Exploration](https://arxiv.org/abs/2305.07764): Neural-linear bandit exploration grows the content corpus, breaking feedback-loop ossification. *(eval bar)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; this section pulls the ones that map onto this topic.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Embeddings and representation learning](../deep-dives.md#embeddings-and-representation-learning)
+- [Statistics and probability for ML](../deep-dives.md#statistics-and-probability-for-ml)
+- [Modeling depth: which architecture moves which metric](../deep-dives.md#modeling-depth-which-architecture-moves-which-metric)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

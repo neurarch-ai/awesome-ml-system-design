@@ -354,3 +354,11 @@ flowchart LR
 - **LinkedIn** [Pensieve: an embedding feature platform](https://www.linkedin.com/blog/engineering/ai/pensieve): An embedding feature platform pushing inference to nearline pre-computation. *(deployment)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; filter for model serving and deployment.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Distributed training and scaling classic ML](../deep-dives.md#distributed-training-and-scaling-classic-ml)
+- [Features, leakage, and training-serving skew](../deep-dives.md#features-leakage-and-training-serving-skew)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

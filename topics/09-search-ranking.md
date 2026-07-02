@@ -422,3 +422,12 @@ dimensions, shape-checked end to end, not screenshots. Browse all in the
 [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo) or the
 [gallery](https://neurarch-ai.github.io/awesome-llm-model-zoo). Built by
 [Neurarch](https://www.neurarch.com).
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Modeling depth: which architecture moves which metric](../deep-dives.md#modeling-depth-which-architecture-moves-which-metric)
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Class imbalance, calibration, and metrics](../deep-dives.md#class-imbalance-calibration-and-metrics)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

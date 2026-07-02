@@ -346,3 +346,13 @@ flowchart LR
 - **Zalando** [How Zalando optimized large-scale inference and streamlined ML operations](https://aws.amazon.com/blogs/machine-learning/how-zalando-optimized-large-scale-inference-and-streamlined-ml-operations-on-amazon-sagemaker/): A forecast-then-optimize markdown and discount-steering pricing system across 1M+ products. *(deployment)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; this section pulls the ones that map onto this topic.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Classical models: when and why](../deep-dives.md#classical-models-when-and-why)
+- [Ensembles and boosting](../deep-dives.md#ensembles-and-boosting)
+- [Class imbalance, calibration, and metrics](../deep-dives.md#class-imbalance-calibration-and-metrics)
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

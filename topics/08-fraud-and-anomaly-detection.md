@@ -362,3 +362,12 @@ flowchart TD
 - **Airbnb** [Fighting Financial Fraud with Targeted Friction](https://medium.com/airbnb-engineering/fighting-financial-fraud-with-targeted-friction-82d950d8900e): A loss function weighing friction vs chargeback cost; targeted friction cuts losses. *(eval bar)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; filter for fraud and anomaly detection.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Class imbalance, calibration, and metrics](../deep-dives.md#class-imbalance-calibration-and-metrics)
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Statistics and probability for ML](../deep-dives.md#statistics-and-probability-for-ml)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)

@@ -352,3 +352,12 @@ flowchart LR
 - **Lyft** [Causal Forecasting at Lyft (Part 1)](https://eng.lyft.com/causal-forecasting-at-lyft-part-1-14cca6ff3d6d): Causal-DAG-based forecasting of marketplace metrics for policy decisions under confounding. *(product design)*
 
 More production case studies: the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design) (800 case studies from 150+ companies) is the broadest curated index; this section pulls the ones that map onto this topic.
+
+## Related deep-dive drills
+
+Rapid-fire questions that probe the modeling and systems underneath this topic, from [deep-dives.md](../deep-dives.md):
+
+- [Loss functions and objectives](../deep-dives.md#loss-functions-and-objectives)
+- [Statistics and probability for ML](../deep-dives.md#statistics-and-probability-for-ml)
+- [Classical models: when and why](../deep-dives.md#classical-models-when-and-why)
+- [Commonly asked, commonly missed](../deep-dives.md#commonly-asked-commonly-missed)
