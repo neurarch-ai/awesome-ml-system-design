@@ -16,6 +16,7 @@ LaTeX and render on GitHub.
 | **Representation and features** | [Embeddings and representation learning](#embeddings-and-representation-learning) · [Features, leakage, and training-serving skew](#features-leakage-and-training-serving-skew) |
 | **Recsys and ranking modeling** | [Modeling depth: which architecture moves which metric](#modeling-depth-which-architecture-moves-which-metric) |
 | **Training at scale** | [Distributed training and scaling classic ML](#distributed-training-and-scaling-classic-ml) |
+| **Gotchas** | [Commonly asked, commonly missed](#commonly-asked-commonly-missed) |
 
 ---
 ## Normalization and regularization
@@ -1057,3 +1058,63 @@ The loss you optimize is a differentiable surrogate for the metric you actually 
 | Focal | $-(1 - p_t)^\gamma \log p_t$ | N/A (down-weights easy) | Class probability, hard-example focus | Extreme foreground-background imbalance |
 | Hinge | $\max(0,\, 1 - y\,f(x))$ | Partly (zero past margin) | Max-margin decision boundary | Want SVM-style margin, no probabilities needed |
 | Pinball | $\tau$ vs $(1 - \tau)$ weighted residual | Yes (asymmetric $L_1$) | Conditional $\tau$-quantile | Predictive intervals, tail-sensitive decisions |
+
+## Commonly asked, commonly missed
+
+The gotchas below share one trait: the fast answer that most candidates give is wrong, and the interviewer is watching for whether you know the mechanism that flips it. Each item names the tempting wrong answer, then the right one.
+
+**Q: You add 10x more labeled data and validation error barely moves. Does that mean your pipeline is broken?**
+
+The tempting answer is that something must be wrong because more data always helps. In fact the learning curve has flattened toward the irreducible floor, and error decomposes as $\mathbb{E}[(y-\hat f)^2]=\text{Bias}^2+\text{Var}+\sigma^2$, where more data shrinks only the variance term. It cannot touch the bias of a too-simple model class or the label-noise floor $\sigma^2$ (the Bayes error), so once the training and validation curves have converged to the same high value you are bias or noise limited, not data limited. The fix in that regime is richer features, a larger model class, or cleaner labels, not more rows. Plot the learning curve first: a flat validation curve with a small train-validation gap tells you data is not the bottleneck.
+
+**Q: Should you standardize features before training?**
+
+The reflex answers ("always, it is good hygiene" or "never, it does not matter") are both wrong because it depends on the model's geometry. Distance and gradient based models (kNN, k-means, RBF-SVM, regularized linear and logistic regression, neural nets) are scale sensitive: a feature measured in thousands dominates the Euclidean distance and dwarfs small-scale features in the penalty term $\lambda\lVert w\rVert^2$, warping the loss surface so gradient descent zig-zags. Tree based models (decision trees, random forests, GBDT) split on one-feature thresholds and are invariant to any monotone rescaling, so standardization does literally nothing for them. Note the subtlety that L2 regularization is scale sensitive even for a linear model, so an unstandardized ridge penalizes small-magnitude features more heavily. Standardize for distance, gradient, and penalty based models; skip it for trees.
+
+**Q: You rank features by their correlation with the target and drop the ones near zero. What is the risk?**
+
+The common mistake is treating near-zero correlation as proof a feature is useless. Univariate correlation measures only marginal linear association and is blind to interactions: in an XOR relationship $y = x_1 \oplus x_2$, each of $x_1$ and $x_2$ has exactly zero correlation with $y$ while together they determine it perfectly. A filter method scoring features one at a time discards both, throwing away the entire signal. Use model-based importance or wrapper and embedded selection that can see joint effects, and never prune on marginal correlation alone. The reverse trap is also real: a feature strongly correlated with the target may be redundant given the others.
+
+**Q: You run an A/B test and stop it the moment $p < 0.05$. What is wrong?**
+
+The wrong answer is "nothing, we hit significance, ship it." Repeatedly evaluating a running experiment and stopping at the first significant look inflates the type I error far above the nominal $\alpha$: under the null the p-value wanders, and with continuous peeking it will eventually cross $0.05$ by chance, pushing the true false-positive rate past $30\%$ in practice. Fix the sample size in advance from a power analysis and read the result once, or adopt sequential methods (always-valid p-values, group-sequential boundaries, or a Bayesian design) that explicitly budget the alpha spent at each look. The mirror-image error is calling a non-significant early readout "no effect" when the test was simply underpowered.
+
+**Q: To get the overall click-through rate you average each user's individual CTR. Correct?**
+
+Treating the mean of per-user rates as the overall rate is the trap, because the average of ratios does not equal the ratio of totals unless every denominator is equal: $\frac{1}{N}\sum_u \frac{c_u}{i_u} \ne \frac{\sum_u c_u}{\sum_u i_u}$ in general. The per-user mean over-weights low-impression users whose rates are noisy and land at extremes like $0$ or $1$, so a handful of one-click users can dominate. Compute the pooled ratio (sum of clicks over sum of impressions), and if you want a per-user summary use a weighted mean by impressions. This is also why naive per-day or per-segment averaging can reverse an aggregate result through a mix shift, so decide the unit of analysis before you aggregate.
+
+**Q: The target is skewed so you train on $\log y$, then exponentiate the prediction to serve it. What breaks?**
+
+The mistake is assuming $\exp(\widehat{\log y})$ gives back the predicted $y$. By Jensen's inequality $\mathbb{E}[y]=\mathbb{E}[e^{\log y}] \ge e^{\mathbb{E}[\log y]}$, so exponentiating the mean of the log systematically underestimates the mean of $y$; what you actually recover is the conditional median, not the mean. If anything downstream sums or budgets on these values (revenue, demand, inventory) the totals come in low. Apply a retransformation correction (for roughly log-normal residuals multiply by $e^{\sigma^2/2}$, or use Duan's smearing estimator), or model the mean directly with a Poisson, Gamma, or Tweedie GLM. Decide whether you need the conditional mean or median before you pick the transform.
+
+**Q: You try 200 model configurations, pick the one with the best cross-validation score, and report that score. What is the bug?**
+
+The seductive claim is that cross-validation already prevents overfitting, so the winning CV score is an honest estimate of generalization. Taking the maximum over many noisy CV estimates is a maximization bias: the winner is partly lucky, so its CV score is optimistically inflated and will regress on fresh data. The CV loop was consumed for model selection, which means it is no longer an unbiased estimate of anything. Use nested cross-validation (an inner loop to tune, an outer loop to estimate error) or reserve a final test set that you touch exactly once. The more configurations you search, the larger the inflation, which is precisely why public leaderboards decay when the private set is revealed.
+
+**Q: Adding a random noise feature raised your training $R^2$. Did the model improve?**
+
+Reading a higher $R^2$ as a better fit is the error. In-sample $R^2$ is non-decreasing in the number of predictors because ordinary least squares can only lower the residual sum of squares by adding columns, even columns of pure noise, so it mechanically rewards complexity. Use adjusted $R^2$, which penalizes the parameter count, or an out-of-sample $R^2$, and note the latter can go negative when the model predicts worse than the constant mean baseline. $R^2$ on the training set is a description of fit, not a validation metric, so judge the model on held-out data where extra noise features hurt rather than help.
+
+**Q: You SMOTE-oversample the minority class, then split into train and test. Why do your metrics lie?**
+
+Oversampling first so both splits look balanced is exactly the leak. SMOTE synthesizes minority points by interpolating between real nearest neighbors, so if you resample before splitting, synthetic test points are built from training-set neighbors and vice versa, leaking information across the boundary and inflating recall and precision. Any resampling or synthetic augmentation must happen inside the training fold only, after the split, never on the full table. SMOTE also degrades in high dimensions, where nearest neighbors are barely nearer than random points and interpolated samples can fall into majority regions, and it shifts the class prior so the output probabilities need recalibration. Resample inside cross-validation and evaluate on the untouched natural-prior test set.
+
+**Q: You drop every row that has a missing value before training. Is that safe?**
+
+Treating listwise deletion as a clean default is the common miss. Dropping incomplete rows is unbiased only when data is Missing Completely At Random (MCAR); otherwise you delete a non-random slice of the population and bias the model. If missingness depends on observed features (MAR) you can impute conditionally, but if it depends on the unobserved value itself (MNAR, for example high earners declining to report income) both deletion and naive imputation bias the result, and the fact of absence is itself signal. Prefer an explicit is-missing indicator plus a fitted imputation (fit on the training fold only), and interrogate why values are absent before discarding anything. The quiet danger is that deletion silently shrinks and skews the sample while looking tidy.
+
+**Q: The network outputs $0.99$ for its top class. Is it $99\%$ likely to be right?**
+
+Equating the softmax probability with the probability of being correct is the standard error. Softmax is a normalized exponential of unbounded logits, so it produces sharp values regardless of true uncertainty, and modern deep networks are systematically overconfident, with accuracy well below their stated confidence. Off the training distribution it is worse: a ReLU network's logits grow without bound as inputs move away from the data, so it can report near-certainty on inputs unlike anything it ever saw. Treat a raw softmax maximum as a ranking signal, not a calibrated probability; if you must consume it as one, fit temperature scaling on held-out data and check calibration with a reliability diagram and ECE. The confidence number is not a reliability guarantee.
+
+**Q: Your data has outliers, so you remove them before training. Always right?**
+
+Deleting outliers as presumed noise is the reflex that gets people in trouble, because whether a point is noise or signal is a modeling decision, not a property of its magnitude. In fraud, intrusion detection, equipment failure, and rare-disease screening the outliers are exactly the positives you are trying to predict, so removing them deletes the target. Even in plain regression, dropping high-leverage points can erase a real nonlinearity or a genuinely heavy-tailed process that matters for the decision (latency p99, claim severity). Separate data-entry errors, which you fix or drop, from genuine extremes, which you keep and handle with a robust loss like Huber or a heavy-tailed model. Investigate the generating mechanism before you delete.
+
+**Q: Textbooks say test error is U-shaped in model size, so a model with far more parameters than data must overfit. Still true?**
+
+The clean bias-variance U-curve says more parameters than samples always generalizes worse, and that rule is incomplete. Over-parameterized models show double descent: as capacity grows, test error rises to a peak near the interpolation threshold (parameters $\approx$ samples), then falls again well into the over-parameterized regime. Past that threshold many solutions achieve zero training error, and the implicit bias of gradient descent selects low-norm, smoother ones that generalize, which is why enormous networks that can memorize their training set still generalize. Capacity alone does not determine generalization; its interaction with the optimizer's implicit regularization does. So "parameters greater than data implies overfitting" is a partial picture, not a law.
+
+**Q: Lasso zeroed out a feature, so it must be unimportant. Right?**
+
+Reading a zero L1 coefficient as "no signal" is the misinterpretation. Among a group of correlated features the L1 penalty tends to keep one and drive the rest to zero, and which one it keeps is unstable under small perturbations of the data, so a zeroed feature can be just as predictive as the correlate that survived. Lasso is performing selection for sparsity, not ranking importance, and it additionally shrinks the survivors' magnitudes, biasing any coefficient you try to read. If you need stable selection or want correlated features to share credit, use elastic net (L1 combined with L2) or assess importance at the correlated-group level. Read a zero as "redundant given the rest," never as "irrelevant."
