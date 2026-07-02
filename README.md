@@ -22,6 +22,9 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 
 ---
 
+
+> **Reading this as a book?** A chapter-by-chapter edition of this material, in
+> book style with figures and end-of-chapter questions, lives in [**book/**](book/).
 ## How to use this repo
 
 1. **Read the [answer framework](framework/answer-framework.md) first.** It is the
