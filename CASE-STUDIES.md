@@ -104,24 +104,28 @@ quadrantChart
 
 ### [Ranking model](topics/02-ranking-model.md) · 15 systems
 
-**What they share.** Every ranker assembles dense numeric features beside sparse ids that pass through embedding tables, scores all candidates through one DNN inside a hard latency budget, then calibrates and blends per-objective scores into a utility that sorts the list. What differs is only how interactions are modeled and how many objectives are optimized.
+**What they share.** Every ranker assembles dense numeric features beside sparse ids that pass through embeddings (or a sequence of item embeddings), scores candidates inside a hard latency budget, then either calibrates and blends per-objective scores into a utility or sorts on raw order. What differs is only how interactions are modeled, how many objectives are optimized, and whether the score feeds an auction.
 
 ```mermaid
 flowchart TD
-  IN["dense + sparse features"] --> EMB["embedding tables + normalized dense"]
+  IN["dense + sparse features"] --> EMB["embedding tables / sequence embeddings + normalized dense"]
   EMB --> D1{"interaction model?"}
   D1 -->|"wide linear + deep MLP"| WD["Wide&Deep (Google, Instacart)"]
   D1 -->|"explicit pairwise dot"| DL["DLRM (Meta)"]
-  D1 -->|"bounded cross blocks"| DC["DCN-v2 (Spotify)"]
+  D1 -->|"bounded cross blocks"| DC["DCN-v2 (Spotify, Snap)"]
+  D1 -->|"self-attention over sequence"| TR["transformer (Asos)"]
+  D1 -->|"tree splits on hybrid features"| GB["XGBoost LambdaMART (Yelp)"]
   WD --> D2{"how many objectives?"}
   DL --> D2
   DC --> D2
-  D2 -->|"single"| SG["single head (Google, Instacart, Airbnb)"]
-  D2 -->|"many, shared body"| MT["multi-task heads / MMoE (Pinterest, LinkedIn, DoorDash, Spotify)"]
+  TR --> D2
+  GB --> D2
+  D2 -->|"single"| SG["single head (Google, Instacart, Airbnb, Asos, Yelp)"]
+  D2 -->|"many, shared body"| MT["multi-task heads / MMoE / PLE (Pinterest, LinkedIn, DoorDash, Spotify, Snap)"]
   SG --> D3{"score feeds auction / price / blend?"}
   MT --> D3
-  D3 -->|"yes"| CAL["calibrate: Platt / isotonic / ECE (Spotify, Wayfair, Pinterest)"]
-  D3 -->|"no, only sort"| RANK["raw order (Airbnb, Walmart)"]
+  D3 -->|"yes"| CAL["calibrate: Platt / isotonic / ECE (Spotify, Snap, Wayfair, Pinterest)"]
+  D3 -->|"no, only sort"| RANK["raw order (Airbnb, Walmart, Asos, Yelp)"]
   CAL --> U["utility = weighted sum, sort"]
   RANK --> U
 ```
@@ -130,23 +134,19 @@ flowchart TD
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| interaction model | `DLRM` (Meta) vs `DeepFM`/`FM` (Instacart) vs `DCN-v2` (Spotify) vs `Wide&Deep` (Google) vs `MLP` (Pinterest, LinkedIn, DoorDash, Airbnb) | Cross structure: explicit second-order dot products when many sparse ids dominate, bounded cross blocks to skip hand-crafting, wide-linear split when frequent crosses reward memorization, else implicit MLP |
-| multi-task | `single` (Google, Instacart, Airbnb) vs `shared-bottom` (Pinterest, LinkedIn, DoorDash) vs `MMoE/PLE` (Spotify) | Count of distinct outcomes and how negatively correlated they are; gating and towers hedge task conflict, single head fits one objective |
-| calibration | `implicit/none` (Google, DLRM, Airbnb, LinkedIn, Walmart) vs `Platt/logistic per head` (Pinterest) vs `isotonic/monotonic` (Wayfair) vs `ECE-monitored` (Spotify) | Whether a raw score feeds an auction, price, or cross-task blend; if it only sorts, order is enough and calibration is skipped |
-| model-family path | `native DNN` (Meta, Google) vs `GBDT then DNN` (Airbnb) vs `tree then MT-DNN` (DoorDash) vs `leaves into DNN` (LinkedIn) vs `lightweight XGBoost early` (Pinterest) | Maturity of the tree baseline and funnel position; migrate off a strong GBDT, bridge via leaf indices, or stay light at the top of the funnel |
+| interaction model | `DLRM` (Meta) vs `DeepFM`/`FM` (Instacart) vs `DCN-v2` (Spotify, Snap) vs `Wide&Deep` (Google) vs `self-attention transformer` (Asos) vs `GBDT LambdaMART` (Yelp) vs `MLP` (Pinterest, LinkedIn, DoorDash, Airbnb) | Cross structure and signal shape: explicit dot products when sparse ids dominate, bounded cross blocks to skip hand-crafting, self-attention when order and session context carry the signal, trees when hybrid content plus interaction features must combine for tail coverage |
+| multi-task | `single` (Google, Instacart, Airbnb, Asos, Yelp) vs `shared-bottom` (Pinterest, LinkedIn, DoorDash) vs `MMoE/PLE` (Spotify, Snap) | Count of distinct outcomes and how negatively correlated they are; gating and towers hedge task conflict, single head fits one objective |
+| calibration | `implicit/none` (Google, DLRM, Airbnb, LinkedIn, Walmart, Asos, Yelp) vs `Platt/logistic per head` (Pinterest, Snap) vs `isotonic/monotonic` (Wayfair, Snap) vs `ECE-monitored` (Spotify) | Whether a raw score feeds an auction, price, or cross-task blend; if it only sorts, order is enough and calibration is skipped |
+| model-family path | `native DNN` (Meta, Google, Snap) vs `GBDT then DNN` (Airbnb) vs `tree then MT-DNN` (DoorDash) vs `leaves into DNN` (LinkedIn) vs `MF then transformer` (Asos) vs `MF then GBDT LTR` (Yelp) vs `lightweight XGBoost early` (Pinterest) | Maturity of the prior baseline and funnel position; migrate off matrix factorization when tail coverage or sequence signal is left on the table, bridge trees via leaves, or stay light at the top of the funnel |
 
 **The math that separates them.**
 
-**DLRM explicit pairwise interaction**
 $$z = \operatorname{concat}\Big(x_{dense},\ \{\ \langle e_i,\ e_j\rangle\ :\ i<j\ \}\Big)$$
 
-**DCN-v2 cross layer**
 $$x_{l+1} = x_0 \odot (W_l\, x_l + b_l) + x_l$$
 
-**Multi-task utility blend**
-$$U = \sum_{t} w_t\, \hat p_t, \qquad \hat p_t = \sigma\big(\mathrm{head}_t(\mathrm{body}(x))\big)$$
+$$\mathrm{Attention}(Q,K,V) = \operatorname{softmax}\!\Big(\frac{Q K^{\top}}{\sqrt{d_k}}\Big) V, \qquad U = \sum_{t} w_t\, \hat p_t$$
 
-**Calibration error and ad bid**
 $$\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\big|\,\mathrm{acc}(b) - \mathrm{conf}(b)\,\big|, \qquad \mathrm{bid} = v \cdot \hat p$$
 
 ```mermaid
@@ -159,12 +159,15 @@ quadrantChart
   quadrant-3 "Low-stakes baselines"
   quadrant-4 "Heavy, thin payoff"
   "Pinterest lightweight XGB": [0.12, 0.20]
+  "Yelp hybrid XGB LTR": [0.30, 0.45]
   "Google Wide and Deep": [0.42, 0.55]
   "Instacart pCTR": [0.48, 0.60]
   "Airbnb DNN": [0.55, 0.50]
+  "Asos transformer": [0.60, 0.62]
   "LinkedIn multi-task": [0.62, 0.65]
   "DoorDash multi-task": [0.68, 0.70]
   "Meta DLRM": [0.72, 0.78]
+  "Snap MMoE DCN-v2": [0.82, 0.80]
   "Spotify CAMoE DCN-v2": [0.88, 0.82]
 ```
 
@@ -359,66 +362,76 @@ quadrantChart
 
 ### [Search ranking](topics/09-search-ranking.md) · 14 systems
 
-**What they share.** Every system runs one spine: understand the query, fuse a lexical arm with an embedding arm into a candidate union, then score the survivors with a learning-to-rank model trained on debiased engagement plus scarce human judgments. The differences are which retrieval arm dominates and where each team spends its labeling budget, not the shape.
+## Search ranking, side by side
+
+**What they share.** Every system splits search into a cheap retrieval stage that fetches candidates and a learned ranking stage that orders them, and all struggle with the same core problem: the training labels (clicks, bookings) are biased by where a result was shown, so relevance and exposure get tangled.
 
 ```mermaid
 flowchart TD
-  Q["query"] --> QU["query understanding"]
-  QU --> B1{"retrieval arm?"}
-  B1 -->|"lexical only"| LEX["BM25 / inverted index<br/>(Yelp)"]
-  B1 -->|"embedding"| SEM["two-tower ANN<br/>(Pinterest SearchSage)"]
-  B1 -->|"hybrid fusion"| HYB["lexical + embedding merge<br/>(Instacart, LinkedIn)"]
-  B1 -->|"learned selection"| BAN["contextual bandit picks arms<br/>(Amazon)"]
-  LEX --> U["union + dedupe"]
-  SEM --> U
-  HYB --> U
-  BAN --> U
-  U --> B2{"LTR objective?"}
-  B2 -->|"pointwise"| PW["regression score<br/>(Yelp)"]
-  B2 -->|"pairwise / listwise"| PL["RankNet / LambdaMART<br/>(Burges, web-scale rankers)"]
-  PW --> B3{"label source?"}
-  PL --> B3
-  B3 -->|"human judged"| HJ["graded labels<br/>(Wayfair WANDS)"]
-  B3 -->|"debiased clicks"| CK["IPW / position model<br/>(Pinterest, Instacart)"]
-  HJ --> R["ranked results"]
-  CK --> R
+  START["a search query arrives"] --> RET{"how are candidates retrieved?"}
+  RET -->|"single lexical arm"| Y["Yelp"]
+  RET -->|"lexical + semantic fused"| INST["Instacart, Spotify"]
+  RET -->|"learned strategy selection"| AMZ["Amazon (bandit)"]
+  RET -->|"embedding-first semantic"| EMB["Shopify, Pinterest"]
+  RET --> RANK{"how is ranking staged?"}
+  RANK -->|"one pointwise model"| YM["Yelp regression"]
+  RANK -->|"cross + deep in one net"| G["Google DCN V2 / Wide&Deep"]
+  RANK -->|"cheap pass then neural pass"| MS["LinkedIn, Booking, Instacart"]
+  RANK --> LBL{"where do labels come from?"}
+  LBL -->|"clicks + engagement"| ENG["GetYourGuide, Amazon, Pinterest"]
+  LBL -->|"human-judged set"| HJ["Wayfair WANDS, LinkedIn"]
+  LBL -->|"conversions / bookings"| CONV["Instacart, Booking, GetYourGuide"]
+  LBL --> POS{"how is position bias handled?"}
+  POS -->|"position-discounted feature"| PD["GetYourGuide"]
+  POS -->|"controlled exploration / debias"| CE["Amazon"]
+  POS -->|"human labels sidestep it"| HL["Wayfair, LinkedIn"]
 ```
 
 **The choices, side by side.**
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| retrieval arm | `lexical/BM25` (Yelp) vs `embedding` (Pinterest SearchSage) vs `hybrid fusion` (Instacart, LinkedIn) vs `learned bandit` (Amazon) | Vocabulary gap vs exact-string need: lexical nails product codes and rare terms, embeddings bridge synonyms, hybrid keeps both, bandit learns which arm fits each query context |
-| LTR objective | `pointwise` (Yelp regression) vs `pairwise/RankNet` (Burges) vs `listwise/LambdaMART` (web-scale rankers) | Match-or-not tasks tolerate pointwise; when the metric is order and position-weighted, pairwise or listwise align the loss to NDCG |
-| label source | `clicks` (Pinterest saves, Instacart conversion) vs `human` (Wayfair WANDS, Yelp gold) vs `engagement` (Amazon logged, LinkedIn crowd + click) | Clicks are abundant but biased, human judgments trustworthy but scarce; teams fuse to anchor volume with quality |
-| position bias | `IPW propensity` vs `position as train feature` vs `bandit exploration` (Amazon) | Clicks reward whatever ranked high; debias so the model learns relevance net of examination, or randomize to estimate propensities |
+| Retrieval arm | Single lexical (Yelp); lexical + semantic fusion (Instacart, Spotify); learned strategy selection via bandit (Amazon); pure embedding / two-tower (Shopify, Pinterest) | Catalog size and query variety: exact-match domains lean lexical, intent-heavy or multilingual domains add semantic towers, and heterogeneous intent pushes toward learned arm selection |
+| LTR objective | Pointwise regression (Yelp); explicit cross plus deep interaction net (Google DCN V2, Wide and Deep); multi-stage recall-then-precision (LinkedIn, Booking, Instacart, GetYourGuide) | Whether the task is match-or-not (pointwise) versus ordering many candidates cheaply then precisely (multi-stage) under a latency budget |
+| Label source | Clicks and engagement (GetYourGuide, Pinterest, Amazon); human-judged relevance (Wayfair WANDS, LinkedIn); conversions and bookings (Instacart, Booking, GetYourGuide) | The business outcome you are willing to trust: engagement is abundant but biased, human labels are clean but expensive, conversions are sparse but truthful |
+| Position bias | Position-discounted feature (GetYourGuide); controlled exploration and debiasing (Amazon); human labels that sidestep exposure bias (Wayfair, LinkedIn); implicit or unaddressed (Shopify, Spotify semantic-first) | How much of your signal is logged clicks: the more you train on exposure-driven engagement, the more explicit debiasing you must buy |
 
-**The math that separates them.**
+**The math that separates them.** Pointwise learning-to-rank (Yelp) fits each candidate independently against a graded label:
 
-$$\textbf{NDCG@k} = \frac{\sum_{i=1}^{k} \frac{2^{rel_i}-1}{\log_2(i+1)}}{\text{IDCG@k}}$$
+$$L_{point} = \sum_{i} \left( f(x_i) - y_i \right)^2$$
 
-$$\textbf{BM25}(q,d) = \sum_{t \in q} \text{IDF}(t) \cdot \frac{f(t,d)\,(k_1+1)}{f(t,d) + k_1\,(1 - b + b\,\frac{|d|}{\text{avgdl}})}$$
+A two-tower retrieval model (Spotify, Pinterest) with in-batch negatives maximizes the softmax over batch positives, so a batch of size $B$ supplies $B^2 - B$ negatives for free:
 
-$$\textbf{RRF fusion: } s(d) = \sum_{a \in \text{arms}} \frac{1}{\kappa + \text{rank}_a(d)}$$
+$$L_{tower} = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{\exp(\text{sim}(q_i, d_i)/\tau)}{\sum_{j=1}^{B} \exp(\text{sim}(q_i, d_j)/\tau)}$$
 
-$$\textbf{IPW position-bias: } \mathcal{L} = \sum_{i} \frac{c_i}{P(\text{examine} \mid \text{pos}_i)} \cdot \ell\big(f(x_i), y_i\big)$$
+DCN V2 (Google) stacks explicit feature crosses where each layer multiplies against the original input, so interaction order grows with depth $l$:
+
+$$x_{l+1} = x_0 \odot (W_l x_l + b_l) + x_l$$
+
+Position-debiased training (GetYourGuide, Amazon) weights each logged label by the inverse propensity of its slot, decoupling relevance from exposure:
+
+$$L_{IPS} = \sum_{i} \frac{y_i}{p(\text{rank}_i)} \, \ell\big(f(x_i), y_i\big)$$
 
 ```mermaid
 quadrantChart
-  title "Infra cost vs relevance NDCG"
-  x-axis "Low infra cost" --> "High infra cost"
-  y-axis "Lower NDCG" --> "Higher NDCG"
-  quadrant-1 "Rich but heavy"
-  quadrant-2 "Best value"
-  quadrant-3 "Cheap baseline"
-  quadrant-4 "Overbuilt"
-  "Yelp lexical LTR": [0.20, 0.35]
-  "Wayfair WANDS eval": [0.30, 0.55]
-  "Instacart hybrid": [0.55, 0.68]
-  "Pinterest SearchSage": [0.60, 0.72]
-  "LinkedIn two-pass": [0.70, 0.78]
-  "Amazon bandit LTRR": [0.78, 0.80]
-  "Instacart LLM intent": [0.88, 0.82]
+  title "Retrieval learning vs ranking depth"
+  x-axis "fixed retrieval" --> "learned retrieval"
+  y-axis "shallow ranker" --> "deep multi-stage ranker"
+  quadrant-1 "learned arms, deep rank"
+  quadrant-2 "fixed arms, deep rank"
+  quadrant-3 "fixed arms, shallow rank"
+  quadrant-4 "learned arms, shallow rank"
+  "Yelp": [0.15, 0.18]
+  "Wayfair WANDS": [0.20, 0.30]
+  "Google DCN V2": [0.30, 0.72]
+  "GetYourGuide": [0.35, 0.60]
+  "Booking": [0.32, 0.78]
+  "LinkedIn": [0.40, 0.85]
+  "Instacart hybrid": [0.60, 0.70]
+  "Shopify": [0.62, 0.35]
+  "Spotify": [0.66, 0.45]
+  "Pinterest SearchSage": [0.70, 0.40]
+  "Amazon bandit": [0.88, 0.68]
 ```
 
 **The systems**
@@ -442,66 +455,79 @@ quadrantChart
 
 ### [Fraud & anomaly detection](topics/08-fraud-and-anomaly-detection.md) · 16 systems
 
-**What they share.** Every system runs one skeleton: an event stream feeds real-time velocity plus graph/entity features, a model scores the event, a cost-sensitive threshold turns the score into allow/block/review, and analyst verdicts plus settled chargebacks flow back as labels. The only fast feedback is the human queue; ground truth lands weeks later.
+**What they share.** Every team scores a rare-positive fraud signal over engineered features and then acts under a cost-asymmetric threshold. They diverge on model family, how much they lean on labels, whether they reason over an entity graph, and what action the score triggers.
 
 ```mermaid
 flowchart TD
-  EV["transaction / event"] --> FEAT["real-time features<br/>(velocity + graph / entity)"]
-  FEAT --> D1{"labels available?"}
-  D1 -->|"yes: supervised"| SUP["boosted trees / DNN / RGCN<br/>(Stripe, Uber, Grab, Airbnb)"]
-  D1 -->|"no: anomaly"| UNS["autoencoder / iso-forest<br/>(Uber REW, Grab GraphBEAN)"]
-  SUP --> D2{"entity linking?"}
-  UNS --> D2
-  D2 -->|"per-event row"| ROW["tabular score<br/>(Stripe, Wide and Deep)"]
-  D2 -->|"multi-hop graph"| GR["ring / cluster score<br/>(PayPal, Uber, Grab)"]
-  ROW --> D3{"action policy?"}
-  GR --> D3
-  D3 -->|"threshold"| BLK["allow / block<br/>(Stripe)"]
-  D3 -->|"friction"| FRI["targeted friction<br/>(Airbnb)"]
-  D3 -->|"review"| HUM["human queue<br/>(Uber REW, Grab)"]
-  BLK --> LAB["labels feed back"]
-  FRI --> LAB
-  HUM --> LAB
-  LAB --> FEAT
+  SPINE["fraud signal over engineered features<br/>+ cost-asymmetric decision"] --> MF{"model family?"}
+  MF -->|"trees / RF"| TREES["Capital One, SMOTE baselines"]
+  MF -->|"DNN"| DNN["Stripe, Cheng Wide and Deep"]
+  MF -->|"graph neural net"| GNN["Uber RGCN, Grab RGCN, Grab GraphBEAN, Wayfair"]
+  MF -->|"rules + lightweight ML"| RULES["Feedzai"]
+  SPINE --> SUP{"supervision?"}
+  SUP -->|"supervised"| S1["Capital One, Stripe, Wayfair, Cheng"]
+  SUP -->|"semi-supervised"| S2["Grab RGCN"]
+  SUP -->|"unsupervised"| S3["Uber Risk Entity Watch, Grab GraphBEAN"]
+  SPINE --> G{"entity graph?"}
+  G -->|"learned GNN"| G1["Uber, Grab, Wayfair"]
+  G -->|"graph DB traversal features"| G2["PayPal, Booking"]
+  G -->|"per-transaction / session"| G3["Stripe, Feedzai, Capital One"]
+  SPINE --> A{"action policy?"}
+  A -->|"allow / block"| A1["Stripe, Feedzai, Booking, PayPal"]
+  A -->|"prioritize / triage"| A2["Capital One"]
+  A -->|"targeted friction"| A3["Airbnb"]
+  A -->|"human review"| A4["Uber REW, Grab"]
 ```
 
 **The choices, side by side.**
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| model family | `boosted trees` vs `deep DNN` (Stripe Radar, Wide and Deep) vs `graph GNN/RGCN` (Uber, Grab) | Signal shape: strong tabular velocity favors trees; sparse categoricals reward embeddings; coordinated rings need message passing |
-| supervision | `supervised` (Stripe, Uber RGCN, Grab RGCN, Airbnb) vs `unsupervised anomaly` (Uber Risk Entity Watch, Grab GraphBEAN) | Do mature labels exist? Supervised for known fraud at high precision; anomaly for novel attacks with no labels yet |
-| graph/entity linking | `per-event row` (Stripe, Wide and Deep) vs `multi-hop entity graph` (PayPal sub-second, Uber RGCN, Grab bipartite) | Whether fraud is coordinated: rings share devices/cards/addresses that single rows hide, at the cost of graph infra |
-| action policy | `hard threshold` (Stripe) vs `friction` (Airbnb) vs `human review` (Uber REW, Grab) | Cost asymmetry and confidence: block when cheap and certain, friction when good-user churn is costly, review when unsure or unlabeled |
+| Model family | Random forest (Capital One) vs deep net (Stripe, Cheng) vs GNN (Uber, Grab, Wayfair) vs rules plus lightweight ML (Feedzai) | Explainability and audit needs push to trees; scale and raw signal push to DNN; ring or collusion structure pushes to GNN; latency at high rps pushes to lightweight stacks |
+| Supervision | Supervised (Capital One, Stripe, Wayfair, Cheng) vs semi-supervised (Grab RGCN) vs unsupervised (Uber REW, Grab GraphBEAN) | Label availability and maturity; novel adversarial fraud with no labels forces anomaly or reconstruction methods |
+| Graph / entity | Learned GNN over entities (Uber, Grab, Wayfair) vs graph-DB traversal features (PayPal, Booking) vs per-transaction or session (Stripe, Feedzai, Capital One) | Whether fraud is coordinated (shared cards, devices, addresses) vs a lone risky event; inline-latency budget for traversal |
+| Action policy | Allow or block (Stripe, Feedzai, Booking, PayPal) vs prioritize or triage (Capital One) vs targeted friction (Airbnb) vs human review (Uber REW, Grab) | Cost of a false positive on a good user, and whether a human or a challenge step sits between score and outcome |
 
 **The math that separates them.**
 
-$$\textbf{cost-optimal threshold: } p^{*} = \frac{C_{fp}}{C_{fp} + C_{fn}}$$
+**Cost-asymmetric operating point (shared by all).** Choose the threshold that minimizes expected cost, not error rate:
 
-$$\textbf{PR-AUC, rare-positive metric: } \int_{0}^{1} \text{Prec}(r)\, dr, \quad \text{Prec} = \frac{TP}{TP + FP}$$
+$$L(\tau) = c_{FP}\,\mathrm{FP}(\tau) + c_{FN}\,\mathrm{FN}(\tau), \qquad \tau^{\star} = \arg\min_{\tau} L(\tau)$$
 
-$$\textbf{focal loss for imbalance: } \mathcal{L} = -\,\alpha\,(1 - p_t)^{\gamma}\,\log(p_t)$$
+**Airbnb three-action loss (friction as a middle option).** A friction term recovers good users that a hard block would have lost:
 
-$$\textbf{Airbnb friction loss: } L = FP \cdot G \cdot V + FN \cdot C + TP \cdot (1 - F) \cdot C$$
+$$L = \mathrm{FP}\cdot G \cdot V + \mathrm{FN}\cdot C + \mathrm{TP}\cdot(1-F)\cdot C$$
+
+**RGCN relation-specific message passing (Uber, Grab).** Each edge type gets its own transform, so a shared device and a shared city carry different weight:
+
+$$h_i^{(l+1)} = \sigma\!\left(W_0^{(l)} h_i^{(l)} + \sum_{r \in R}\sum_{j \in N_i^{r}} \frac{1}{|N_i^{r}|} W_r^{(l)} h_j^{(l)}\right)$$
+
+**GraphBEAN reconstruction anomaly (Grab, unsupervised).** Score is reconstruction error over node and edge attributes plus structure, so the rare reconstructs poorly:
+
+$$s(v) = \lVert x_v - \hat{x}_v \rVert^2 + \sum_{e \ni v}\lVert a_e - \hat{a}_e \rVert^2 + \mathrm{BCE}(A, \hat{A})$$
 
 ```mermaid
 quadrantChart
-  title "Infra-graph cost vs novel-attack coverage"
-  x-axis "Low infra / graph cost" --> "High infra / graph cost"
-  y-axis "Low novel coverage" --> "High novel coverage"
-  quadrant-1 "Heavy graph, novelty"
-  quadrant-2 "Cheap, novelty"
-  quadrant-3 "Cheap, known-only"
-  quadrant-4 "Heavy, known-only"
-  "Stripe Radar DNN": [0.35, 0.30]
-  "Wide and Deep": [0.28, 0.20]
-  "SMOTE technique": [0.15, 0.15]
-  "Airbnb friction": [0.25, 0.35]
-  "Uber RGCN collusion": [0.70, 0.55]
-  "PayPal graph DB": [0.90, 0.50]
-  "Grab RGCN rings": [0.65, 0.60]
-  "Uber Risk Entity Watch": [0.55, 0.85]
-  "Grab GraphBEAN": [0.78, 0.90]
+  title "Fraud ML: entity-graph reliance vs label reliance"
+  x-axis "per-transaction / session" --> "entity-graph structure"
+  y-axis "unsupervised / few labels" --> "fully supervised"
+  quadrant-1 "supervised + graph"
+  quadrant-2 "supervised, non-graph"
+  quadrant-3 "unsupervised, non-graph"
+  quadrant-4 "unsupervised or semi + graph"
+  "Capital One RF": [0.18, 0.9]
+  "Stripe DNN": [0.28, 0.82]
+  "Cheng Wide+Deep": [0.22, 0.85]
+  "Feedzai": [0.3, 0.55]
+  "SMOTE": [0.15, 0.7]
+  "Wayfair GraphSage": [0.82, 0.8]
+  "Uber RGCN": [0.85, 0.75]
+  "PayPal graph DB": [0.9, 0.35]
+  "Booking JanusGraph": [0.86, 0.45]
+  "Grab RGCN": [0.8, 0.45]
+  "Grab GraphBEAN": [0.83, 0.15]
+  "Uber Risk Entity Watch": [0.55, 0.12]
+  "Airbnb friction": [0.3, 0.65]
 ```
 
 **The systems**
@@ -527,60 +553,68 @@ quadrantChart
 
 ### [Content moderation and trust and safety](topics/16-content-moderation.md) · 11 systems
 
-**What they share.** Every system is the same funnel: cheap certain checks first, then per-policy classifiers each at its own precision floor, then a policy engine turning scores into actions with humans on the uncertain middle feeding labels back. They differ only in which branch each company invests in.
+**What they share.** Every system scores user content or accounts for a policy violation and must hold a fixed precision floor, because a false positive silences a real user or blocks a legitimate invite. They diverge on modality, whether the decision is a learned classifier or a hash-match, whether it fires before or after the content spreads, and where the human sits.
 
 ```mermaid
 flowchart TD
-    A[Content in] --> B{modality?}
-    B -->|text, image, audio, joint| C[Bumble image, Meta multimodal, Roblox audio]
-    C --> D{known or novel?}
-    D -->|known| E[hash match: Google CSAI, PhotoDNA]
-    D -->|novel| F[learned classifier]
-    F --> G{proactive or reactive?}
-    G -->|scan on ingest| H[Bumble, Roblox, Nextdoor nudge]
-    G -->|report / virality| I[LinkedIn reactive, Pinterest batch]
-    E --> J{human routing?}
-    H --> J
-    I --> J
-    J -->|AI beats humans| K[auto-enforce: Roblox]
-    J -->|borderline / severe| L[priority queue: Pinqueue, Google]
-    L --> M[gold labels] --> F
+    A[Incoming content or account] --> B{Known-bad fingerprint?}
+    B -->|yes, exact enough| C[Hash-match: Google CSAI / PhotoDNA]
+    B -->|no, must judge| D{Modality}
+    D -->|voice| E[Roblox distilled WavLM]
+    D -->|image| F[Bumble EfficientNetV2]
+    D -->|image + text| G[Meta hateful-memes fusion]
+    D -->|text / metadata| H[Slack invite spam, LinkedIn, Nextdoor, Pinterest]
+    E --> I{When to act}
+    F --> I
+    G --> I
+    H --> I
+    I -->|before publish or send| J[Proactive: Slack, Nextdoor, Bumble, LinkedIn proactive]
+    I -->|after some reach| K[Reactive: LinkedIn viral, Pinterest online]
+    J --> L{Human role}
+    K --> L
+    C --> L
+    L -->|auto-enforce| M[Slack, Bumble, Nextdoor nudge]
+    L -->|prioritize queue| N[Google, Pinterest, Roblox]
+    L -->|challenge or appeal| O[LinkedIn, Roblox multimodal]
 ```
 
 **The choices, side by side.**
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| modality | `text` vs `image` (Bumble) vs `multimodal` (Meta hateful-memes) vs `audio` (Roblox) | Where harm lives; benign image plus benign caption forces a joint model, live voice forces a streaming window |
-| detection | `hash-match known-bad` (Google) vs `learned classifier` | Known-versus-novel: hashing is near-zero false positive and legally actionable but blind to unseen content |
-| proactive vs reactive | `scan-on-ingest` (Bumble, Roblox, Nextdoor) vs `report + virality` (LinkedIn viral-spam, Pinterest) | Miss cost scales with reach, so severe irreversible harm gets proactive scan, the rest gets cheaper reactive re-scoring |
-| human routing | `auto-enforce when AI beats humans` (Roblox) vs `priority queue to experts` (Pinqueue, Google CSAM) | False-positive cost per policy: CSAM never auto-actions on a score, spam can |
+| Modality scored | Text/metadata (Slack invite spam, LinkedIn, Nextdoor, Pinterest), voice (Roblox), image (Bumble), image+text (Meta memes) | Where the harm lives; joint reasoning is needed only when neither modality is damning alone |
+| Hash-match vs classifier | Hash-match for known-bad (Google CSAI), learned classifier for novel (Slack, Roblox, Bumble, Pinterest, LinkedIn) | Whether the material repeats exactly and the false-positive cost is legally unacceptable |
+| Proactive vs reactive | Proactive at send or publish (Slack, Nextdoor, Bumble, LinkedIn proactive DNN), reactive on engagement (LinkedIn viral, Pinterest online-plus-batch) | Whether you can score before harm reaches an audience, or must watch the spread signal |
+| Human routing | Auto-enforce (Slack, Bumble, Nextdoor), prioritize-then-review (Google, Pinterest, Roblox), challenge or appeal (LinkedIn, Roblox multimodal) | The cost of a wrong auto-action versus the volume a human queue can absorb |
 
-**The math that separates them.**
+**The math that separates them.** Each team fixes a precision floor and maximizes recall under it, since false positives block real users:
 
-$$\textbf{recall at precision floor:}\quad \max_{\tau}\ \operatorname{Recall}(\tau)\quad \text{s.t.}\quad \operatorname{Precision}(\tau)\ \ge\ P_{\min}^{(\text{policy})}$$
+$$\max_{\tau}\; \operatorname{Recall}(\tau) \quad \text{s.t.}\quad \operatorname{Precision}(\tau) \ge P_{\min}^{(\text{policy})}$$
 
-$$\textbf{asymmetric miss cost:}\quad \mathcal{L}\ =\ c_{FN}\cdot FN\ +\ c_{FP}\cdot FP,\qquad c_{FN}\ \gg\ c_{FP}$$
+Slack judges the blocker by the acceptance rate of blocked invites, a proxy for how much of what it blocked was actually legitimate:
 
-$$\textbf{auto-action gate:}\quad \operatorname{act}(x)=\mathbf{1}\!\left[\,s(x)\ge\tau\ \wedge\ \operatorname{Precision}(\tau)\ge P_{\min}\,\right]$$
+$$\operatorname{FalseBlockProxy} = \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} = 0.03 \;\;\text{vs}\;\; 0.70 \;\text{under manual rules}$$
 
-$$\textbf{priority queue:}\quad \arg\max_{x\in Q}\ \operatorname{severity}(x)\times \operatorname{reach}(x)$$
+Under a skewed base rate (Bumble at 0.1 percent positives) accuracy is useless, so the operating point is set on the precision-recall curve instead:
+
+$$\operatorname{Precision} = \frac{tp}{tp + fp}, \qquad \operatorname{Recall} = \frac{tp}{tp + fn}$$
 
 ```mermaid
 quadrantChart
-    title "Review cost vs harm coverage"
-    x-axis "Low review cost" --> "High review cost"
-    y-axis "Narrow coverage" --> "Broad coverage"
-    quadrant-1 "Broad, expensive"
-    quadrant-2 "Broad, cheap"
-    quadrant-3 "Narrow, cheap"
-    quadrant-4 "Narrow, expensive"
-    "Hash match (Google)": [0.12, 0.30]
-    "Text classifier (LinkedIn)": [0.30, 0.55]
-    "Image classifier (Bumble)": [0.32, 0.45]
-    "Joint VL (Meta memes)": [0.62, 0.62]
-    "Audio distilled (Roblox)": [0.55, 0.50]
-    "Human review (Pinqueue)": [0.90, 0.85]
+    title "Enforcement stance: harm speed vs cost of a false positive"
+    x-axis "Reactive after reach" --> "Proactive before reach"
+    y-axis "Prioritize for humans" --> "Auto-enforce"
+    quadrant-1 "Auto-block pre-harm"
+    quadrant-2 "Reactive auto-action"
+    quadrant-3 "Reactive human queue"
+    quadrant-4 "Proactive human queue"
+    "Slack invite spam": [0.82, 0.80]
+    "Bumble Private Detector": [0.78, 0.72]
+    "Nextdoor nudge": [0.88, 0.65]
+    "LinkedIn viral spam": [0.30, 0.55]
+    "Pinterest online plus batch": [0.35, 0.45]
+    "Roblox voice": [0.55, 0.40]
+    "Google CSAI match": [0.60, 0.20]
 ```
 
 **The systems**
@@ -760,67 +794,69 @@ quadrantChart
 
 ### [Computer vision](topics/12-computer-vision.md) · 15 systems
 
-**What they share.** Every system runs the same spine: canonical ingest (decode, EXIF fix, resize, normalize) feeds a pretrained backbone whose features drive a task-specific head, and human review turns decisions back into fresh labels. Only the head, the serving shape, and the metric change.
+## How these vision systems diverge
+
+**What they share.** Every system ingests an image (or a stroke sequence), runs a learned or hand-crafted feature extractor, and thresholds a score into an action; they diverge on the task head, the backbone weight, how labels are sourced, and where inference runs.
 
 ```mermaid
-flowchart LR
-  ING[Ingest\ndecode / EXIF / resize] --> BB[Pretrained backbone\nCNN or transformer]
-  BB --> D1{Task head?}
-  D1 -->|classify| CLS[Fixed-class label\nAirbnb rooms, Google eye, Bumble]
-  D1 -->|localize| LOC[Box or mask\nMeta Mask R-CNN, Airbnb amenity, Google Africa]
-  D1 -->|read text| OCR[OCR chain\nDropbox]
-  D1 -->|embed| EMB[Open-set vector\nPinterest, Netflix in-video]
-  CLS --> D2{Serving shape?}
-  LOC --> D2
-  OCR --> D2
-  EMB --> D2
-  D2 -->|publish path| RT[Real-time gate\nBumble]
-  D2 -->|throughput| BT[Batch fleet\nAirbnb, Meta, Google]
-  D2 -->|vector store| AN[(ANN index\nPinterest, Netflix)]
-  RT --> REV[Human review]
-  BT --> REV
-  AN --> REV
-  REV -.fresh labels.-> BB
+flowchart TD
+  IN[Visual input image stroke or document] --> Q1{What is the output shape}
+  Q1 -->|one label per image| CLS[Classification Airbnb-room Bumble Cars24 Shopify Canva DR]
+  Q1 -->|boxes with position| DET[Detection Airbnb-amenity Uber-OCR]
+  Q1 -->|per-pixel mask| SEG[Segmentation MaskRCNN Google-buildings Zalando]
+  Q1 -->|embedding for retrieval| EMB[Embedding Pinterest Netflix-search Zalando-match]
+  CLS --> Q2{Latency budget}
+  DET --> Q2
+  SEG --> Q2
+  EMB --> Q2
+  Q2 -->|inline or on-device| EDGE[Light backbone Cars24 DCT Canva LSTM Uber TFLite Bumble EfficientNet]
+  Q2 -->|offline batch ok| HEAVY[Heavy backbone ResNet SE-ResNeXt UNet BERT plus MobileNet]
 ```
 
 **The choices, side by side.**
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| task head | `classify` (Airbnb rooms, Google eye, Bumble) vs `detect Mask R-CNN` (Meta) vs `segment U-Net` (Google Africa, Zalando) vs `embed/visual-search` (Pinterest, Netflix) vs `OCR` (Dropbox) | What the head must emit: a fixed-class label, a localized box or mask, read text, or an open-set vector. Whole image vs where vs which pixels vs open catalog. |
-| backbone | `CNN ResNet` (Airbnb, default) vs `EfficientNet` (Bumble gate, high-volume tagging) vs `ViT/Swin` (data-rich detection and segmentation) vs `CLIP` (Netflix in-video, text-to-image) | Cost and accuracy knob. ResNet is the reliable default; EfficientNet buys FLOPs back when cost per million dominates; ViT/Swin want more data and compute; CLIP when you need a shared image-text space. |
-| labeling | `active learning` (label uncertain, cut box cost) vs `consensus` (3 to 7 graders, Google eye) vs `self-training` (Noisy Student on 8.7M tiles, Google Africa) | Label budget, not GPUs, gates the early phase. Costlier labels (boxes, masks, medical) push toward active learning and consensus; abundant unlabeled data enables self-training. |
-| serving | `real-time gate` (Bumble, publish path) vs `batch` (Airbnb, Meta, Google, throughput-optimized) vs `ANN index` (Pinterest, Netflix, offline precompute) | Latency economics. On the publish path you need a tight p99 and a fail-closed policy; async tagging optimizes cost per million; open-set retrieval precomputes and rebuilds an index offline. |
+| Task head | classification (Cars24, Shopify, Airbnb-room, Bumble, Canva) vs detection (Airbnb-amenity, Uber-OCR) vs segmentation (Mask R-CNN, Google-buildings) vs embedding (Pinterest, Netflix) | Does the product need a label, a position, a boundary, or a similarity match |
+| Backbone | hand-crafted DCT (Cars24), tiny LSTM (Canva), MobileNet or EfficientNet or quantized (Shopify, Uber, Bumble) vs ResNet or SE-ResNeXt or U-Net or BERT (Airbnb, Pinterest, Google, Shopify-text) | Latency and device budget versus accuracy ceiling |
+| Labeling | manual annotation (Shopify, Airbnb, Google), multi-grader consensus (DR), hard-negative mining (Bumble), volunteer collection (Canva), synthetic (Netflix-QC) | Cost of a label and the cost of a wrong one |
+| Serving | on-device or inline real-time (Cars24, Canva, Uber, Bumble) vs offline batch or precomputed index (Airbnb, Pinterest, Netflix, Google) | Is the output on a user-facing critical path |
 
 **The math that separates them.**
 
-$$\textbf{IoU (localization overlap): } \quad \mathrm{IoU} = \frac{|A \cap B|}{|A \cup B|}$$
+Detection and segmentation quality rest on intersection-over-union between a predicted region and ground truth:
 
-$$\textbf{mAP over IoU sweep: } \quad \mathrm{mAP} = \frac{1}{|C|}\sum_{c \in C}\int_{0}^{1} p_c(r)\,dr, \quad \text{IoU} \in [0.5{:}0.95]$$
+$$IoU = \frac{|A \cap B|}{|A \cup B|}$$
 
-$$\textbf{recall at precision floor: } \quad \max_{\tau}\ \mathrm{Recall}(\tau) \quad \text{s.t.}\ \mathrm{Precision}(\tau) \ge \pi_0$$
+Detectors (Airbnb amenities, Google buildings) report mean average precision, the mean over classes of area under each precision-recall curve at a fixed IoU:
 
-$$\textbf{contrastive image-text loss: } \quad \mathcal{L} = -\frac{1}{2N}\sum_{i} \left[ \log\frac{e^{s_{ii}/\tau}}{\sum_{j} e^{s_{ij}/\tau}} + \log\frac{e^{s_{ii}/\tau}}{\sum_{j} e^{s_{ji}/\tau}} \right]$$
+$$mAP = \frac{1}{C}\sum_{c=1}^{C} \int_{0}^{1} p_c(r)\, dr$$
+
+Gate-style classifiers (Bumble, Cars24, Uber) pick an operating point by fixing precision and taking the recall achievable there:
+
+$$R_{\text{op}} = \max\{\, R : P(t) \ge P_{\min} \,\}$$
+
+Screening models (diabetic retinopathy) headline the harmonic mean of precision and recall so a collapse in either is punished:
+
+$$F_1 = \frac{2\,P\,R}{P + R}$$
 
 ```mermaid
 quadrantChart
-  title Serving cost vs task difficulty
-  x-axis "Low GPU serving cost" --> "High GPU serving cost"
-  y-axis "Simpler task" --> "Harder task"
-  quadrant-1 "Heavy and hard"
-  quadrant-2 "Hard, cheap to serve"
-  quadrant-3 "Simple and cheap"
-  quadrant-4 "Simple but pricey"
-  "Airbnb rooms": [0.30, 0.25]
-  "Bumble gate": [0.20, 0.20]
-  "Airbnb amenity": [0.45, 0.55]
-  "Dropbox OCR": [0.55, 0.60]
-  "Pinterest embed": [0.50, 0.50]
-  "Meta Mask R-CNN": [0.75, 0.85]
-  "Google Africa": [0.70, 0.70]
-  "Netflix pixel": [0.85, 0.65]
-  "Netflix in-video": [0.65, 0.60]
-  "Google eye": [0.40, 0.80]
+  title "Backbone weight vs serving latency"
+  x-axis "Light backbone" --> "Heavy backbone"
+  y-axis "Offline batch" --> "Real-time inline"
+  quadrant-1 "Heavy and real-time"
+  quadrant-2 "Light and real-time"
+  quadrant-3 "Light and batch"
+  quadrant-4 "Heavy and batch"
+  "Cars24 blur DCT": [0.08, 0.92]
+  "Canva shape LSTM": [0.12, 0.88]
+  "Uber doc TFLite": [0.28, 0.85]
+  "Bumble Private Detector": [0.35, 0.80]
+  "Shopify categorizer": [0.62, 0.30]
+  "Airbnb amenity detector": [0.75, 0.18]
+  "Pinterest embeddings": [0.80, 0.22]
+  "Google buildings UNet": [0.70, 0.12]
 ```
 
 **The systems**
@@ -925,67 +961,70 @@ quadrantChart
 
 ### [Demand forecasting & time series](topics/14-demand-forecasting-and-time-series.md) · 14 systems
 
-**What they share.** Every system assembles a historical series plus calendar and covariates into features, fits a model that emits a point or probabilistic forecast, and hands that output to a downstream decision, closing the loop with a chronological rolling backtest that retrains as series drift. The forecast is the intermediate; the decision it feeds is the product.
+**What they share.** Every team turns a noisy history of a many-item, geo-temporal marketplace into a forward estimate that a downstream decision (buy, stock, route, position) will spend real money on, validating chronologically against a naive or legacy baseline rather than an absolute error target. What splits them is what the estimate is of (point vs distribution, realized sales vs latent demand, per-item vs hierarchy vs graph) and how hard latency, cold-start, or perishability squeezes the model choice.
 
 ```mermaid
 flowchart TD
-  HIST["historical series + calendar / covariates"] --> FEAT["feature assembly"]
-  FEAT --> D1{"model family?"}
-  D1 -->|"classical + ML + deep portfolio"| UBER["Uber (forecasting intro)"]
-  D1 -->|"Transformer residual on baseline"| DEEPETA["Uber DeepETA"]
-  D1 -->|"global GBT + Monte Carlo"| ZAL["Zalando ZEOS"]
-  D1 -->|"GNN over graph"| DM["Google DeepMind Maps"]
-  UBER --> D2{"output shape?"}
-  ZAL --> D2
-  D2 -->|"point + interval"| PT["capacity, positioning"]
-  D2 -->|"full distribution"| PROB["Amazon, Zalando, Instacart"]
-  PROB --> D3{"hierarchy / spatial structure?"}
-  D3 -->|"levels must reconcile"| RECON["Amazon (end-to-end coherent)"]
-  D3 -->|"fallback cascade by cadence"| CASC["Instacart (general / trending / real-time)"]
-  D3 -->|"spatial graph diffusion"| SPAT["DeepMind GNN, Grab geo-cells"]
-  RECON --> DEC["downstream decision"]
-  CASC --> DEC
-  SPAT --> DEC
-  PT --> DEC
-  DEC --> BT["rolling-origin backtest"]
-  BT -->|"retrain"| FEAT
+  START["forecasting / estimation problem"] --> Q1{"is the target<br/>censored or latent?"}
+  Q1 -->|"yes, stock hides demand"| SPLIT["forecast sales AND demand<br/>(Mercado Libre)"]
+  Q1 -->|"no"| Q2{"tight inline<br/>latency budget?"}
+  Q2 -->|"yes, per-request"| Q3{"physical baseline<br/>to correct?"}
+  Q3 -->|"yes"| RES["learn residual on baseline<br/>(Uber DeepETA, Google Maps GNN)"]
+  Q3 -->|"no"| RT["stratified serving cadence<br/>(Instacart, Grab geo-cells)"]
+  Q2 -->|"no, batch plan"| Q4{"decision needs<br/>the full distribution?"}
+  Q4 -->|"yes"| DIST["probabilistic + optimizer<br/>(Zalando, Amazon hierarchy)"]
+  Q4 -->|"no"| Q5{"cold-start /<br/>no history?"}
+  Q5 -->|"yes"| COLD["intrinsic content + generalize<br/>(Wayfair, Ocado)"]
+  Q5 -->|"no"| PT["point / per-stop model<br/>(Oda, Uber classic)"]
 ```
 
 **The choices, side by side.**
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| model family | `classical/ML` (Uber intro) vs `deep DeepETA` (Uber) vs `GNN spatiotemporal` (DeepMind) vs `global GBT` (Zalando) | Count of related series, horizon, covariate richness, and whether a strong baseline already exists to correct |
-| output | `point` (DeepETA, DeepMind) vs `quantile/distribution` (Amazon, Zalando, Instacart) | Whether a downstream optimizer needs safety stock off a quantile, or one inline estimate suffices |
-| hierarchy | `end-to-end reconciliation` (Amazon) vs `fallback cascade` (Instacart general/trending/real-time) | Whether levels must sum coherently by construction, or a layered baseline plus correction under a cost-per-prediction budget |
-| spatial / ETA residual | `residual on routing baseline` (Uber DeepETA) vs `GNN message passing` (DeepMind) vs `distance-weighted geo-cells` (Grab) | Whether a physical baseline exists to correct under latency, congestion diffuses across a graph, or sparse cells need neighbor borrowing |
+| Model family | Global LSTM (Mercado Libre); GBT / LightGBM (Zalando, Oda, Instacart trending); linear-attention Transformer (Uber DeepETA); GNN (Google Maps); feed-forward plus seq2seq tier (Ocado); NN plus LSTM (Wayfair) | Iteration speed and serving cost push toward GBTs; rich exogenous regressors or graph structure justify deep nets; content-only cold-start forces embeddings |
+| Point vs quantile | Point / MAE (Oda, Mercado Libre, Grab); prediction intervals (Uber classic); full probabilistic (Amazon, Zalando, Wayfair heads) | Whether the downstream decision sizes a reserve or safety stock off the spread, not just the mean |
+| Hierarchy | Flat per-item (Mercado Libre, Oda); layered general / trending / real-time (Instacart, Ocado tier); coherent hierarchy (Amazon); SKU-then-optimizer (Zalando) | Whether levels must sum coherently and whether sparse or new leaves borrow strength from parents and similar items |
+| Spatial / ETA | Geohash aggregation (Grab); Supersegment graph plus message passing (Google Maps); routing-baseline residual (Uber DeepETA); area-as-proxy features (Oda) | How much congestion or availability diffuses across neighbors, and whether a physical routing engine already gives a baseline to correct |
 
 **The math that separates them.**
 
-$$\textbf{Pinball loss, quantile tau} \quad L_\tau(y,\hat q)=\max\big(\tau(y-\hat q),\,(\tau-1)(y-\hat q)\big)$$
+Point-error teams (Oda, Mercado Libre, Grab) optimize mean absolute error, robust to zero-heavy intermittent sales:
 
-$$\textbf{MASE, scale-free point} \quad \mathrm{MASE}=\frac{\frac{1}{H}\sum_{t}\lvert y_t-\hat y_t\rvert}{\frac{1}{n-m}\sum_{t=m+1}^{n}\lvert y_t-y_{t-m}\rvert}$$
+$$\mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n}\left| y_i - \hat{y}_i \right|$$
 
-$$\textbf{Weighted quantile loss} \quad \mathrm{WQL}=\frac{2\sum_{i}\sum_{\tau} L_\tau(y_i,\hat q_{i,\tau})}{\sum_{i}\lvert y_i\rvert}$$
+Interval and probabilistic teams (Uber, Zalando, Amazon, Wayfair) score quantiles with the pinball loss, penalizing under and over prediction asymmetrically by quantile level $\tau$:
 
-$$\textbf{Asymmetric Huber, DeepETA} \quad L(r)=\begin{cases} \tfrac{1}{2}r^2 & \lvert r\rvert\le\delta \\ \delta\,w(r)\big(\lvert r\rvert-\tfrac{1}{2}\delta\big) & \lvert r\rvert>\delta \end{cases}$$
+$$L_\tau(y,\hat{q}) = \max\big(\tau\,(y-\hat{q}),\ (\tau-1)\,(y-\hat{q})\big)$$
+
+Baseline-relative teams (Uber classic, Google Maps, Oda) judge skill against a naive forecast, e.g. MASE scaling error by the in-sample one-step naive error:
+
+$$\mathrm{MASE} = \frac{\frac{1}{n}\sum_{i=1}^{n}\left| y_i - \hat{y}_i \right|}{\frac{1}{T-1}\sum_{t=2}^{T}\left| y_t - y_{t-1} \right|}$$
+
+Full-distribution replenishment teams (Zalando, Amazon) evaluate the whole predictive distribution with the weighted quantile loss, an integral of pinball loss over quantile levels:
+
+$$\mathrm{WQL} = 2\int_{0}^{1} L_\tau\big(y,\ \hat{q}(\tau)\big)\, d\tau$$
 
 ```mermaid
 quadrantChart
-  title Model complexity vs calibration
-  x-axis "Low complexity" --> "High complexity"
-  y-axis "Point only" --> "Calibrated / coherent"
-  quadrant-1 "Heavy and probabilistic"
-  quadrant-2 "Light and probabilistic"
-  quadrant-3 "Light and point"
-  quadrant-4 "Heavy and point"
-  "Uber classical/ML": [0.22, 0.55]
-  "Zalando LightGBM + MC": [0.45, 0.78]
-  "Amazon coherent net": [0.82, 0.92]
-  "Instacart layered": [0.4, 0.6]
-  "Uber DeepETA": [0.7, 0.35]
-  "DeepMind GNN": [0.88, 0.42]
-  "Grab geo ratios": [0.18, 0.2]
+  title "Forecasting design space"
+  x-axis "Point estimate" --> "Full distribution"
+  y-axis "Per-item / flat" --> "Structured / hierarchical"
+  quadrant-1 "Coherent probabilistic"
+  quadrant-2 "Structured point"
+  quadrant-3 "Simple point"
+  quadrant-4 "Probabilistic flat"
+  "Oda service time": [0.12, 0.14]
+  "Grab ratios": [0.16, 0.30]
+  "Mercado Libre": [0.24, 0.22]
+  "Uber DeepETA": [0.30, 0.42]
+  "Google Maps GNN": [0.28, 0.72]
+  "Ocado tier": [0.36, 0.34]
+  "Wayfair winners": [0.62, 0.36]
+  "Instacart layers": [0.55, 0.66]
+  "Uber classic PI": [0.66, 0.28]
+  "Zalando ZEOS": [0.82, 0.55]
+  "Amazon hierarchy": [0.85, 0.85]
 ```
 
 **The systems**
@@ -1014,52 +1053,57 @@ quadrantChart
 ```mermaid
 flowchart LR
   F["point-in-time features"] --> B1{"what must the<br/>score answer?"}
-  B1 -->|"rank risk / value"| GBDT["plain GBDT point estimate<br/>Airbnb home value, Expedia CLV"]
+  B1 -->|"rank risk / value / price"| GBDT["plain point estimate<br/>Airbnb home value, Expedia CLV,<br/>Asos markdown, PayPal, Pinterest, Gousto"]
   B1 -->|"WHEN it happens"| SURV["survival curve<br/>Nubank, Block (Square)"]
-  B1 -->|"WHETHER to intervene"| CAUSE["uplift / causal<br/>Wayfair, Uber, Gojek"]
+  B1 -->|"WHETHER to intervene"| CAUSE["uplift / causal<br/>Wayfair, Uber, Gojek, Airbnb LTV"]
   GBDT --> B2{"absolute value<br/>sets money?"}
   SURV --> B2
   CAUSE --> B2
-  B2 -->|"yes"| CAL["calibration layer<br/>Nubank, Expedia"]
-  B2 -->|"no, ranks only"| RANK["threshold on rank"]
+  B2 -->|"yes"| CAL["calibration layer<br/>Nubank, Expedia, Asos"]
+  B2 -->|"no, ranks/triages only"| RANK["threshold / risk tiers<br/>Pinterest, Gousto, PayPal"]
   CAL --> B3{"fixed budget<br/>to allocate?"}
   RANK --> B3
   B3 -->|"free threshold"| EV["EV cutoff"]
-  B3 -->|"budget cap"| OPT["optimizer<br/>Uber convex, Gojek knapsack"]
+  B3 -->|"budget cap"| OPT["optimizer<br/>Uber convex, Gojek knapsack, Asos multi-objective"]
 ```
 
 **The choices, side by side.**
 
 | Decision | Options (who) | What decides it |
 | --- | --- | --- |
-| prediction target | `risk` (Nubank) vs `churn` (Block) vs `LTV` (Airbnb, Expedia) vs `pricing` (Uber, Zalando) | which money decision the score feeds: a credit limit, a retention action, a budget, or a price |
-| plain vs causal | `classification` (Airbnb home value, Expedia) vs `uplift/causal` (Wayfair, Uber, Gojek) | is the question "who will act" (predict) or "whose behavior changes if I act" (intervene) |
-| time-to-event | `survival` (Nubank, Block) vs point estimate (Airbnb, Expedia) | does WHEN it lands matter, and are there censored not-yet-resolved rows worth keeping |
-| calibration + decision | rank-only vs `calibrate then EV threshold` (Nubank) vs `calibrate then optimizer` (Uber, Gojek) | does the absolute probability set the money, and is there a fixed budget to allocate under |
+| prediction target | `risk` (Nubank) vs `churn/close propensity` (Block, Pinterest, Gousto, PayPal) vs `LTV/value` (Airbnb, Expedia) vs `pricing` (Uber, Asos) | which money decision the score feeds: a credit limit, a retention or rep-priority action, a budget, or a price |
+| plain vs causal/uplift | `classification` (Airbnb home value, Expedia, Pinterest, Gousto, PayPal) vs `uplift/causal` (Wayfair, Uber, Gojek, Airbnb LTV) | is the question "who will act" (predict) or "whose behavior changes if I act" (intervene) |
+| survival / time-to-event | `survival` (Nubank, Block) vs `fixed-window binary` (Pinterest 14d, Gousto 4w, PayPal) vs `point/horizon estimate` (Airbnb, Expedia, Asos) | does WHEN it lands matter, and are there censored not-yet-resolved rows worth keeping |
+| calibration + decision | `risk tiers/threshold` (Pinterest, Gousto, PayPal) vs `calibrate then EV threshold` (Nubank) vs `calibrate then optimizer` (Uber, Gojek, Asos) | does the absolute probability set money, or just triage scarce human attention under a fixed budget |
 
 **The math that separates them.**
 
-$$\textbf{EV approve threshold}\qquad p^{*}=\frac{L_{\text{fp}}}{L_{\text{fp}}+G_{\text{tp}}},\qquad \text{approve when } p(\text{good})\,G_{\text{tp}} > p(\text{bad})\,L_{\text{fp}}$$
+$$\textbf{Fixed-window churn label}\qquad y_i=\mathbf{1}\!\left[\text{no activity in }(t,\,t+\Delta]\right],\qquad \hat{p}_i=\sigma\!\left(f(x_i)\right)$$
 
 $$\textbf{Survival from hazard}\qquad S(t)=\Pr(T>t)=\exp\!\left(-\int_{0}^{t}\lambda(u)\,du\right)$$
 
 $$\textbf{CATE uplift (persuadables)}\qquad \tau(x)=\mathbb{E}[Y \mid X{=}x, W{=}1]-\mathbb{E}[Y \mid X{=}x, W{=}0]$$
 
-$$\textbf{LTV as discounted survival}\qquad \mathrm{LTV}=\sum_{t=1}^{H}\frac{S(t)\,m(t)}{(1+d)^{t}}$$
+$$\textbf{Constrained allocation}\qquad \max_{a}\ \sum_i \tau(x_i)\,a_i \quad \text{s.t.} \quad \sum_i c_i\,a_i \le B$$
 
 ```mermaid
 quadrantChart
   title "modeling complexity vs decision value at stake"
   x-axis "Low modeling complexity" --> "High modeling complexity"
-  y-axis "Ranking-only value" --> "Money-setting value"
+  y-axis "Ranking / triage value" --> "Money-setting value"
   quadrant-1 "worth the causal + optimizer cost"
   quadrant-2 "calibration is the leverage"
-  quadrant-3 "simple point estimate"
+  quadrant-3 "simple point estimate / triage"
   quadrant-4 "complex but only ranks"
-  "Airbnb home value": [0.28, 0.30]
+  "Pinterest churn": [0.24, 0.24]
+  "Gousto churn": [0.26, 0.28]
+  "PayPal pipeline": [0.34, 0.26]
+  "Airbnb home value": [0.28, 0.34]
   "Expedia CLV": [0.55, 0.62]
   "Block survival": [0.60, 0.42]
   "Nubank risk": [0.66, 0.90]
+  "Asos markdown": [0.72, 0.80]
+  "Airbnb LTV": [0.74, 0.68]
   "Wayfair uplift": [0.70, 0.66]
   "Uber causal + convex": [0.92, 0.88]
   "Gojek uplift + knapsack": [0.88, 0.84]

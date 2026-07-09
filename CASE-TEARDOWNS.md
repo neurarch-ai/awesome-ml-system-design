@@ -911,6 +911,119 @@ flowchart TD
 - Measuring only clicks. Fix: add editorial evaluation, market comparison, and customer research to gate relevance.
 - Letting a weak first round pass bad candidates. Fix: strengthen product-type matching upstream so the re-ranker has good inputs.
 
+
+### Snap: deep-learning ad ranker under trillions of daily predictions ([source](https://eng.snap.com/machine-learning-snap-ad-ranking))
+
+Snap selects ads through a four-stage funnel (eligibility filtering, lightweight candidate generation that cuts millions of ads to hundreds or thousands, heavy ML scoring per candidate, then an auction combining ML scores with bids and budgets). The heavy scorer is a multi-task network using MMoE and PLE to jointly predict multiple conversion events (app installs, purchases, sign-ups), with DCN and DCN-v2 blocks for high-order feature interactions and a tower split (a user-feature tower and an ad-feature tower) so the expensive user side can be computed once and reused across ads. Because ad ids churn constantly and conversion labels arrive days or weeks late, the team warm-starts from checkpoints hourly-to-daily with SGD and applies a calibration correction layer (Platt scaling or isotonic regression) so total predicted conversions track true conversions, which is what the auction prices against.
+
+```mermaid
+flowchart TD
+  ADS["millions of eligible ads"] --> ELIG["eligibility + policy filter"]
+  ELIG --> CG["lightweight candidate generation"]
+  CG --> UT["user-feature tower"]
+  CG --> AT["ad-feature tower"]
+  UT --> DCN["DCN / DCN-v2 interactions"]
+  AT --> DCN
+  DCN --> MMOE["MMoE / PLE experts + gates"]
+  MMOE --> HI["head: install"]
+  MMOE --> HP["head: purchase"]
+  MMOE --> HS["head: sign-up"]
+  HI --> CAL["Platt / isotonic calibration"]
+  HP --> CAL
+  HS --> CAL
+  CAL --> AUC["auction: score x bid x budget"]
+  AUC --> O["shown ad"]
+```
+
+**Interview questions this design invites**
+- Why split user and ad features into separate towers, and what does that buy you at serving time when scoring many ads per request?
+- Why choose PLE over plain MMoE when conversion tasks (install, purchase, sign-up) partly conflict?
+- How do delayed conversion labels (days to weeks) corrupt training, and what do you do about impressions whose label has not arrived?
+- Why is calibration (predicted totals matching true totals) treated as first-class in an ad auction rather than just ranking order?
+- How do you keep constantly-arriving fresh ad ids from becoming out-of-vocabulary and dominating the embedding space?
+- How would you meet a per-candidate latency budget while running DCN-v2 crosses over hundreds of candidates?
+
+**Tricks and gotchas**
+- The user tower is computed once per request and shared across all candidate ads; only the ad tower and interaction head run per candidate, which is the latency lever.
+- MMoE/PLE gates let each conversion task pick its own expert mixture, so a high-volume task (installs) does not swamp a sparse one (purchases).
+- Fresh ad ids mean the embedding table is a moving target; frequent warm-started retraining is what keeps OOV ids from dominating.
+- Calibration drives auction pricing, so isotonic/Platt correction is mandatory, not cosmetic; miscalibration means systematic over- or under-bidding.
+
+**Common mistakes and how to fix them**
+- Scoring every candidate through one monolithic tower. Fix: split user and ad towers so the user side is computed once and reused.
+- Treating delayed conversions as if labels were complete at impression time. Fix: account for label delay in training windows or wait-and-attribute, and monitor for bias.
+- Ranking on uncalibrated multi-task scores in an auction. Fix: add a Platt/isotonic calibration layer and check predicted-vs-actual conversion totals continuously.
+
+
+### ASOS: transformer sequence recommender over interaction history ([source](https://medium.com/asos-techblog/transforming-recommendations-at-asos-254b95c6a07a))
+
+ASOS models each customer as a sequence of past product interactions and ranks with a self-attention transformer (built on NVIDIA Merlin's Transformers4Rec over PyTorch), replacing an asymmetric matrix-factorization baseline that serves 5 billion requests a day. Self-attention lets the model weigh every past product against the others so the same item is interpreted differently depending on the surrounding sequence (a style-context effect), and multi-head attention captures several relationship nuances at once. Positional encoding gives the model order awareness so recent interactions can outweigh older ones. The transformer delivered over 20% offline improvement versus the matrix-factorization baseline.
+
+```mermaid
+flowchart TD
+  H["customer interaction history (product sequence)"] --> EMB["product embeddings"]
+  EMB --> POS["+ positional encoding"]
+  POS --> SA["multi-head self-attention blocks"]
+  SA --> FF["feed-forward layers"]
+  FF --> REP["sequence representation"]
+  REP --> SCORE["score candidate products"]
+  SCORE --> O["ranked recommendations"]
+```
+
+**Interview questions this design invites**
+- Why does self-attention over a product sequence beat asymmetric matrix factorization for this recommendation task?
+- What does positional encoding contribute here, and how does recency get expressed through it?
+- Why does multi-head attention help when the same product can mean different things in different sequences?
+- How would you turn a next-item transformer into a full ranker over a large candidate catalog at serving time?
+- What negative-sampling and sequence-length/padding choices matter for training a session transformer, and why?
+- Offline lift was over 20%; how would you check that survives online before trusting it?
+
+**Tricks and gotchas**
+- Self-attention makes the representation of an item context-dependent; the same product contributes differently depending on neighbors in the sequence.
+- Positional encoding is what injects order and recency; without it the transformer sees a bag of products, not a sequence.
+- The baseline already serves 5 billion requests a day, so any transformer must clear a hard serving-cost bar, not just an offline metric.
+- Transformers4Rec/Merlin handles sequence plumbing, but sequence length, padding, and masking choices still drive quality and cost.
+
+**Common mistakes and how to fix them**
+- Treating the interaction history as an unordered set. Fix: add positional encoding so order and recency are modeled.
+- Trusting a greater than 20% offline lift as a ship signal. Fix: validate online, since offline sequence metrics diverge from live engagement.
+- Ignoring serving cost against a 5-billion-request-a-day baseline. Fix: budget sequence length and attention depth for latency, not just accuracy.
+
+
+### Yelp: hybrid XGBoost learning-to-rank blending interaction and content features ([source](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html))
+
+Yelp moved from collaborative filtering (Spark ALS matrix factorization) to a supervised XGBoost learning-to-rank model that blends interaction features (matrix-factorization scores, user-business aggregates) with content features (categories, ratings, review counts, and text similarity from Universal Sentence Encoder review embeddings). Review embeddings are pooled to business and user level and the user-business cosine similarity became the single most important content feature, which is what lets the model recommend to sparse tail users and double user coverage. Training uses XGBoost's rank:ndcg (LambdaMART) objective with groups defined by user and location, and a recall step over a location radius supplies positive and negative candidates labeled by future interactions with point-in-time separation to avoid leakage. Against matrix factorization it lifted NDCG 5 to 14%, and over 100% versus a popularity baseline at k=1.
+
+```mermaid
+flowchart TD
+  RE["review text"] --> USE["Universal Sentence Encoder embeddings"]
+  USE --> POOL["pool to user + business level"]
+  POOL --> COS["user-business cosine similarity"]
+  MF["matrix factorization scores"] --> FEAT["feature vector"]
+  COS --> FEAT
+  CONTENT["categories, ratings, review counts"] --> FEAT
+  FEAT --> XGB["XGBoost LambdaMART (rank:ndcg)"]
+  XGB --> RANK["ranked businesses per user + location"]
+```
+
+**Interview questions this design invites**
+- Why does matrix factorization alone fail tail users, and how do content features restore coverage?
+- Why is text-embedding cosine similarity between user and business the strongest content feature here?
+- Why group the rank:ndcg objective by both user and location rather than user alone?
+- How do you build positive and negative training candidates from a recall step without leaking future information?
+- Why did LambdaMART with hybrid features beat a pure matrix-factorization ranker on NDCG?
+- How would you confirm the model uses collaborative signal for head users and content signal for tail users?
+
+**Tricks and gotchas**
+- Feeding the matrix-factorization score in as one feature keeps its collaborative signal while content features cover where it is blind.
+- Pooling review embeddings to user and business level, then taking cosine similarity, is what generalizes to users with no interaction history.
+- Grouping by user and location makes the ranking location-aware; group definition is a modeling decision, not a detail.
+- Point-in-time separation between the feature period and label period is what prevents leakage in the recalled candidates.
+
+**Common mistakes and how to fix them**
+- Relying on matrix factorization and leaving tail users uncovered. Fix: add content features (text similarity) so sparse users still get ranked.
+- Leaking the label period into features via the recall step. Fix: separate feature and label windows in time and label candidates by future interactions.
+- Grouping the learning-to-rank objective by user only. Fix: group by user and location so rankings are personalized and location-aware.
 _Not reachable: none_
 
 ---
@@ -1964,6 +2077,156 @@ flowchart TD
 - Ignoring embedding-table cost, which dominates memory at web scale; fix by hashing or dimension tuning per feature.
 - Stacking cross layers indefinitely for higher-order crosses; fix by capping depth and measuring marginal NDCG per layer.
 
+
+### Company: GetYourGuide, powering millions of real-time rankings with production AI ([source](https://www.getyourguide.careers/posts/powering-millions-of-real-time-rankings-with-production-ai))
+
+GetYourGuide serves over 30 million ranking predictions per day for activity search, with the full ranking delivered in under 80ms. A learning-to-rank model is trained daily on historical ranking events joined to downstream user interactions (impressions, clicks, bookings). Tecton is the feature store: it fuses warehouse tables with real-time Kafka streams through Stream Feature Views (real-time aggregation) and On Demand Feature Views (further transforms). A signature feature, "discounted ranking impressions," counts per-visitor activity impressions while discounting by result-page position, which is their explicit position-bias correction. Airflow runs the daily pipeline: build the dataset from ranking events plus interactions, point-in-time join against Tecton's offline store, commit the model to MLflow, and push train and production sets to Arize. Serving is a FastAPI container on Kubernetes with Redis as the online store, hitting p99 under 7ms per feature-serving request. Arize monitors feature drift (PSI and KL divergence against a rolling two-week window) and NDCG per segment, and once caught a downward drift in prediction scores.
+
+```mermaid
+flowchart TD
+  KAFKA["Kafka streams"] --> TECTON["Tecton feature store<br/>(Stream + On Demand Feature Views)"]
+  DWH["data warehouse tables"] --> TECTON
+  TECTON --> REDIS["Redis online store"]
+  Q["visitor query"] --> API["FastAPI ranking service<br/>(Kubernetes)"]
+  REDIS -.features by visitor ID.-> API
+  API --> R["ranked activities (< 80ms)"]
+  API --> LOG["event logging -> Arize"]
+  LOG --> MON["drift (PSI, KL) + NDCG monitoring"]
+  HIST["ranking events + bookings"] -.Airflow daily, point-in-time join.-> TRAIN["LTR training -> MLflow"]
+  TRAIN -.deploy.-> API
+```
+
+**Interview questions this design invites**
+- How does the "discounted ranking impressions" feature correct for position bias, and why discount by rank rather than drop biased data?
+- Why split feature computation into Stream Feature Views and On Demand Feature Views instead of one path?
+- What does a point-in-time join buy you when assembling the training set from ranking events plus later bookings?
+- How do you keep a full ranking under 80ms when feature serving alone is already p99 7ms?
+- Why monitor prediction-score drift with PSI and KL divergence rather than only tracking online NDCG?
+- How would you A/B test a new ranker when control and treatment models are both pulled from MLflow at request time?
+
+**Tricks and gotchas**
+- The 80ms end-to-end budget is dominated by feature fetch plus scoring; Redis as the online store is what keeps p99 feature latency near 7ms.
+- Point-in-time correctness on the offline join is load-bearing: bookings happen after the ranking event, so a naive join leaks future labels into features.
+- Position enters as a discount factor inside a feature, not as a separate debiasing model, which keeps serving simple but couples the correction to that one feature.
+
+**Common mistakes and how to fix them**
+- Training on impressions without discounting position; fix with a position-aware feature like discounted ranking impressions so top-slot exposure is not mistaken for relevance.
+- Watching only aggregate NDCG; fix by adding feature-distribution drift (PSI, KL) so a silent score collapse is caught before the business metric moves.
+- Joining bookings to ranking events by key alone; fix with point-in-time joins so each feature reflects only what was known at ranking time.
+
+
+### Company: Booking.com, the engineering behind a high-performance ranking platform ([source](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6))
+
+Booking.com personalizes property search by scoring candidates on user behavior plus real-time price and availability, under a strict p999 sub-second latency bar. The design centers on multi-stage ranking: ranking is broken into phases, each with its own criteria, so cheaper models prune early and more complex, more personalized models score the survivors. Features are tiered by volatility: static features (location, amenities, room types) recomputed on a schedule, slow-changing features precomputed into a feature store via scheduled workflows, and real-time features (current room prices, availability) computed off a stream. A Feature Collector pulls static features from a distributed cache before inference. Serving spans three Kubernetes clusters with hundreds of pods; a Model Executor chunks each request, invokes the ML platform, and aggregates scores. Ranking is applied twice, once per availability shard and again after merge, with an Experiment Tracker interleaving variants and a static fallback score if inference fails.
+
+```mermaid
+flowchart TD
+  Q["user search"] --> ORCH["search orchestrator"]
+  ORCH --> ASE["Availability Search Engine (shards)"]
+  ASE --> FC["Feature Collector<br/>(static from distributed cache)"]
+  FSTORE["feature store<br/>(slow-changing, scheduled)"] --> FC
+  STREAM["stream (real-time price + availability)"] --> FC
+  FC --> ME["Model Executor<br/>(chunk, invoke, aggregate)"]
+  ME --> S1["per-shard ranking"]
+  S1 --> MERGE["merge shards"]
+  MERGE --> S2["post-merge ranking"]
+  S2 --> EXP["Experiment Tracker (interleaving)"]
+  EXP --> R["ranked properties"]
+  ME -.on failure.-> FALL["static fallback score"]
+```
+
+**Interview questions this design invites**
+- Why rank twice, once per shard and once after merge, instead of a single global ranking pass?
+- How does tiering features into static, slow-changing, and real-time buckets shape the serving path?
+- What is the Model Executor's request chunking protecting against at hundreds-of-pods scale?
+- Why keep a static fallback score, and what user-facing failure mode does it prevent?
+- How does interleaving in the Experiment Tracker compare to a standard A/B split for ranking evaluation?
+- What has to be true for a p999 sub-second budget to hold across shards, feature fetch, and two ranking stages?
+
+**Tricks and gotchas**
+- Per-shard ranking must be cheap and consistent enough that the post-merge stage is not fed a badly pruned set from any one shard.
+- The p999 (not p99) target means the rare slow request drives the design; a distributed cache for static features exists to protect that tail.
+- Real-time price and availability can change between retrieval and render, so those features must be computed as late as possible in the stream path.
+
+**Common mistakes and how to fix them**
+- Recomputing every feature per request; fix by tiering features by volatility so only real-time price and availability are stream-computed hot.
+- Letting an inference failure blank the results page; fix with a deterministic static fallback score so ranking degrades instead of breaking.
+- Measuring latency at p99; fix by targeting p999 for a search platform where the slow tail is the felt experience.
+
+
+### Company: Shopify, improving consumer search intent with real-time ML ([source](https://shopify.engineering/how-shopify-improved-consumer-search-intent-with-real-time-ml))
+
+Shopify moved product search beyond keyword matching to embedding-based semantic search, translating text and image content into high-dimensional vectors so similarity captures intent. The hard part is freshness: when a merchant creates or edits a product, its embedding must update immediately, so the system runs a real-time embedding pipeline on Google Cloud Dataflow, chosen for native streaming, GCP integration, and scale. The pipeline loads the embedding model at startup, listens for merchant content-change events, preprocesses (download, load to memory, resize images), runs inference to produce vectors, postprocesses, and fans out to a data warehouse for offline analysis and to event topics for real-time ingestion. It sustains roughly 2,500 embeddings per second, about 216 million per day, across text and image. Two engineering wins dominate: cutting memory 2.6x by tuning thread concurrency (avoiding a 14 percent cost increase), and batching host-to-device transfers since CPU-GPU transfer is the main bottleneck.
+
+```mermaid
+flowchart TD
+  EVT["merchant content change event"] --> PRE["preprocess<br/>(download, load, resize image)"]
+  MODEL["embedding model (loaded at startup)"] --> INF["inference (GPU, batched)"]
+  PRE --> INF
+  INF --> POST["postprocess (transform vector)"]
+  POST --> DWH["data warehouse (offline)"]
+  POST --> TOPIC["event topics (real-time ingestion)"]
+  TOPIC --> IDX["search index / embedding store"]
+  QUERY["consumer query"] --> QEMB["query embedding"]
+  QEMB --> SIM["similarity search"]
+  IDX --> SIM
+  SIM --> R["semantically ranked products"]
+```
+
+**Interview questions this design invites**
+- Why does semantic product search need real-time embedding updates rather than a nightly batch reindex?
+- How does batching host-to-device transfers address the CPU-GPU bottleneck, and what is the latency-throughput tradeoff?
+- Why fan the embedding output to both a warehouse and event topics instead of one sink?
+- What made Dataflow the right streaming substrate here versus a custom consumer service?
+- How would you keep text and image embeddings in a comparable space for a single similarity search?
+- What breaks if thread concurrency is set too high on a memory-bound embedding worker?
+
+**Tricks and gotchas**
+- Loading the embedding model once at worker startup, not per event, is what makes 2,500 embeddings per second affordable.
+- CPU-to-GPU transfer, not the matrix multiply, is the usual bottleneck, so batching is about feeding the device, not raw model speed.
+- Thread concurrency is a memory dial, not just a throughput dial; the 2.6x memory cut came from lowering it, avoiding a 14 percent cost jump.
+
+**Common mistakes and how to fix them**
+- Reindexing embeddings on a batch schedule; fix with an event-driven streaming pipeline so merchant edits appear in search instantly.
+- Sending single items to the GPU; fix by batching host-to-device transfers since the transfer dominates the compute.
+- Maxing thread concurrency for throughput; fix by tuning it against the memory footprint to avoid a cost blowup on memory-bound workers.
+
+
+### Company: Spotify, natural language search for podcast episodes ([source](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/))
+
+Spotify built semantic podcast search on a dual-encoder (two-tower siamese) model with shared weights that maps queries and episodes into one vector space, so a query like "cooking for the holidays" retrieves episodes with no literal term overlap. The base encoder is Universal Sentence Encoder CMLM, picked over vanilla BERT for producing sentence-level embeddings directly and covering 100-plus languages. Training pairs come from four sources: successful Elasticsearch searches, reformulations from failed-then-successful sessions, synthetic queries from a BART model fine-tuned on MS MARCO, and hand-curated semantic queries for popular episodes. Training uses in-batch negatives: for a batch of B positive pairs the other B squared minus B episodes are negatives via a cosine-similarity matrix, with hard-negative mining on top. Offline, episode vectors are precomputed and indexed in Vespa for ANN; online, query vectors are generated on Vertex AI (GPU) with caching, retrieving the top 30 candidates. Crucially, semantic search is an additional retrieval source beside Elasticsearch, and a final reranker fuses both, using cosine similarity as one feature.
+
+```mermaid
+flowchart TD
+  QTXT["query text"] --> QENC["query encoder<br/>(USE-CMLM, shared weights)"]
+  EPTXT["episode text"] --> EENC["episode encoder<br/>(USE-CMLM, shared weights)"]
+  EENC --> VESPA["Vespa ANN index (offline precomputed)"]
+  QENC --> VERTEX["Vertex AI (online, GPU + cache)"]
+  VERTEX --> ANN["ANN lookup -> top 30"]
+  VESPA --> ANN
+  ANN --> RERANK["final reranker"]
+  ES["Elasticsearch (keyword retrieval)"] --> RERANK
+  RERANK --> R["ranked episodes"]
+  TRAIN["training pairs:<br/>logs, reformulations, BART/MS MARCO synth, curated"] -.in-batch negatives.-> QENC
+```
+
+**Interview questions this design invites**
+- Why choose Universal Sentence Encoder CMLM over BERT for a sentence-matching retrieval task?
+- How do in-batch negatives turn a batch of B positives into roughly B squared training signals, and what are the risks?
+- Why generate synthetic queries with BART on MS MARCO instead of relying only on search logs?
+- Why keep semantic search as an additional retrieval arm beside Elasticsearch rather than replacing it?
+- Why precompute episode vectors offline while computing query vectors online, and what does that asymmetry enable?
+- How does using cosine similarity as one reranker feature differ from ranking by cosine similarity alone?
+
+**Tricks and gotchas**
+- Shared-weight siamese encoders keep queries and episodes in the same space, but the query side is short and the document side long, so query augmentation (reformulations, synthetics) matters.
+- In-batch negatives make batch composition the negative distribution; without hard-negative mining the negatives are too easy and the embedding underfits.
+- The keyword arm still catches exact-match and rare-term queries semantic retrieval misses, so fusion beats either arm; "there is no silver bullet."
+
+**Common mistakes and how to fix them**
+- Training only on logged successful searches; fix by adding reformulation pairs and BART-synthesized queries so the model learns intent beyond what keyword search already surfaced.
+- Replacing keyword search with the semantic tower; fix by keeping both as retrieval sources and fusing in a reranker where cosine is just one feature.
+- Recomputing episode embeddings online per query; fix by precomputing them into Vespa ANN and only embedding the query at request time.
 _Not reachable: none_
 
 ### Google (Cheng et al.): Wide and Deep learning for recommender and ranking systems ([source](https://arxiv.org/abs/1606.07792))
@@ -2585,6 +2848,152 @@ flowchart TD
 - Ignoring good-user dropout under friction. Fix: put it in the loss (the FP-adjacent term).
 - Using a single fixed threshold. Fix: derive operating points by minimizing expected loss as costs move.
 
+
+### Feedzai: behavioral-biometric session scoring for banking fraud ([source](https://medium.com/feedzaitech/building-trust-in-a-digital-world-the-role-of-machine-learning-in-behavioral-biometrics-bb0da913d95a))
+
+Feedzai scores banking sessions in real time from behavioral biometrics rather than transaction fields alone, capturing keystroke dynamics (key-press duration, key type, typing speed), mouse movement and clicks on desktop, and touch position, pressure, and gestures on mobile, alongside device, network, and in-app behavior signals. It fuses these diverse feature sets holistically and runs a layered decision stack that mixes expert rules, lightweight heuristics, and ML models so latency stays low. The system evaluates whole sessions continuously (not just single transactions) at nearly ten thousand requests per second on Kubernetes with horizontal scaling. Extreme class imbalance (millions of legitimate versus hundreds of fraud cases) is handled with advanced sampling, and Prometheus/Grafana plus event logging feed continuous retraining.
+
+```mermaid
+flowchart TD
+  SESSION["live banking session"] --> BIO["behavioral biometrics<br/>(keystroke timing, mouse, touch pressure, gestures)"]
+  SESSION --> DEV["device + network<br/>(OS, browser, ISP, geo)"]
+  SESSION --> BEHAV["in-app behavior<br/>(transactions, account changes)"]
+  BIO --> FUSE["holistic feature fusion"]
+  DEV --> FUSE
+  BEHAV --> FUSE
+  FUSE --> STACK["layered decision stack<br/>(rules + heuristics + lightweight ML)"]
+  STACK --> SCORE["session risk score (low latency)"]
+  SCORE --> DEC{"allow / challenge / block"}
+  SCORE --> LOG["event logging"]
+  LOG --> RETRAIN["continuous retraining"]
+  RETRAIN --> STACK
+```
+**Interview questions this design invites**
+- Why score a continuous session rather than an individual transaction?
+- What does keystroke and mouse dynamics add over device fingerprinting alone?
+- How do you keep ML lightweight enough for ten thousand requests per second?
+- How does mobile touch/pressure signal differ from desktop keystroke signal, and why model both?
+- Why blend expert rules with ML instead of an ML-only model?
+- How do you address millions-to-hundreds class imbalance without wrecking precision?
+
+**Tricks and gotchas**
+- Behavioral biometrics degrade if the capture SDK misses events, so signal completeness gates model quality.
+- Continuous session scoring means the operating point shifts as more evidence arrives mid-session.
+- Lightweight algorithms are a latency requirement, not a modeling preference, at ten thousand rps.
+- Advanced sampling is load-bearing here; naive training on the raw ratio learns to predict legitimate.
+
+**Common mistakes and how to fix them**
+- Treating one transaction as the unit. Fix: score the evolving session and re-decide as signal accrues.
+- Shipping a heavy model that blows the latency budget. Fix: keep ML lightweight and push a rules layer first.
+- Training on the raw imbalance. Fix: apply sampling and evaluate on the true base rate.
+
+
+### Capital One: random forest AML alert triage with risk-based prioritization ([source](https://www.capitalone.com/tech/machine-learning/how-machine-learning-can-help-fight-money-laundering/))
+
+Capital One replaced first-in-first-out AML alert triage with a random forest (scikit-learn plus PySpark) that scores suspicious activity over several hundred customer and transaction features, trained on more than 100,000 past investigations. They evaluated logistic regression, XGBoost, and RNNs but chose random forest for its balance of accuracy, speed, and explainability under regulatory scrutiny, noting it trains twice as fast as logistic regression while matching XGBoost/RNN ROC curves. Scores bucket alerts into three severity levels so investigators streamline low-score alerts and prioritize high-score ones instead of working the queue sequentially. Features are pruned continuously via recursive elimination and statistical testing, and monthly monitoring, QA, and dashboards keep the model auditable.
+
+```mermaid
+flowchart TD
+  ALERTS["AML alerts (suspicious activity)"] --> FEAT["several hundred features<br/>(customer + transaction attrs)"]
+  FEAT --> ELIM["recursive elimination + stats testing<br/>(prune redundant signals)"]
+  ELIM --> RF["random forest<br/>(scikit-learn + PySpark)"]
+  RF --> SCORE["risk score"]
+  SCORE --> BUCKET{"three severity levels"}
+  BUCKET -->|"low"| STREAM["streamline / deprioritize"]
+  BUCKET -->|"medium"| NORMAL["standard investigation"]
+  BUCKET -->|"high"| PRIOR["prioritize investigation"]
+  RF --> MON["monthly monitoring + QA + dashboards"]
+  MON --> RF
+```
+**Interview questions this design invites**
+- Why pick random forest over XGBoost or an RNN when the latter matched ROC?
+- Why does explainability outrank raw accuracy in an AML setting?
+- How does risk-based prioritization change investigator throughput versus FIFO triage?
+- How do you keep several hundred features from overfitting 100,000 investigations?
+- What does bucketing into three severity levels buy over a single continuous threshold?
+- How do you adapt features when customer behavior shifts (for example a pandemic P2P surge)?
+
+**Tricks and gotchas**
+- Explainability is a regulatory requirement, so a marginally more accurate black box can be the wrong choice.
+- Recursive feature elimination plus statistical testing is what stops several-hundred features from overfitting.
+- Training labels are past investigations, so label quality inherits investigator bias.
+- Twice-faster training than logistic regression matters for monthly retrain cadence, not just for benchmarks.
+
+**Common mistakes and how to fix them**
+- Chasing the highest-AUC model. Fix: weight explainability and audit needs, which is why RF won here.
+- Leaving features static as behavior drifts. Fix: refresh features and re-eliminate on a schedule.
+- Working alerts FIFO. Fix: score and bucket so high-risk alerts get expert time first.
+
+
+### Wayfair: GraphSage node classification to catch policy-abuse account hoppers ([source](https://www.aboutwayfair.com/careers/tech-blog/preventing-policy-abuse-with-graph-neural-networks))
+
+Wayfair builds a knowledge graph linking customer accounts through shared names, devices, payment methods, and addresses, then classifies each account node as fraudulent or legitimate to catch policy abusers who open fresh accounts with no order history. Because new accounts have little behavioral signal, the GNN leans on their connections to known fraudsters through shared attributes. They tested GCN, GraphSage, and GAT and chose GraphSage with two convolutional layers (Dropout, ReLU, log-softmax), where the two-layer depth captures 2-hop neighborhoods while avoiding over-smoothing. Run as batch training and inference several times a day, it delivered a 10 percent relative lift in PR-AUC over gradient-boosted models, catching thousands of fraudsters and millions in annual savings.
+
+```mermaid
+flowchart TD
+  ACCTS["customer accounts"] --> KG["knowledge graph<br/>(shared name / device / payment / address)"]
+  KG --> GS["GraphSage: 2 conv layers<br/>(Dropout, ReLU)"]
+  GS --> AGG["2-hop neighbor aggregation"]
+  AGG --> LSM["log-softmax node output"]
+  LSM --> CLS{"account: fraud vs legit"}
+  CLS -->|"linked to known fraud"| FRAUD["flag policy abuser"]
+  CLS -->|"isolated"| LEGIT["legitimate"]
+  FRAUD --> SAVE["batch scoring, several times/day"]
+```
+**Interview questions this design invites**
+- Why can a GNN flag a brand-new account with no order history?
+- Why did GraphSage beat GCN and GAT for this node-classification task?
+- Why exactly two convolutional layers and not deeper?
+- What is the over-smoothing problem and how does layer depth control it?
+- Why is batch scoring acceptable here instead of real-time serving?
+- How do you measure lift with PR-AUC on a heavily imbalanced fraud label?
+
+**Tricks and gotchas**
+- Shared-attribute edges give signal precisely when per-account behavior is empty (new accounts).
+- Two layers is a deliberate 2-hop reach; going deeper over-smooths and blurs fraud from legit.
+- Batch several-times-a-day trades freshness for engineering simplicity; hoppers within the window slip.
+- GraphSage's neighbor sampling is what makes it scale where full-graph GCN struggles.
+
+**Common mistakes and how to fix them**
+- Requiring order history before scoring. Fix: use graph links so cold-start accounts still get a signal.
+- Stacking many GNN layers for reach. Fix: keep it shallow (two) to avoid over-smoothing.
+- Comparing on ROC-AUC on rare fraud. Fix: report PR-AUC against the boosted-tree baseline.
+
+
+### Booking.com: real-time JanusGraph BFS for hops-to-fraud network features ([source](https://medium.com/booking-com-development/leverage-graph-technology-for-real-time-fraud-detection-and-prevention-438336076ea5))
+
+Booking.com stores transaction identifiers (account numbers, card details) as nodes and co-observation as edges in JanusGraph over a Cassandra backend, so coordinated fraud shows up as connected identifier networks. On each reservation request the Fraud Detection Service calls a Graph Service that inserts the request's nodes and edges, runs a breadth-first search to find the connected component, and computes graph features. Key features include node-type counts (accounts, cards, fraud flags) and hops_to_fraud, the shortest distance from the request to a known fraud node, which then feed ML models or expert rules. The system meets a synchronous p99 of 300 milliseconds against a very large historical identifier store via indexing and query optimization.
+
+```mermaid
+flowchart TD
+  REQ["reservation request<br/>(account, card identifiers)"] --> FDS["Fraud Detection Service"]
+  FDS --> GS["Graph Service"]
+  GS --> INS["insert nodes + edges<br/>(JanusGraph / Cassandra)"]
+  INS --> BFS["breadth-first search<br/>(connected identifier network)"]
+  BFS --> FEAT["graph features<br/>(node-type counts, hops_to_fraud)"]
+  FEAT --> MODEL["ML model + expert rules"]
+  MODEL --> DEC{"risk decision (p99 300ms)"}
+  DEC -->|"allow"| OK["approve reservation"]
+  DEC -->|"block"| STOP["decline / review"]
+```
+**Interview questions this design invites**
+- Why is hops_to_fraud a strong feature, and what does a small hop count imply?
+- How do you insert, traverse, and score within a synchronous p99 of 300ms?
+- Why store identifiers as a graph instead of joining tables at query time?
+- What indexing makes BFS fast over a very large historical identifier store?
+- How do you bound BFS so a high-degree shared node does not explode traversal cost?
+- Why compute features inline per request rather than precomputing them offline?
+
+**Tricks and gotchas**
+- Inserting the current request into the graph first lets BFS relate it to history in one traversal.
+- hops_to_fraud collapses a whole neighborhood into one interpretable distance scalar.
+- The 300ms p99 forces bounded traversal depth and heavy indexing, not unbounded graph queries.
+- Co-observation edges accumulate noise; incidental shared identifiers can inflate false connections.
+
+**Common mistakes and how to fix them**
+- Traversing without a depth or fan-out cap. Fix: bound hops and prune high-degree nodes to hold p99.
+- Precomputing features that go stale. Fix: insert-and-traverse inline so the newest edges count.
+- Trusting every co-observation edge. Fix: down-weight incidental shared identifiers before scoring.
 _Not reachable: PayPal engineering blog index (medium.com/paypal-tech), Airbnb fraud and trust engineering index (medium.com/airbnb-engineering)_
 
 ---
@@ -2983,6 +3392,49 @@ flowchart TD
 - Ignoring bias in the classifier. Fix: partner with bias research and audit for disparate flag rates.
 - Treating one civility model as universal. Fix: account for community-specific context in training and thresholds.
 
+
+### Company: Slack: sparse logistic regression to block invite spam ([source](https://slack.engineering/blocking-slack-invite-spam-with-machine-learning/))
+
+Slack replaced a hand-tuned wall of IP denylists, regexes, and string matches (maintained by engineers watching a Slack channel) with a single sparse logistic regression model that scores invitations in real time. The model spans roughly 60 million features while staying interpretable: known team/user IDs, emails, domains, and IPs, word stems for Western languages, character sequences for Chinese text, mentioned websites, and team age. Rather than crowdsourcing spam labels, they used a proxy label, team-level invite acceptance, counting only invites accepted within 4 days (over 90 percent of legitimate accepts land in that window), which lets the label react quickly to new spammer behavior. It serves through a lightweight Python model-serving microservice on Kubernetes, pulling periodic updates from S3, and scores production traffic proactively before invites go out. Blocked invites still log to a channel for periodic human review, but human interaction is now rarely required. Only 3 percent of ML-flagged invites were later accepted (a true-negative proxy), versus 70 percent under the old rules, meaning the manual system had been blocking mostly legitimate invites, and the coordination channel went from hundreds of messages a month to basically dormant.
+
+```mermaid
+flowchart TD
+    A[Invitation sent] --> B[Sparse logistic regression, ~60M features]
+    B --> C{Spam score vs threshold}
+    C -->|above| D[Block invite]
+    C -->|below| E[Deliver invite]
+    D --> F[Log to review channel]
+    F --> G[Periodic human review, rarely needed]
+    subgraph Training via proxy label
+      T1[Historical invites] --> T2[Team-level acceptance within 4 days]
+      T2 --> T3[Low acceptance = spam label]
+      T3 --> B
+    end
+    subgraph Serving
+      S1[Python microservice on Kubernetes] --> S2[Pull model from S3]
+      S2 --> B
+    end
+```
+
+**Interview questions this design invites**
+- Why sparse logistic regression over a deep model when the feature space is 60 million wide?
+- Why use invite-acceptance as a proxy label instead of paying for human spam labels, and what bias does that inject?
+- Why cap the acceptance window at 4 days, and how does that window trade label accuracy for reaction speed?
+- How do you keep an interpretable linear model competitive against adversaries who probe its weights?
+- Why block proactively at send time rather than react after recipients complain?
+- What does the 3 percent versus 70 percent acceptance comparison actually prove, and what does it hide?
+
+**Tricks and gotchas**
+- The proxy label conflates spam with any low-acceptance invite, so a legitimate but unpopular team looks like a spammer.
+- A 4-day window mislabels slow-but-real accepts as spam and rewards spammers who can wait it out.
+- Sparsity and interpretability are a defense-in-depth benefit: you can read why an invite was blocked, but a linear boundary is also easier to reverse-engineer.
+- Team age as a feature penalizes brand-new legitimate teams, the exact cohort most sensitive to a bad first experience.
+
+**Common mistakes and how to fix them**
+- Maintaining rules by hand and watching a channel. Fix: learn the patterns with a model and let humans audit the tail.
+- Waiting for human spam labels before shipping. Fix: bootstrap a proxy label from an existing behavioral signal (acceptance).
+- Judging quality by how much you block. Fix: measure the acceptance rate of what you blocked, since real spam is almost never accepted.
+- Reacting to spam after recipients see it. Fix: score at invite-send time and block before delivery.
 _Not reachable: none_
 
 ---
@@ -3376,6 +3828,156 @@ flowchart TD
 - Reporting accuracy only: publish recall at a fixed precision floor for a harm class.
 - Trusting the model as the sole line: pair it with user reporting and human review.
 
+
+### Company: Cars24 blur classifier for used-car listing photos ([source](https://medium.com/cars24-data-science-blog/blur-classifier-image-quality-detector-7c1de5ff8e59))
+
+Cars24 gates used-car inspection and listing photos on sharpness before they flow into downstream defect and damage models, since a blurry frame silently degrades those models rather than announcing itself. Notably the production choice was not a deep CNN but a lightweight signal-processing pipeline: convert to YUV, take the Y (luminance) channel, split it into 8x8 non-overlapping blocks, run a Discrete Cosine Transform per block, and summarize the low, medium, and high frequency bands with statistics like mean, variance, kurtosis, skewness, entropy, and energy. That yields 18 features per image fed to a traditional binary classifier (sharp vs blurry). The intuition: a sharp image carries real energy in medium and high DCT frequencies, while blur collapses that energy into the low band. It hits about 91 percent test accuracy and scores a 1080x1920 image in roughly 12 ms on a single CPU core, cheap enough to sit inline before any GPU model runs.
+
+```mermaid
+flowchart LR
+  IMG[Listing or inspection photo] --> YUV[Convert to YUV take Y channel]
+  YUV --> BLK[Split into 8x8 blocks]
+  BLK --> DCT[Discrete Cosine Transform per block]
+  DCT --> FEAT[18 features low mid high band stats]
+  FEAT --> CLF[Binary classifier sharp vs blurry]
+  CLF -->|sharp| PASS[Pass to damage and defect models]
+  CLF -->|blurry| REJECT[Reject and ask for reshoot]
+```
+
+**Interview questions this design invites**
+- Why gate downstream defect models on image quality instead of letting them absorb blur?
+- Why does DCT band energy separate sharp from blurred images?
+- When is a hand-crafted DCT feature pipeline preferable to a CNN blur detector?
+- Why operate on the Y luminance channel rather than full RGB?
+- How do you pick the blur threshold given the cost of a false reject versus a false pass?
+- How would you keep this robust to motion blur versus out-of-focus blur?
+
+**Tricks and gotchas**
+- Blur pushes image energy into the low DCT band, so high-frequency energy is the discriminating signal.
+- A 12 ms single-core cost is what lets the gate run inline ahead of expensive GPU models.
+- Using only the Y channel drops chroma noise and cuts compute with little accuracy loss.
+- A single global threshold trades false rejects (annoyed sellers) against false passes (bad data downstream); tune per the downstream cost.
+
+**Common mistakes and how to fix them**
+- Reaching for a heavy CNN first: a DCT plus classical classifier can hit target accuracy at a fraction of the latency.
+- Running defect models on unfiltered photos: add a cheap quality gate so garbage frames never reach them.
+- Scoring on full RGB: convert to YUV and use luminance to reduce noise and cost.
+- Reporting only aggregate accuracy: state the false-reject rate too, since it directly annoys sellers.
+
+
+### Company: Shopify multimodal product categorization at scale ([source](https://shopify.engineering/using-rich-image-text-data-categorize-products))
+
+Shopify auto-classifies millions of merchant products into the Google Product Taxonomy, a 7-level hierarchy with 5,500-plus categories, to power search, discovery, and merchant insight. Because a product carries both words (title, description, vendor, tags, collections) and a photo, the model is multimodal: Multilingual BERT encodes the text, MobileNet-V2 encodes the image, the two embeddings are concatenated and pushed through shared hidden layers, then split into seven separate softmax heads, one per taxonomy level. Training treats each level as its own classification problem and deliberately imposes no hard hierarchy constraint, so a confident child prediction can back-propagate and correct a shaky parent. At serve time the opposite holds: predictions are constrained top-down (a child must live under the chosen parent) and each level gets smart thresholding to drop low-confidence guesses. The 250M-parameter model, trained distributed on GCP with class weighting for imbalance, delivered an 8 percent leaf-precision lift while doubling coverage.
+
+```mermaid
+flowchart TD
+  TXT[Title description vendor tags] --> BERT[Multilingual BERT text encoder]
+  IMG[Product image] --> MN[MobileNet-V2 image encoder]
+  BERT --> CAT[Concatenate embeddings]
+  MN --> CAT
+  CAT --> HID[Shared hidden layers]
+  HID --> L1[Level 1 head]
+  HID --> L2[Level 2 head]
+  HID --> LN[Level 3 to 7 heads]
+  L1 --> CON[Top-down hierarchy constraint plus per-level thresholds]
+  L2 --> CON
+  LN --> CON
+  CON --> OUT[Taxonomy path with coverage control]
+```
+
+**Interview questions this design invites**
+- Why fuse image and text instead of classifying on either modality alone?
+- Why train with soft (unconstrained) hierarchy but serve with hard top-down constraints?
+- How do seven per-level heads compare to one flat 5,500-way classifier?
+- What is coverage here and why report it alongside precision and recall?
+- How does class weighting address severe imbalance across taxonomy leaves?
+- Why MobileNet-V2 for images and BERT for text rather than a single heavier joint model?
+
+**Tricks and gotchas**
+- Letting child predictions correct parents during training exploits stronger signal at deeper levels.
+- Per-level thresholding is what lets you trade coverage for leaf precision cleanly.
+- Concatenation fusion is simple but a dominant modality can drown the weaker one; class weighting and balanced data help.
+- A flat classifier over 5,500 leaves is brittle; per-level heads localize the errors.
+
+**Common mistakes and how to fix them**
+- Text-only categorization: add an image encoder so ambiguous titles get visual disambiguation.
+- Forcing hard hierarchy during training: leave it soft so deeper heads can fix parent mistakes.
+- Optimizing precision while ignoring coverage: report both, since a precise model that predicts nothing is useless.
+- Uniform class treatment on a long-tailed taxonomy: apply class weighting to rescue rare leaves.
+
+
+### Company: Uber real-time document check for rider ID verification ([source](https://www.uber.com/en-GB/blog/ubers-real-time-document-check/))
+
+Uber verifies rider identity from government documents in real time across 11-plus countries, splitting the work between an on-device quality model and server-side verification. On the phone, a quantized TensorFlow Lite multi-task CNN scores each camera frame for missing ID, truncation, blur, and glare through a shared feature extractor, driving an auto-capture that only fires when the frame is good enough, cutting user friction and bad uploads. After upload, the server runs document classification and fraud detection (a third-party vendor plus an in-house OCR-and-object-detection stack for Brazilian documents that reads character-level text and locates key fields), with a human-in-the-loop path for low-confidence cases resolved typically in under 90 seconds. The split matters: the on-device gate keeps latency low and privacy tighter, while heavier fraud and transcription logic stays server-side with encryption, access control, and region-based retention. Over a million IDs were verified, and the same stack extended to alcohol-delivery and moped-license checks.
+
+```mermaid
+flowchart TD
+  CAM[Camera frames] --> TFL[On-device TFLite multi-task quality model]
+  TFL --> Q{Missing truncated blur glare}
+  Q -->|bad| GUIDE[Guide user reposition retry]
+  Q -->|good| CAP[Auto-capture and upload]
+  CAP --> CLS[Server document classification and fraud detection]
+  CLS --> OCR[OCR plus object detection field extraction]
+  OCR --> CONF{Confidence high}
+  CONF -->|yes| VERIFIED[Verified]
+  CONF -->|no| HUMAN[Human review under 90s]
+```
+
+**Interview questions this design invites**
+- Why put the image-quality model on-device but keep fraud detection server-side?
+- Why use multi-task learning to detect blur, glare, truncation, and missing ID in one model?
+- How does auto-capture on a quality threshold reduce downstream rejects?
+- Why quantize the on-device model and what accuracy cost does that carry?
+- How do you design a human-in-the-loop path that resolves in under 90 seconds?
+- How do you handle multiple valid ID versions circulating in one country?
+
+**Tricks and gotchas**
+- A shared feature extractor lets one small model answer four quality questions at once.
+- Auto-capture only on good frames pushes quality control to the edge and shrinks server load.
+- Quantization is what makes the model fit real-time on mid-range phones.
+- Region-based retention and encryption are non-optional for government ID data.
+
+**Common mistakes and how to fix them**
+- Uploading every frame to the server: gate on-device so only capture-worthy frames leave the phone.
+- One model per quality defect: use multi-task learning with a shared trunk instead.
+- Full automation on low-confidence documents: route them to fast human review.
+- Ignoring document-version drift: maintain templates for every valid ID variant per country.
+
+
+### Company: Canva Shape Assist for hand-drawn shape recognition ([source](https://www.canva.dev/blog/engineering/ship-shape/))
+
+Canva's Draw tool turns rough hand-drawn scribbles into clean vector shapes using a tiny model that runs entirely in the browser. The key design choice is the input representation: instead of rasterizing the drawing to pixels and using a CNN, they keep the stroke as a sequence of (x, y) coordinates and feed it to a single LSTM layer (100 hidden units) plus one fully connected layer, only 64,109 parameters, about 250 KB. Each stroke is normalized with Ramer-Douglas-Peucker simplification (which preserves sharp corners while removing drawing-speed jitter) and resampled to 25 interpolated points, then augmented with point jittering and stroke reversal, cheap operations that a pixel representation could not do as cleanly. The output uses sigmoid activations over 9 shape classes rather than softmax, so a scribble that matches nothing well can be rejected instead of forced into a class. Inference finishes in under 10 ms client-side and works fully offline, and a template-matching pass with 15-degree rotation increments snaps the recognized shape to a clean vector.
+
+```mermaid
+flowchart LR
+  DRAW[Hand-drawn stroke] --> RDP[Ramer-Douglas-Peucker simplify]
+  RDP --> RES[Resample to 25 xy points]
+  RES --> LSTM[Single LSTM layer 100 units]
+  LSTM --> FC[Fully connected layer]
+  FC --> SIG[Sigmoid over 9 shape classes]
+  SIG -->|confident| SNAP[Template match snap to vector]
+  SIG -->|low confidence| KEEP[Keep as freehand]
+```
+
+**Interview questions this design invites**
+- Why represent the drawing as a coordinate sequence instead of a pixel image?
+- Why choose an LSTM over a CNN for stroke recognition?
+- Why sigmoid outputs rather than softmax over the 9 classes?
+- How does Ramer-Douglas-Peucker simplification help before resampling to fixed length?
+- How do you get inference under 10 ms fully in the browser?
+- Why keep the model at 64K parameters when a bigger model would score higher?
+
+**Tricks and gotchas**
+- Stroke coordinates enable jitter and reversal augmentation that pixel images cannot do as cleanly.
+- Sigmoid outputs let the model reject an ambiguous scribble instead of forcing a class.
+- RDP preserves sharp corners while stripping drawing-speed jitter before fixed-length resampling.
+- A 250 KB model is what makes fully offline, sub-10 ms in-browser inference possible.
+
+**Common mistakes and how to fix them**
+- Rasterizing strokes to pixels: keep the coordinate sequence to shrink the model and enable geometric augmentation.
+- Softmax that forces every scribble into a class: use per-class sigmoids so low-confidence input is rejected.
+- Feeding raw variable-length strokes: simplify with RDP then resample to a fixed point count.
+- Shipping a server round-trip: run the tiny model client-side for offline, instant response.
 _Not reachable: none_
 
 ---
@@ -4324,6 +4926,155 @@ flowchart TD
 - Reporting a bare ratio: pair it with the absolute gap so operators see magnitude.
 - Ignoring spatial granularity choice: tune geohash and slot size to the rebalancing action.
 
+
+### Company: Ocado ([source](https://careers.ocadogroup.com/blogs/careers-blogs/our-technologies/finding-the-sweet-spot))
+
+Ocado forecasts grocery demand to hit a sweet spot between availability (never running out for a customer) and waste (over-buying perishables that get purged). Rather than one model, they run a tiered stack of rising complexity: heuristics (rolling averages of recent sales, pre-order and checked-out analysis) for cold-start retailers with no history, feed-forward neural networks that learn how to combine all those heuristics per product, and deep sequence-to-sequence models that read long historical windows. Two learning behaviours are deliberately balanced: memorization (remember what drives demand for a product, forget what does not) and generalization (learn behaviour across all products so a new item borrows from similar ones). Built in Python and TensorFlow, it emits millions of forecasts a day per fulfilment centre, continuously retraining on the freshest data, and the availability-vs-waste balance is tuned per retailer preference.
+
+```mermaid
+flowchart TD
+  HIST["history<br/>(daily demand, rolling avg,<br/>pre-orders, checked-out orders)"] --> HEUR["heuristics layer<br/>(cold-start / new retailer)"]
+  HIST --> FFN["feed-forward NN<br/>(learns best combo of heuristics per product)"]
+  HIST --> S2S["deep seq-to-seq<br/>(long historical windows)"]
+  EXT["external factors<br/>(promotions, seasonality)"] --> FFN
+  EXT --> S2S
+  HEUR --> FC["demand forecast per product"]
+  FFN --> FC
+  S2S --> FC
+  FC --> BAL["availability vs waste balance<br/>(tuned per retailer)"]
+  BAL --> BUY["purchasing / replenishment"]
+  FC -.->|continuous retrain on freshest data| S2S
+```
+
+**Interview questions this design invites**
+- Why run a tier of heuristic, feed-forward, and seq-to-seq models instead of one architecture?
+- How do you forecast a brand-new product or a brand-new retailer with no history?
+- What is the concrete tradeoff between availability and waste, and how do you tune it per retailer?
+- Why does a perishable-grocery objective differ from generic demand forecasting?
+- How do memorization and generalization pull in different directions in one model?
+- How do you serve and retrain millions of forecasts a day per fulfilment centre?
+
+**Tricks and gotchas**
+- A feed-forward net that learns to blend heuristics is a cheap, strong baseline before deep sequence models.
+- Generalization across products is what rescues new-item forecasting where per-item history is empty.
+- The business target is not accuracy, it is the availability-vs-waste sweet spot, tuned per retailer.
+- Perishability makes over-forecasting expensive (purge), so the loss is asymmetric in practice.
+
+**Common mistakes and how to fix them**
+- Optimizing raw forecast error and ignoring waste: score the availability-vs-waste tradeoff the business cares about.
+- One heavy model for every product and retailer: tier heuristics for cold-start, escalate to deep models where history is rich.
+- Treating new items as unforecastable: generalize across similar products to borrow signal.
+
+
+### Company: Mercado Libre ([source](https://medium.com/mercadolibre-tech/global-time-series-forecasting-models-for-item-level-demand-and-sales-forecasts-in-our-marketplace-aee2956957ae))
+
+Mercado Libre forecasts two different things on purpose: sales (actual transactions, capped by stock) and demand (what customers would have bought with unlimited inventory). Observed sales understate true interest whenever an item stocks out, so they train separate global time-series (LSTM) models, one for each target, at item level across every operating country. A global model learns one set of weights over a heterogeneous item population instead of one model per series, which keeps complexity far lower than thousands of individual models. Both consume 12 weeks of log-transformed sales plus engagement signals (visits, questions) and product attributes (stock, price); the sales model additionally sees available-stock history, while the demand model adds price elasticity for promotions. They evaluate with MAE because it handles zero-sales items cleanly and is trivially interpretable per item. The two models diverge exactly where it matters: for a stocked-out item the sales model correctly predicts near-zero forced sales while the demand model predicts the recovery it would see if restocked. A post-processing step adjusts for marketing events; a planned next step is probabilistic output via Monte Carlo Dropout.
+
+```mermaid
+flowchart TD
+  HIST["12 weeks history<br/>(log-transformed sales)"] --> FEAT["shared features<br/>(visits, questions, price, stock)"]
+  FEAT --> SM["global LSTM: SALES<br/>(+ available-stock history)"]
+  FEAT --> DM["global LSTM: DEMAND<br/>(+ price elasticity)"]
+  SM --> SF["sales forecast<br/>(capped by stock, 'forced sales')"]
+  DM --> DF["demand forecast<br/>(unconstrained, recovery if restocked)"]
+  SF --> POST["marketing-event post-processing"]
+  DF --> POST
+  POST --> PLAN["inventory + replenishment planning"]
+  SF -.->|MAE eval| SM
+  DF -.->|MAE eval| DM
+```
+
+**Interview questions this design invites**
+- Why forecast demand and sales as two separate targets instead of one?
+- How does a stockout bias observed sales, and why does that matter for planning?
+- Why a global LSTM over the item population instead of one model per item?
+- Why log-transform the sales history before training?
+- Why choose MAE over MAPE or RMSE for intermittent, zero-heavy item sales?
+- How would you extend point forecasts to probabilistic ones (and why Monte Carlo Dropout)?
+
+**Tricks and gotchas**
+- Sales are censored by stock, so training a sales model on them teaches you the stock ceiling, not true demand.
+- A global model shares strength across items and is simpler to run than thousands of per-item models.
+- Log-transforming tames extreme variance across a heterogeneous catalogue.
+- MAE sidesteps the divide-by-zero and undefined-percentage pain that MAPE hits on zero-sales weeks.
+
+**Common mistakes and how to fix them**
+- Planning inventory off observed sales alone: model latent demand separately so stockouts do not hide interest.
+- One model per series at marketplace scale: use a global time-series model over the whole population.
+- Using MAPE on intermittent demand: switch to MAE which is defined and interpretable at zero.
+
+
+### Company: Wayfair ([source](https://www.aboutwayfair.com/careers/tech-blog/how-wayfair-uses-predicted-winners-models-to-accelerate-success-for-new-products))
+
+Wayfair's Predicted Winners solves cold-start demand: predict which brand-new products will sell before they have any sales history, so they can be surfaced and stocked early. It is a four-pillar system. The Day Zero model is a neural network that scores launch-day potential from intrinsic features only (wholesale cost, deep-learning embeddings of product images, text embeddings of descriptions), since no engagement data exists yet. Once a product goes live, the Continuous Winners model, a time-series neural net, ingests early engagement (page visits, add-to-cart, orders) and uses LSTM feature extraction to capture multi-dimensional comovement across those signals instead of hand-curated features. One universal architecture serves many categories and transfers knowledge (lawn-chair learnings inform outdoor sofas). Training objectives are distribution-matched to each target: Bernoulli and Log-Normal for revenue, Negative Binomial for order counts, giving uncertainty rather than bare point estimates. A Sentinel testing framework controls for exposure bias so high scores do not become self-fulfilling. High Day Zero scorers get better storefront sort placement; high Continuous Winners scorers become candidates for supplier-exclusivity partnerships.
+
+```mermaid
+flowchart TD
+  INTR["intrinsic features<br/>(cost, image embeddings, text embeddings)"] --> DZ["Day Zero NN<br/>(cold-start, no engagement)"]
+  DZ --> DZSCORE["launch-day potential score"]
+  DZSCORE --> SORT["storefront sort placement"]
+  ENG["early engagement time-series<br/>(visits, add-to-cart, orders)"] --> LSTM["LSTM feature extraction<br/>(multi-dim comovement)"]
+  LSTM --> CW["Continuous Winners NN<br/>(Bernoulli / Log-Normal / Neg-Binomial heads)"]
+  CW --> CWSCORE["winner score + uncertainty"]
+  CWSCORE --> EXCL["supplier-exclusivity candidates"]
+  SENT["Sentinel framework<br/>(controls exposure bias)"] --> CW
+  SENT --> DZ
+```
+
+**Interview questions this design invites**
+- How do you forecast demand for a product with literally zero sales history?
+- Why split into a Day Zero (intrinsic-only) and a Continuous Winners (engagement) model?
+- Why use LSTM feature extraction over engagement signals instead of hand-crafted features?
+- Why match output distributions (Bernoulli, Log-Normal, Negative Binomial) to each target?
+- What is exposure bias here, and how does Sentinel stop winners from being self-fulfilling?
+- How does one universal model transfer knowledge across product categories?
+
+**Tricks and gotchas**
+- Image and text embeddings are the only signal you have at Day Zero; they carry the cold-start forecast.
+- Splitting revenue (Log-Normal) from order count (Negative Binomial) matches each target's real distribution.
+- LSTM feature extraction captures how engagement signals move together, which manual features miss.
+- Better placement for predicted winners creates exposure bias; Sentinel's controlled testing breaks the feedback loop.
+
+**Common mistakes and how to fix them**
+- Waiting for sales history before ranking new products: score cold-start from intrinsic content embeddings on day zero.
+- Emitting point forecasts: use distribution-matched heads so downstream decisions see uncertainty.
+- Letting winner predictions become self-fulfilling via placement: control exposure bias with a Sentinel-style holdout.
+
+
+### Company: Oda ([source](https://medium.com/oda-product-tech/how-we-went-from-zero-insight-to-predicting-service-time-with-a-machine-learning-model-part-2-2-ad8b0c3e4838))
+
+Oda predicts per-stop service time (park, re-stack the car, scan the order, carry groceries to the door), which is roughly half a delivery driver's workday, so the route planner can sequence stops on data-driven estimates instead of manual rules. The model is LightGBM, tuned with Bayesian optimization via Optuna, trained on two years of geofence-measured service times. Features are order characteristics (weight, item count, box count), geography (delivery area as a parking-difficulty proxy), and customer attributes (historical service time, floor level, elevator availability). It is evaluated on MAE and beat the legacy business-logic rules by about 30 seconds per stop (a 23 percent MAE reduction), and a spatial analysis showed it removed a systematic urban-vs-rural bias the old rules carried. The honest twist: despite the big per-stop accuracy win, real-world delay standard deviation improved only about 10 percent, because errors on a well-tuned ~30-stop route partly cancel out, masking per-stop inaccuracy. Rolled out from a six-week 10 percent pilot in Sandvika (Nov 2021) to the full delivery area in Jan 2022, feeding the route planner alongside a parallel driving-time model.
+
+```mermaid
+flowchart TD
+  ORD["order features<br/>(weight, items, boxes)"] --> LGBM["LightGBM<br/>(Optuna / Bayesian tuning)"]
+  GEO["geography<br/>(area = parking-difficulty proxy)"] --> LGBM
+  CUST["customer attributes<br/>(history, floor, elevator)"] --> LGBM
+  LGBM --> ST["predicted service time per stop"]
+  DRIVE["parallel driving-time model"] --> PLAN
+  ST --> PLAN["route planner<br/>(sequence ~30 stops)"]
+  PLAN --> ROUTE["delivery route"]
+  ST -.->|MAE eval vs geofence truth| LGBM
+```
+
+**Interview questions this design invites**
+- Why predict service time per stop separately from driving time?
+- Why LightGBM here instead of a deep sequence model?
+- How does a 23 percent per-stop MAE gain translate to only ~10 percent route-level delay improvement?
+- Why can well-tuned legacy rules mask per-stop error across a 30-stop route?
+- How did you detect and remove the urban-vs-rural bias in the old rules?
+- How do you measure ground-truth service time (geofencing) and what noise does that add?
+
+**Tricks and gotchas**
+- Per-stop errors partly cancel over a long route, so stop-level accuracy overstates the routing win.
+- Geofence-measured labels are noisy; the target definition (park to door) has to be pinned precisely.
+- Delivery area is a cheap proxy for parking difficulty, a feature hard to measure directly.
+- Removing a systematic spatial bias can matter more than the average MAE number.
+
+**Common mistakes and how to fix them**
+- Judging the model on per-stop MAE alone: evaluate the route-level delay distribution the planner actually cares about.
+- Assuming a big accuracy gain guarantees a big operational gain: measure end-to-end, errors can cancel.
+- Ignoring systematic geographic bias: do a spatial error analysis, not just aggregate MAE.
 _Not reachable: Uber Engineering Uncertainty Estimation (not attempted, 8-case cap), Lyft Causal Forecasting Part 1 (off-host redirect)_
 
 ---
@@ -4603,6 +5354,149 @@ flowchart LR
 - Targeting everyone with positive predicted response; do-not-disturbs reduce transactions, exclude them.
 - Letting feature drift silently corrupt causal estimates; monitor data quality upstream of the model.
 
+
+### Pinterest: proactive advertiser churn prevention with a GBDT snapshot model ([source](https://medium.com/pinterest-engineering/an-ml-based-approach-to-proactive-advertiser-churn-prevention-3a7c0c335016))
+
+Pinterest predicts whether an active advertiser will stop spending within 14 days so account managers can intervene before revenue drops. Active is defined as spend in the last 7 days and churned as no spend in the last 7 days, and a GBDT snapshot model over 200+ features (performance metrics, budget utilization, ads-manager activity, property attributes, week-over-week trends) scores each advertiser. SHAP explains each score (sigmoid of summed SHAP contributions equals the model probability), and probabilities map to high/medium/low risk tiers tuned to about 70% precision and above 70% recall at the high tier. A treatment-vs-control A/B test on high-risk pods showed a 24% reduction in churn rate.
+
+```mermaid
+flowchart LR
+  F["200+ advertiser features<br/>(spend, budget use, activity, trends)"] --> GBDT["GBDT snapshot model<br/>(churn within 14 days)"]
+  GBDT --> SHAP["SHAP attribution<br/>(sigmoid of summed contributions)"]
+  SHAP --> TIER["risk tiers<br/>(high / med / low, PR-tuned)"]
+  TIER --> AM["account-manager intervention"]
+  AM -.->|"A/B test: 24% churn reduction"| F
+```
+
+**Interview questions this design invites**
+- Why define churn as a 14-day forward binary label instead of a time-to-event horizon?
+- Why does a snapshot GBDT beat a sequential model as the first version, and when would you switch?
+- How do precision and recall thresholds translate a raw probability into actionable high/medium/low tiers?
+- Why pair the model with an A/B test rather than trusting offline AUC to prove churn was prevented?
+- What does SHAP buy an account manager beyond a bare risk score?
+- How would you tell a healthy zero-spend week apart from the onset of churn?
+
+**Tricks and gotchas**
+- Defining active/churn off a rolling 7-day spend window makes the label cheap but sensitive to seasonal spend gaps.
+- SHAP is not just interpretability here: the sigmoid-of-sum identity lets managers read which features drove the flag.
+- Tiering by precision/recall targets aligns model output with finite account-manager capacity, not raw probability.
+- A snapshot model discards sequence, so a sharp recent drop and a slow decline can look identical without trend features.
+
+**Common mistakes and how to fix them**
+- Judging churn prevention by offline metrics alone; run a treatment-vs-control A/B test to measure prevented churn.
+- Treating the score as calibrated truth without tiers; set precision/recall thresholds that match manager bandwidth.
+- Ignoring recent trajectory in a snapshot model; add week-over-week and month-over-month trend features.
+- Firing on every dip; a natural spend pause reads as churn unless the label window and features account for cadence.
+
+
+### PayPal: two-layer ensemble for sales-opportunity propensity ([source](https://medium.com/paypal-tech/sales-pipeline-management-with-machine-learning-15398bab913b))
+
+PayPal scores sales opportunities by propensity to close using a lightweight two-layer ensemble that produces a progressive, daily-updated score. Layer one is a Gradient Boosting Machine that runs once when an opportunity is created, consuming only static attributes and collapsing many features into a single propensity score (a form of dimension reduction). Layer two is a logistic regression that takes the GBM score plus time-varying signals (opportunity duration, contact frequency) and adjusts it daily, chosen for interpretable coefficients so reps see which factors (for example extended duration) lower win likelihood. The final score prioritizes opportunities against reps' limited outreach capacity.
+
+```mermaid
+flowchart LR
+  STAT["static attributes<br/>(at opportunity creation)"] --> GBM["Layer 1: GBM<br/>(static propensity, run once)"]
+  GBM --> LR["Layer 2: logistic regression<br/>(daily adjust)"]
+  DYN["time-varying features<br/>(duration, contact frequency)"] --> LR
+  LR --> SCORE["daily propensity to close"]
+  SCORE --> REP["rep prioritizes pipeline"]
+```
+
+**Interview questions this design invites**
+- Why split static and dynamic signals into two layers instead of one model over all features?
+- Why feed the GBM output into a logistic regression rather than stacking two GBMs?
+- How does collapsing static features into one GBM score act as dimension reduction for the second layer?
+- Why is interpretability worth choosing logistic regression for the layer reps actually read?
+- How do you avoid leaking future pipeline outcomes into the daily-updated dynamic features?
+- What is the cost of scoring once at creation versus rescoring statics every day?
+
+**Tricks and gotchas**
+- Running the GBM once at creation is deliberate: static attributes do not change, so re-scoring them daily is wasted compute.
+- The GBM score is a learned feature; the second layer only has to model how time-varying signals move it.
+- Logistic-regression coefficients give signed, ranked explanations reps trust more than a black-box delta.
+- A daily-updating score can whipsaw if noisy contact-frequency features are not smoothed.
+
+**Common mistakes and how to fix them**
+- Building one monolith over static plus dynamic features; separate the once-computed baseline from the daily adjustment.
+- Using an opaque model for the rep-facing layer; pick logistic regression so the score comes with reasons.
+- Recomputing unchanging static features every day; freeze the layer-one score and only refresh dynamics.
+- Letting duration or contact features peek at closed outcomes; enforce point-in-time correctness on time-varying inputs.
+
+
+### Gousto: behavioral gradient-boosted churn model for subscription retention ([source](https://medium.com/gousto-engineering-techbrunch/using-data-science-to-retain-customers-63f19a03a0b6))
+
+Gousto predicts recipe-box subscription churn, defined as not ordering a box for 4 weeks, as a binary classification with a probability threshold set just below 50%. A gradient-boosted tree trains on over 300 purely behavioral features (order frequency, app usage, recipe selections, subscription-pause history), and SHAP quantifies each feature's contribution. The prediction is evaluated against actual churn four weeks later, and the precision-recall threshold is tunable so Finance and Marketing can trade catching every churner against acting only on high-confidence cases. Predicted churners are routed to interventions (push notifications, promotions, emails) chosen by a separate Promotion Optimization algorithm.
+
+```mermaid
+flowchart LR
+  F["300+ behavioral features<br/>(orders, app use, pauses)"] --> GBT["gradient-boosted tree<br/>(churn = no box in 4 weeks)"]
+  GBT --> SHAP["SHAP feature attribution"]
+  GBT --> THR["PR threshold (just below 50%)"]
+  THR --> SEG["predicted churners"]
+  SEG --> PROMO["Promotion Optimization<br/>(push / promo / email)"]
+  PROMO --> ACT["targeted retention action"]
+  ACT -.->|"label matures 4 weeks later"| F
+```
+
+**Interview questions this design invites**
+- Why is a 4-week no-order window a reasonable churn label for a weekly-cadence subscription?
+- Why train on purely behavioral features and exclude demographics?
+- How does the precision-recall threshold let Finance and Marketing pick an operating point by cost-benefit?
+- Why keep churn scoring separate from the promotion-selection algorithm?
+- How do you validate a model whose label only resolves four weeks after the prediction?
+- What leakage risk hides in a subscription-pause feature that overlaps the label window?
+
+**Tricks and gotchas**
+- A pause is not the same as churn; pause-history features must be point-in-time so they do not encode the outcome.
+- The threshold is a business lever, not a fixed 0.5; the right point depends on intervention cost versus saved revenue.
+- Splitting churn prediction from promotion optimization lets each be tuned and swapped independently.
+- SHAP on 300+ features surfaces which behaviors drive risk, guiding what the retention message should address.
+
+**Common mistakes and how to fix them**
+- Fixing the threshold at 0.5; tune the precision-recall operating point to the cost of each intervention.
+- Leaking the label via features that span the 4-week window; freeze features strictly before the prediction date.
+- Predicting churn but blasting one generic offer; route flagged users through a dedicated promotion optimizer.
+- Ignoring that a binary label hides timing; if you need when-they-churn, move to a survival formulation.
+
+
+### Asos: Ithax and Promotheus markdown-pricing systems ([source](https://medium.com/asos-techblog/optimizing-markdown-in-fashion-e-commerce-with-machine-learning-9f173be08ace))
+
+Asos runs two deployed markdown-pricing systems that split the cold-start and steady-state problems. Ithax is a supply-side, multi-objective optimizer inspired by binary search that sets markdowns to sell out inventory without any demand or elasticity model, balancing stock value (revenue proxy) against stock depth (margin proxy), and serves as a bootstrapping engine. Promotheus is the full solution: a price-elasticity model forecasts likely outcomes across the pricing action space, handling the partial-information problem that unobserved prices have no historical outcome, then optimizes expected sales and profit at the product level under offline-validation constraints. Both beat manual operations by 79 to 86% on profitability in randomized testing.
+
+```mermaid
+flowchart LR
+  subgraph COLD["cold start"]
+    P1["recent product info"] --> ITHAX["Ithax<br/>(multi-objective, binary-search)"]
+    ITHAX --> BAL["balance stock value vs stock depth"]
+    BAL --> MK1["sell-out markdown prices"]
+  end
+  subgraph STEADY["steady state"]
+    P2["price + product history"] --> ELAST["price elasticity model<br/>(demand across action space)"]
+    ELAST --> OPT["profit optimization<br/>(offline-validation constrained)"]
+    OPT --> MK2["profit-optimal markdown prices"]
+  end
+  MK1 -.->|"bootstrap data"| ELAST
+```
+
+**Interview questions this design invites**
+- Why run a demand-free optimizer (Ithax) at all when Promotheus models elasticity properly?
+- What is the partial-information problem in markdown pricing and how does an elasticity model address it?
+- Why optimize two competing objectives (stock value vs stock depth) instead of a single revenue target?
+- How does offline-validation data constrain the feasible pricing region and why is that necessary?
+- How do you evaluate a pricing policy that changes the very demand you are trying to observe?
+- When do you graduate a product from Ithax to Promotheus?
+
+**Tricks and gotchas**
+- Ithax deliberately skips demand modeling so it works on day one before you have price-response data.
+- The partial-information trap is that you never observe outcomes for prices you did not set; elasticity must extrapolate.
+- Stock value and stock depth encode revenue and margin as competing objectives, so a single-metric optimizer misleads.
+- Constraining to an offline-validated region keeps the optimizer from recommending prices it cannot trust.
+
+**Common mistakes and how to fix them**
+- Waiting for a perfect elasticity model before pricing new stock; use a supply-side bootstrapper like Ithax first.
+- Optimizing revenue alone; markdown needs revenue and margin balanced, so keep the multi-objective formulation.
+- Trusting elasticity forecasts for prices far outside history; constrain the action space to the validated region.
+- Judging a pricing change by observed sales alone; use randomized tests so demand shifts do not confound the lift.
 _Not reachable: none_
 
 ---
