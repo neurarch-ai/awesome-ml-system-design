@@ -3,9 +3,7 @@
 The same landscape of shipped ML systems that the broad indexes catalog
 (the [Evidently AI ML system design database](https://www.evidentlyai.com/ml-system-design)
 is the widest, 800 case studies from 150+ companies), re-organized into this
-repo's own use-case taxonomy and presented our way: every entry is a first-party
-engineering writeup with a verified link, tagged by what it actually shows you
-(*who it serves* / *product design* / *eval bar* / *deployment*).
+repo's own use-case taxonomy.
 
 Each category is not just a link list: it opens with a one-line shared-blueprint
 note, a **Mermaid diagram of where the real designs diverge** (the branch points
@@ -15,7 +13,7 @@ from the underlying engineering writeups. Then the systems themselves. For the f
 per-case teardown of any one, see [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md); browse the
 same systems [by company](CASE-STUDIES-BY-COMPANY.md) or [by industry](CASE-STUDIES-BY-INDUSTRY.md).
 
-188 systems across the taxonomy, and growing.
+212 systems across the taxonomy, and growing.
 
 ---
 ### [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) · 13 systems
@@ -104,7 +102,7 @@ quadrantChart
 
 ---
 
-### [Ranking model](topics/02-ranking-model.md) · 12 systems
+### [Ranking model](topics/02-ranking-model.md) · 15 systems
 
 **What they share.** Every ranker assembles dense numeric features beside sparse ids that pass through embedding tables, scores all candidates through one DNN inside a hard latency budget, then calibrates and blends per-objective scores into a utility that sorts the list. What differs is only how interactions are modeled and how many objectives are optimized.
 
@@ -184,6 +182,9 @@ quadrantChart
 - **Pinterest** [Improving recommended pins with lightweight ranking](https://medium.com/pinterest-engineering/improving-the-quality-of-recommended-pins-with-lightweight-ranking-8ff5477b20e3): An XGBoost lightweight ranker within a latency budget early in the funnel. *(deployment)*
 - **Wayfair** [Time Informed Calibration](https://www.aboutwayfair.com/careers/tech-blog/time-informed-calibration): Calibrates raw ranking scores into time-aware purchase probabilities. *(eval bar)*
 - **Walmart** [Improving Walmart Search to help customers save time](https://medium.com/walmartglobaltech/improving-walmart-search-to-help-our-customers-save-time-e9fcd1f03e94): A re-ranker balancing relevance and engagement, lifting relevance 4.5%. *(eval bar)*
+- **Snap** [Machine Learning for Snapchat Ad Ranking](https://eng.snap.com/machine-learning-snap-ad-ranking): Deep-learning ad ranker selecting from millions of ads under strict latency and cost budgets. *(product design)*
+- **Asos** [Transforming Recommendations at ASOS](https://medium.com/asos-techblog/transforming-recommendations-at-asos-254b95c6a07a): Transformer sequence ranker over user interactions, over 20% offline lift versus matrix factorization. *(product design)*
+- **Yelp** [Beyond Matrix Factorization: Using hybrid features for user-business recommendations](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html): XGBoost learning-to-rank blending interaction and content features, doubling user coverage. *(product design)*
 
 ---
 
@@ -356,7 +357,7 @@ quadrantChart
 
 ---
 
-### [Search ranking](topics/09-search-ranking.md) · 10 systems
+### [Search ranking](topics/09-search-ranking.md) · 14 systems
 
 **What they share.** Every system runs one spine: understand the query, fuse a lexical arm with an embedding arm into a candidate union, then score the survivors with a learning-to-rank model trained on debiased engagement plus scarce human judgments. The differences are which retrieval arm dominates and where each team spends its labeling budget, not the shape.
 
@@ -432,10 +433,14 @@ quadrantChart
 - **Instacart** [Building the Intent Engine: query understanding with LLMs](https://company.instacart.com/tech-innovation/building-the-intent-engine-how-instacart-is-revamping-query-understanding-with-llms): An LLM-based query-understanding pipeline for intent and category mapping. *(product design)*
 - **Yelp** [Learning to Rank for Business Matching](https://engineeringblog.yelp.com/2014/12/learning-to-rank-for-business-matching.html): Moving business matching from hand-tuned scoring to learning-to-rank. *(product design)*
 - **Wayfair** [WANDS: a public e-commerce product-search relevance dataset](https://www.aboutwayfair.com/careers/tech-blog/wayfair-releases-wands-the-largest-and-richest-publicly-available-dataset-for-e-commerce-product-search-relevance): A public human-judged relevance-label dataset for search evaluation. *(eval bar)*
+- **GetYourGuide** [Powering Millions of Real-Time Rankings with Production AI](https://www.getyourguide.careers/posts/powering-millions-of-real-time-rankings-with-production-ai): 30M+ daily ranking predictions served under 80ms, with a Tecton feature store, Airflow training, FastAPI/Kubernetes serving, and Arize drift and NDCG monitoring. *(deployment)*
+- **Booking** [The Engineering Behind High-Performance Ranking Platform: A System Overview](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6): System overview of Booking.com's ML ranking platform that personalizes search by scoring properties on user behavior and real-time price and availability signals. *(product design)*
+- **Shopify** [How Shopify improved consumer search intent with real-time ML](https://shopify.engineering/how-shopify-improved-consumer-search-intent-with-real-time-ml): Semantic search using ML embeddings to understand consumer search intent beyond keyword matching for more relevant product results. *(deployment)*
+- **Spotify** [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/): Deep-learning semantic search that matches natural-language queries to podcast episodes by meaning rather than exact keywords. *(product design)*
 
 ---
 
-### [Fraud & anomaly detection](topics/08-fraud-and-anomaly-detection.md) · 12 systems
+### [Fraud & anomaly detection](topics/08-fraud-and-anomaly-detection.md) · 16 systems
 
 **What they share.** Every system runs one skeleton: an event stream feeds real-time velocity plus graph/entity features, a model scores the event, a cost-sensitive threshold turns the score into allow/block/review, and analyst verdicts plus settled chargebacks flow back as labels. The only fast feedback is the human queue; ground truth lands weeks later.
 
@@ -513,10 +518,14 @@ quadrantChart
 - **Grab** [Unsupervised graph anomaly detection for new fraud](https://engineering.grab.com/graph-anomaly-model): A GraphBEAN autoencoder on bipartite graphs catches novel fraud without labels. *(product design)*
 - **Grab** [Graph for fraud detection](https://engineering.grab.com/graph-for-fraud-detection): RGCN exploits shared-device/address correlations; less labeled data, explainable clusters. *(product design)*
 - **Airbnb** [Fighting Financial Fraud with Targeted Friction](https://medium.com/airbnb-engineering/fighting-financial-fraud-with-targeted-friction-82d950d8900e): A loss function weighing friction vs chargeback cost; targeted friction cuts losses. *(eval bar)*
+- **Feedzai** [Building Trust in a Digital World: The Role of Machine Learning in Behavioral Biometrics](https://medium.com/feedzaitech/building-trust-in-a-digital-world-the-role-of-machine-learning-in-behavioral-biometrics-bb0da913d95a): behavioral-biometric signals (device, interaction patterns) scored across millions of sessions daily at low latency to flag banking fraud. *(product design)*
+- **Capital One** [How Machine Learning Can Help Fight Money Laundering](https://www.capitalone.com/tech/machine-learning/how-machine-learning-can-help-fight-money-laundering/): a random forest scoring suspicious activity over hundreds of features to prioritize risk-based AML investigations instead of sequential alert triage. *(eval bar)*
+- **Wayfair** [Preventing Policy Abuse with Graph Neural Networks](https://www.aboutwayfair.com/careers/tech-blog/preventing-policy-abuse-with-graph-neural-networks): a GNN links account-hopping fraudsters through shared payment methods and devices to catch repeat abuse across new accounts. *(product design)*
+- **Booking** [Leverage graph technology for real-time Fraud Detection and Prevention](https://medium.com/booking-com-development/leverage-graph-technology-for-real-time-fraud-detection-and-prevention-438336076ea5): a JanusGraph/Cassandra store runs real-time BFS to extract network features (hops-to-fraud) feeding the model at p99 300ms. *(deployment)*
 
 ---
 
-### [Content moderation and trust and safety](topics/16-content-moderation.md) · 10 systems
+### [Content moderation and trust and safety](topics/16-content-moderation.md) · 11 systems
 
 **What they share.** Every system is the same funnel: cheap certain checks first, then per-policy classifiers each at its own precision floor, then a policy engine turning scores into actions with humans on the uncertain middle feeding labels back. They differ only in which branch each company invests in.
 
@@ -586,6 +595,7 @@ quadrantChart
 - **Meta AI** [Hateful Memes Challenge and dataset](https://ai.meta.com/blog/hateful-memes-challenge-and-data-set/): A benchmark forcing joint image-text reasoning to detect hateful memes. *(eval bar)*
 - **Google** [Child safety toolkit: Content Safety API and CSAI Match](https://protectingchildren.google/tools-for-partners/): AI classifiers plus hash-matching prioritize and detect CSAM for partners. *(deployment)*
 - **Nextdoor** [A feature to promote kindness in neighborhoods](https://blog.nextdoor.com/2019/09/18/announcing-our-new-feature-to-promote-kindness-in-neighborhoods): An ML Kindness Reminder nudges users to edit offensive comments before posting. *(product design)*
+- **Slack** [Blocking Slack Invite Spam With Machine Learning](https://slack.engineering/blocking-slack-invite-spam-with-machine-learning/): Sparse logistic regression auto-detects and blocks spam invitations, replacing manual rules. *(deployment)*
 
 ---
 
@@ -748,7 +758,7 @@ quadrantChart
 
 ---
 
-### [Computer vision](topics/12-computer-vision.md) · 11 systems
+### [Computer vision](topics/12-computer-vision.md) · 15 systems
 
 **What they share.** Every system runs the same spine: canonical ingest (decode, EXIF fix, resize, normalize) feeds a pretrained backbone whose features drive a task-specific head, and human review turns decisions back into fresh labels. Only the head, the serving shape, and the metric change.
 
@@ -826,6 +836,10 @@ quadrantChart
 - **Google Research** [Mapping Africa's Buildings with Satellite Imagery](https://research.google/blog/mapping-africas-buildings-with-satellite-imagery/): A U-Net trained on 1.75M labeled buildings maps 516M structures across Africa. *(eval bar)*
 - **Google Research** [Deep Learning for Detection of Diabetic Eye Disease](https://research.google/blog/deep-learning-for-detection-of-diabetic-eye-disease/): A CNN on 128K retinal images detects diabetic retinopathy at ophthalmologist-level F-score. *(who it serves)*
 - **Bumble** [Open-sourcing Private Detector](https://medium.com/bumble-tech/bumble-inc-open-sources-private-detector-and-makes-another-step-towards-a-safer-internet-for-women-8e6cdb111d81): An EfficientNetV2 binary classifier flags and blurs unsolicited lewd images at over 98% accuracy. *(product design)*
+- **Cars24** [Blur Classifier: Image Quality Detector](https://medium.com/cars24-data-science-blog/blur-classifier-image-quality-detector-7c1de5ff8e59): A CNN blur classifier gates used-car listing photos on quality before they publish. *(product design)*
+- **Shopify** [Using Rich Image and Text Data to Categorize Products at Scale](https://shopify.engineering/using-rich-image-text-data-categorize-products): A multimodal image-plus-text model auto-classifies merchant products into a large taxonomy. *(deployment)*
+- **Uber** [Uber's Real-Time Document Check](https://www.uber.com/en-GB/blog/ubers-real-time-document-check/): On-device image-quality ML plus verification checks ID documents in real time across 60+ countries. *(deployment)*
+- **Canva** [Ship Shape](https://www.canva.dev/blog/engineering/ship-shape/): A tiny 64K-param LSTM recognizes hand-drawn shapes in the browser in under 10ms, fully offline. *(deployment)*
 
 ---
 
@@ -909,7 +923,7 @@ quadrantChart
 
 ---
 
-### [Demand forecasting & time series](topics/14-demand-forecasting-and-time-series.md) · 10 systems
+### [Demand forecasting & time series](topics/14-demand-forecasting-and-time-series.md) · 14 systems
 
 **What they share.** Every system assembles a historical series plus calendar and covariates into features, fits a model that emits a point or probabilistic forecast, and hands that output to a downstream decision, closing the loop with a chronological rolling backtest that retrains as series drift. The forecast is the intermediate; the decision it feeds is the product.
 
@@ -986,10 +1000,14 @@ quadrantChart
 - **Zalando** [Building a dynamic inventory optimisation system](https://engineering.zalando.com/posts/2025/06/inventory-optimisation-system.html): Probabilistic demand forecasts plus Monte Carlo optimization for replenishment. *(product design)*
 - **Grab** [Understanding Supply and Demand in Ride-hailing Through Data](https://engineering.grab.com/understanding-supply-demand-ride-hailing-data): Measuring geo and time supply-demand ratios to improve matching and rebalance. *(eval bar)*
 - **Lyft** [Causal Forecasting at Lyft (Part 1)](https://eng.lyft.com/causal-forecasting-at-lyft-part-1-14cca6ff3d6d): Causal-DAG-based forecasting of marketplace metrics for policy decisions under confounding. *(product design)*
+- **Ocado** [Finding the sweet spot](https://careers.ocadogroup.com/blogs/careers-blogs/our-technologies/finding-the-sweet-spot): Neural-network demand forecasting for grocery ecommerce that balances inventory availability against product waste. *(product design)*
+- **Mercado Libre** [Marketplace Forecasting: Sales or Demand? Why not both?](https://medium.com/mercadolibre-tech/global-time-series-forecasting-models-for-item-level-demand-and-sales-forecasts-in-our-marketplace-aee2956957ae): Separate global time-series models forecasting both realized sales and latent demand at the item level across regions. *(eval bar)*
+- **Wayfair** [How Wayfair uses "Predicted Winners" Models to Accelerate Success for New Products](https://www.aboutwayfair.com/careers/tech-blog/how-wayfair-uses-predicted-winners-models-to-accelerate-success-for-new-products): Cold-start demand models that predict which new products will sell so they can be surfaced and stocked early. *(product design)*
+- **Oda** [How we went from zero insight to predicting service time with a machine learning model (Part 2/2)](https://medium.com/oda-product-tech/how-we-went-from-zero-insight-to-predicting-service-time-with-a-machine-learning-model-part-2-2-ad8b0c3e4838): ML service-time prediction feeding grocery-delivery route planning, with a look at real-world routing impact. *(deployment)*
 
 ---
 
-### [Predictive modeling on tabular data](topics/15-predictive-modeling-tabular.md) · 9 systems
+### [Predictive modeling on tabular data](topics/15-predictive-modeling-tabular.md) · 13 systems
 
 **What they share.** Every system builds point-in-time features, scores an entity, then hands the number to a decision layer that turns it into money, with calibration wedged in whenever the absolute probability (not the ranking) sets the amount.
 
@@ -1058,6 +1076,10 @@ quadrantChart
 - **Uber** [Practical Marketplace Optimization Using Causally-Informed ML](https://arxiv.org/abs/2407.19078): Causal ML plus convex optimization to allocate driver-incentive and rider-promotion budgets. *(product design)*
 - **Gojek** [How Gojek Allocates Personalised Vouchers At Scale](https://medium.com/gojekengineering/how-gojek-allocates-personalised-vouchers-at-scale-41cad5d6f218): A causal uplift persuadables model plus a knapsack optimizer for voucher allocation. *(product design)*
 - **Zalando** [How Zalando optimized large-scale inference and streamlined ML operations](https://aws.amazon.com/blogs/machine-learning/how-zalando-optimized-large-scale-inference-and-streamlined-ml-operations-on-amazon-sagemaker/): A forecast-then-optimize markdown and discount-steering pricing system across 1M+ products. *(deployment)*
+- **Pinterest** [An ML based approach to proactive advertiser churn prevention](https://medium.com/pinterest-engineering/an-ml-based-approach-to-proactive-advertiser-churn-prevention-3a7c0c335016): B2B advertiser churn model that flags at-risk accounts early so account managers intervene before spend drops. *(who it serves)*
+- **PayPal** [Sales Pipeline Management with Machine Learning: A Lightweight Two-Layer Ensemble Classifier Framework](https://medium.com/paypal-tech/sales-pipeline-management-with-machine-learning-15398bab913b): Two-layer ensemble scores sales opportunities by propensity to close so reps prioritize the pipeline. *(product design)*
+- **Gousto** [Using Data Science to Retain Customers](https://medium.com/gousto-engineering-techbrunch/using-data-science-to-retain-customers-63f19a03a0b6): Consumer subscription churn model that predicts who is likely to cancel and why, driving targeted retention. *(who it serves)*
+- **Asos** [Optimizing Markdown in Fashion E-Commerce with Machine Learning](https://medium.com/asos-techblog/optimizing-markdown-in-fashion-e-commerce-with-machine-learning-9f173be08ace): Two deployed pricing systems (Ithax and Promotheus) forecast demand and set promotional markdowns across the catalog. *(product design)*
 
 ---
 

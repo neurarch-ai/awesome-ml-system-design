@@ -1,6 +1,6 @@
 # Case studies, by company
 
-The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by company so you can see how one org approaches the same ML problem across problems. 182 case studies, 58 companies. Deep teardowns of many of these live in [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md).
+The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by company so you can see how one org approaches the same ML problem across problems. 206 case studies, 70 companies. Deep teardowns of many of these live in [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md).
 
 ---
 
@@ -23,7 +23,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Improving On-Device Speech Recognition with VoiceFilter-Lite](https://research.google/blog/improving-on-device-speech-recognition-with-voicefilter-lite/) *(Speech And Audio)*
 - [Long-Term Value of Exploration](https://arxiv.org/abs/2305.07764) *(Cold Start And Exploration)*
 
-### Pinterest (15)
+### Pinterest (16)
 
 - [Establishing a Large Scale Learned Retrieval System](https://medium.com/pinterest-engineering/establishing-a-large-scale-learned-retrieval-system-at-pinterest-eb0eaf7b92c5) *(Candidate Retrieval)*
 - [Scaling recommendations with request-level deduplication](https://medium.com/pinterest-engineering/scaling-recommendation-systems-with-request-level-deduplication-93bd514142d9) *(Candidate Retrieval)*
@@ -38,10 +38,11 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [AutoML, multi-task, multi-tower models for Pinterest Ads](https://medium.com/pinterest-engineering/how-we-use-automl-multi-task-learning-and-multi-tower-models-for-pinterest-ads-db966c3dc99e) *(Ads Ctr Prediction)*
 - [Unifying visual embeddings for visual search](https://medium.com/pinterest-engineering/unifying-visual-embeddings-for-visual-search-at-pinterest-74ea7ea103f0) *(Computer Vision)*
 - [How Pinterest Fights Spam Using Machine Learning](https://medium.com/pinterest-engineering/how-pinterest-fights-spam-using-machine-learning-d0ee2589f00a) *(Natural Language Processing)*
+- [An ML based approach to proactive advertiser churn prevention](https://medium.com/pinterest-engineering/an-ml-based-approach-to-proactive-advertiser-churn-prevention-3a7c0c335016) *(Predictive Modeling Tabular)*
 - [Fighting misinformation, hate speech, and self-harm content with ML](https://medium.com/pinterest-engineering/how-pinterest-fights-misinformation-hate-speech-and-self-harm-content-with-machine-learning-1806b73b40ef) *(Content Moderation)*
 - [Pinqueue3.0, Pinterest's next-gen content moderation platform](https://medium.com/pinterest-engineering/introducing-pinqueue3-0-pinterests-next-gen-content-moderation-platform-fcfa972bf39c) *(Content Moderation)*
 
-### Uber (15)
+### Uber (16)
 
 - [Innovative Recommendation Applications Using Two Tower Embeddings](https://www.uber.com/blog/innovative-recommendation-applications-using-two-tower-embeddings/) *(Candidate Retrieval)*
 - [Meet Michelangelo: Uber's Machine Learning Platform](https://www.uber.com/blog/michelangelo-machine-learning-platform/) *(Feature Store And Training Serving Skew)*
@@ -52,6 +53,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [D3: an automated system to detect data drifts](https://www.uber.com/blog/d3-an-automated-system-to-detect-data-drifts/) *(ML Monitoring And Drift)*
 - [Model Excellence Scores: enhancing ML quality at scale](https://www.uber.com/en-GB/blog/enhancing-the-quality-of-machine-learning-systems-at-scale/) *(ML Monitoring And Drift)*
 - [Raising the Bar on ML Model Deployment Safety](https://www.uber.com/us/en/blog/raising-the-bar-on-ml-model-deployment-safety/) *(ML Monitoring And Drift)*
+- [Uber's Real-Time Document Check](https://www.uber.com/en-GB/blog/ubers-real-time-document-check/) *(Computer Vision)*
 - [Applying Customer Feedback: NLP and Deep Learning Improve Uber's Maps](https://www.uber.com/gb/en/blog/nlp-deep-learning-uber-maps/) *(Natural Language Processing)*
 - [COTA: Improving Uber Customer Care with NLP and ML](https://www.uber.com/blog/cota/) *(Natural Language Processing)*
 - [Forecasting at Uber: An Introduction](https://www.uber.com/blog/forecasting-introduction/) *(Demand Forecasting And Time Series)*
@@ -89,6 +91,19 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Automated Fake Account Detection at LinkedIn](https://www.linkedin.com/blog/engineering/trust-and-safety/automated-fake-account-detection-at-linkedin) *(Content Moderation)*
 - [Viral spam content detection at LinkedIn](https://www.linkedin.com/blog/engineering/trust-and-safety/viral-spam-content-detection-at-linkedin) *(Content Moderation)*
 
+### Spotify (10)
+
+- [Introducing Voyager: Spotify's nearest-neighbor search library](https://engineering.atspotify.com/2023/10/introducing-voyager-spotifys-new-nearest-neighbor-search-library) *(Candidate Retrieval)*
+- [Modality-aware multi-task learning for ad targeting](https://research.atspotify.com/2025/8/modality-aware-multi-task-learning-to-optimize-ad-targeting-at-scale) *(Ranking Model)*
+- [Contextual and sequential user embeddings for music](https://research.atspotify.com/contextual-and-sequential-user-embeddings-for-music-recommendation/) *(Sequential Recommendation)*
+- [Risk-Aware Product Decisions in A/B Tests with Multiple Metrics](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics) *(Online Experimentation And AB Testing)*
+- [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/) *(Embeddings And Representation Learning)*
+- [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/) *(Search Ranking)*
+- [Unsupervised Speaker Diarization using Sparse Optimization](https://research.atspotify.com/2022/09/unsupervised-speaker-diarization-using-sparse-optimization) *(Speech And Audio)*
+- [Identifying New Podcasts with a Pure-Exploration Infinitely-Armed Bandit](https://research.atspotify.com/publications/identifying-new-podcasts-with-high-general-appeal-using-a-pure-exploration-infinitely-armed-bandit-strategy) *(Cold Start And Exploration)*
+- [Calibrated Recommendations with Contextual Bandits on the Homepage](https://research.atspotify.com/2025/9/calibrated-recommendations-with-contextual-bandits-on-spotify-homepage) *(Cold Start And Exploration)*
+- [Impatient Bandits: Optimizing for the Long-Term Without Delay](https://research.atspotify.com/publications/impatient-bandits-optimizing-for-the-long-term-without-delay) *(Cold Start And Exploration)*
+
 ### Instacart (9)
 
 - [One Model to Serve Them All: a single deep pCTR model for multiple surfaces](https://company.instacart.com/how-its-made/one-model-to-serve-them-all-how-instacart-deployed-a-single-deep-learning-pctr-model-for-multiple-surfaces-with-improved-operations-and-performance-along-the-way) *(Ranking Model)*
@@ -113,18 +128,6 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Artwork Personalization at Netflix](https://netflixtechblog.com/artwork-personalization-c589f074ad76) *(Cold Start And Exploration)*
 - [Infra for Contextual Bandits and Reinforcement Learning](https://netflixtechblog.com/ml-platform-meetup-infra-for-contextual-bandits-and-reinforcement-learning-4a90305948ef) *(Cold Start And Exploration)*
 
-### Spotify (9)
-
-- [Introducing Voyager: Spotify's nearest-neighbor search library](https://engineering.atspotify.com/2023/10/introducing-voyager-spotifys-new-nearest-neighbor-search-library) *(Candidate Retrieval)*
-- [Modality-aware multi-task learning for ad targeting](https://research.atspotify.com/2025/8/modality-aware-multi-task-learning-to-optimize-ad-targeting-at-scale) *(Ranking Model)*
-- [Contextual and sequential user embeddings for music](https://research.atspotify.com/contextual-and-sequential-user-embeddings-for-music-recommendation/) *(Sequential Recommendation)*
-- [Risk-Aware Product Decisions in A/B Tests with Multiple Metrics](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics) *(Online Experimentation And AB Testing)*
-- [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/) *(Embeddings And Representation Learning)*
-- [Unsupervised Speaker Diarization using Sparse Optimization](https://research.atspotify.com/2022/09/unsupervised-speaker-diarization-using-sparse-optimization) *(Speech And Audio)*
-- [Identifying New Podcasts with a Pure-Exploration Infinitely-Armed Bandit](https://research.atspotify.com/publications/identifying-new-podcasts-with-high-general-appeal-using-a-pure-exploration-infinitely-armed-bandit-strategy) *(Cold Start And Exploration)*
-- [Calibrated Recommendations with Contextual Bandits on the Homepage](https://research.atspotify.com/2025/9/calibrated-recommendations-with-contextual-bandits-on-spotify-homepage) *(Cold Start And Exploration)*
-- [Impatient Bandits: Optimizing for the Long-Term Without Delay](https://research.atspotify.com/publications/impatient-bandits-optimizing-for-the-long-term-without-delay) *(Cold Start And Exploration)*
-
 ### Meta (7)
 
 - [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) *(Ranking Model)*
@@ -135,12 +138,14 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Hateful Memes Challenge and dataset](https://ai.meta.com/blog/hateful-memes-challenge-and-data-set/) *(Content Moderation)*
 - [SeamlessM4T: a foundational multimodal model for speech translation](https://ai.meta.com/blog/seamless-m4t/) *(Speech And Audio)*
 
-### Wayfair (5)
+### Wayfair (7)
 
 - [Time Informed Calibration](https://www.aboutwayfair.com/careers/tech-blog/time-informed-calibration) *(Ranking Model)*
 - [MARS: transformer networks for sequential recommendation](https://www.aboutwayfair.com/careers/tech-blog/mars-transformer-networks-for-sequential-recommendation) *(Sequential Recommendation)*
 - [Melange: a customer-journey embedding system](https://www.aboutwayfair.com/careers/tech-blog/introducing-melange-a-customer-journey-embedding-system-for-improving-fraud-and-scam-detection) *(Embeddings And Representation Learning)*
+- [Preventing Policy Abuse with Graph Neural Networks](https://www.aboutwayfair.com/careers/tech-blog/preventing-policy-abuse-with-graph-neural-networks) *(Fraud And Anomaly Detection)*
 - [WANDS: a public e-commerce product-search relevance dataset](https://www.aboutwayfair.com/careers/tech-blog/wayfair-releases-wands-the-largest-and-richest-publicly-available-dataset-for-e-commerce-product-search-relevance) *(Search Ranking)*
+- [How Wayfair uses "Predicted Winners" Models to Accelerate Success for New Products](https://www.aboutwayfair.com/careers/tech-blog/how-wayfair-uses-predicted-winners-models-to-accelerate-success-for-new-products) *(Demand Forecasting And Time Series)*
 - [Building Scalable Marketing ML Systems at Wayfair](https://www.aboutwayfair.com/careers/tech-blog/building-scalable-and-performant-marketing-ml-systems-at-wayfair) *(Predictive Modeling Tabular)*
 
 ### Grab (4)
@@ -157,6 +162,13 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Full-Spectrum ML Model Monitoring at Lyft](https://eng.lyft.com/full-spectrum-ml-model-monitoring-at-lyft-a4cdaf828e8f) *(ML Monitoring And Drift)*
 - [Causal Forecasting at Lyft (Part 1)](https://eng.lyft.com/causal-forecasting-at-lyft-part-1-14cca6ff3d6d) *(Demand Forecasting And Time Series)*
 
+### Shopify (4)
+
+- [Real-time predictions with Shopify's ML platform](https://shopify.engineering/shopifys-machine-learning-platform-real-time-predictions) *(Realtime Serving And Deployment)*
+- [How Shopify improved consumer search intent with real-time ML](https://shopify.engineering/how-shopify-improved-consumer-search-intent-with-real-time-ml) *(Search Ranking)*
+- [Shopify's Playbook for Scaling Machine Learning](https://shopify.engineering/shopify-playbook-scaling-machine-learning) *(ML Monitoring And Drift)*
+- [Using Rich Image and Text Data to Categorize Products at Scale](https://shopify.engineering/using-rich-image-text-data-categorize-products) *(Computer Vision)*
+
 ### Amazon (3)
 
 - [From structured search to learning-to-rank-and-retrieve](https://www.amazon.science/blog/from-structured-search-to-learning-to-rank-and-retrieve) *(Search Ranking)*
@@ -169,6 +181,12 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Wide & Deep Learning](https://arxiv.org/abs/1606.07792) *(Search Ranking)*
 - [Wide & Deep Learning](https://arxiv.org/abs/1606.07792) *(Ads Ctr Prediction)*
 
+### PayPal (3)
+
+- [engineering blog](https://medium.com/paypal-tech) *(Fraud And Anomaly Detection)*
+- [Real-time graph database and analysis to fight fraud](https://medium.com/paypal-tech/how-paypal-uses-real-time-graph-database-and-graph-analysis-to-fight-fraud-96a2b918619a) *(Fraud And Anomaly Detection)*
+- [Sales Pipeline Management with Machine Learning: A Lightweight Two-Layer Ensemble Classifier Framework](https://medium.com/paypal-tech/sales-pipeline-management-with-machine-learning-15398bab913b) *(Predictive Modeling Tabular)*
+
 ### Zalando (3)
 
 - [Shop the Look with Deep Learning](https://engineering.zalando.com/posts/2018/09/shop-look-deep-learning.html) *(Computer Vision)*
@@ -179,6 +197,16 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [Behavior Sequence Transformer for E-commerce Recommendation](https://arxiv.org/abs/1905.06874) *(Sequential Recommendation)*
 - [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978) *(Sequential Recommendation)*
+
+### Asos (2)
+
+- [Transforming Recommendations at ASOS](https://medium.com/asos-techblog/transforming-recommendations-at-asos-254b95c6a07a) *(Ranking Model)*
+- [Optimizing Markdown in Fashion E-Commerce with Machine Learning](https://medium.com/asos-techblog/optimizing-markdown-in-fashion-e-commerce-with-machine-learning-9f173be08ace) *(Predictive Modeling Tabular)*
+
+### Booking (2)
+
+- [Leverage graph technology for real-time Fraud Detection and Prevention](https://medium.com/booking-com-development/leverage-graph-technology-for-real-time-fraud-detection-and-prevention-438336076ea5) *(Fraud And Anomaly Detection)*
+- [The Engineering Behind High-Performance Ranking Platform: A System Overview](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6) *(Search Ranking)*
 
 ### Booking.com (2)
 
@@ -205,20 +233,15 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Candidate generation using a two-tower approach](https://medium.com/expedia-group-tech/candidate-generation-using-a-two-tower-approach-with-expedia-group-traveler-data-ca6a0dcab83e) *(Candidate Retrieval)*
 - [Expedia Group's Customer Lifetime Value Prediction Model](https://medium.com/expedia-group-tech/expedia-groups-customer-lifetime-value-prediction-model-7927cdd44342) *(Predictive Modeling Tabular)*
 
-### PayPal (2)
-
-- [engineering blog](https://medium.com/paypal-tech) *(Fraud And Anomaly Detection)*
-- [Real-time graph database and analysis to fight fraud](https://medium.com/paypal-tech/how-paypal-uses-real-time-graph-database-and-graph-analysis-to-fight-fraud-96a2b918619a) *(Fraud And Anomaly Detection)*
-
 ### Roblox (2)
 
 - [Deploying ML for Voice Safety](https://about.roblox.com/newsroom/2024/07/deploying-ml-for-voice-safety) *(Content Moderation)*
 - [How Roblox Uses AI to Moderate Content on a Massive Scale](https://about.roblox.com/newsroom/2025/07/roblox-ai-moderation-massive-scale) *(Content Moderation)*
 
-### Shopify (2)
+### Snap (2)
 
-- [Real-time predictions with Shopify's ML platform](https://shopify.engineering/shopifys-machine-learning-platform-real-time-predictions) *(Realtime Serving And Deployment)*
-- [Shopify's Playbook for Scaling Machine Learning](https://shopify.engineering/shopify-playbook-scaling-machine-learning) *(ML Monitoring And Drift)*
+- [Embedding-based Retrieval with Two-Tower Models in Spotlight](https://eng.snap.com/embedding-based-retrieval) *(Candidate Retrieval)*
+- [Machine Learning for Snapchat Ad Ranking](https://eng.snap.com/machine-learning-snap-ad-ranking) *(Ranking Model)*
 
 ### Stripe (2)
 
@@ -240,6 +263,11 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [DCN V2: Improved Deep & Cross Network](https://arxiv.org/abs/2008.13535) *(Search Ranking)*
 - [DCN V2](https://arxiv.org/abs/2008.13535) *(Ads Ctr Prediction)*
 
+### Yelp (2)
+
+- [Beyond Matrix Factorization: Using hybrid features for user-business recommendations](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html) *(Ranking Model)*
+- [Learning to Rank for Business Matching](https://engineeringblog.yelp.com/2014/12/learning-to-rank-for-business-matching.html) *(Search Ranking)*
+
 ### Allegro (1)
 
 - [Two-tower recommendations at Allegro.com](https://arxiv.org/abs/2508.03702) *(Candidate Retrieval)*
@@ -259,6 +287,18 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Block (1)
 
 - [PySurvival Tutorial: Churn Modeling](https://developer.squareup.com/blog/pysurvival-tutorial-churn-modeling/) *(Predictive Modeling Tabular)*
+
+### Canva (1)
+
+- [Ship Shape](https://www.canva.dev/blog/engineering/ship-shape/) *(Computer Vision)*
+
+### Capital One (1)
+
+- [How Machine Learning Can Help Fight Money Laundering](https://www.capitalone.com/tech/machine-learning/how-machine-learning-can-help-fight-money-laundering/) *(Fraud And Anomaly Detection)*
+
+### Cars24 (1)
+
+- [Blur Classifier: Image Quality Detector](https://medium.com/cars24-data-science-blog/blur-classifier-image-quality-detector-7c1de5ff8e59) *(Computer Vision)*
 
 ### Chawla et al. (1)
 
@@ -288,9 +328,17 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [open-source feature store](https://github.com/feast-dev/feast) *(Feature Store And Training Serving Skew)*
 
+### Feedzai (1)
+
+- [Building Trust in a Digital World: The Role of Machine Learning in Behavioral Biometrics](https://medium.com/feedzaitech/building-trust-in-a-digital-world-the-role-of-machine-learning-in-behavioral-biometrics-bb0da913d95a) *(Fraud And Anomaly Detection)*
+
 ### Gao et al. (1)
 
 - [SimCSE: Simple Contrastive Learning of Sentence Embeddings](https://arxiv.org/abs/2104.08821) *(Embeddings And Representation Learning)*
+
+### GetYourGuide (1)
+
+- [Powering Millions of Real-Time Rankings with Production AI](https://www.getyourguide.careers/posts/powering-millions-of-real-time-rankings-with-production-ai) *(Search Ranking)*
 
 ### Glassdoor (1)
 
@@ -299,6 +347,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Gojek (1)
 
 - [How Gojek Allocates Personalised Vouchers At Scale](https://medium.com/gojekengineering/how-gojek-allocates-personalised-vouchers-at-scale-41cad5d6f218) *(Predictive Modeling Tabular)*
+
+### Gousto (1)
+
+- [Using Data Science to Retain Customers](https://medium.com/gousto-engineering-techbrunch/using-data-science-to-retain-customers-63f19a03a0b6) *(Predictive Modeling Tabular)*
 
 ### Grammarly (1)
 
@@ -316,6 +368,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [TWIN V2: ultra-long user behavior sequence modeling](https://arxiv.org/abs/2407.16357) *(Sequential Recommendation)*
 
+### Mercado Libre (1)
+
+- [Marketplace Forecasting: Sales or Demand? Why not both?](https://medium.com/mercadolibre-tech/global-time-series-forecasting-models-for-item-level-demand-and-sales-forecasts-in-our-marketplace-aee2956957ae) *(Demand Forecasting And Time Series)*
+
 ### Nextdoor (1)
 
 - [A feature to promote kindness in neighborhoods](https://blog.nextdoor.com/2019/09/18/announcing-our-new-feature-to-promote-kindness-in-neighborhoods) *(Content Moderation)*
@@ -328,6 +384,14 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [NeMo Parakeet ASR Models](https://developer.nvidia.com/blog/pushing-the-boundaries-of-speech-recognition-with-nemo-parakeet-asr-models/) *(Speech And Audio)*
 
+### Ocado (1)
+
+- [Finding the sweet spot](https://careers.ocadogroup.com/blogs/careers-blogs/our-technologies/finding-the-sweet-spot) *(Demand Forecasting And Time Series)*
+
+### Oda (1)
+
+- [How we went from zero insight to predicting service time with a machine learning model (Part 2/2)](https://medium.com/oda-product-tech/how-we-went-from-zero-insight-to-predicting-service-time-with-a-machine-learning-model-part-2-2-ad8b0c3e4838) *(Demand Forecasting And Time Series)*
+
 ### OpenAI (1)
 
 - [Whisper: Robust Speech Recognition via Large-Scale Weak Supervision](https://github.com/openai/whisper) *(Speech And Audio)*
@@ -336,9 +400,9 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [Forced Alignment with Wav2Vec2](https://docs.pytorch.org/audio/stable/tutorials/forced_alignment_tutorial.html) *(Speech And Audio)*
 
-### Snap (1)
+### Slack (1)
 
-- [Embedding-based Retrieval with Two-Tower Models in Spotlight](https://eng.snap.com/embedding-based-retrieval) *(Candidate Retrieval)*
+- [Blocking Slack Invite Spam With Machine Learning](https://slack.engineering/blocking-slack-invite-spam-with-machine-learning/) *(Content Moderation)*
 
 ### Stanford / Hamilton et al. (1)
 
@@ -355,7 +419,3 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Yahoo (1)
 
 - [A Contextual-Bandit Approach to Personalized News Article Recommendation](https://arxiv.org/abs/1003.0146) *(Cold Start And Exploration)*
-
-### Yelp (1)
-
-- [Learning to Rank for Business Matching](https://engineeringblog.yelp.com/2014/12/learning-to-rank-for-business-matching.html) *(Search Ranking)*
