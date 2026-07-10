@@ -141,11 +141,11 @@ flowchart TD
 
 **The math that separates them.**
 
-$$z = \operatorname{concat}\Big(x_{dense},\ \{\ \langle e_i,\ e_j\rangle\ :\ i<j\ \}\Big)$$
+$$z = \text{concat}\Big(x_{dense},\ \{\ \langle e_i,\ e_j\rangle\ :\ i<j\ \}\Big)$$
 
 $$x_{l+1} = x_0 \odot (W_l\, x_l + b_l) + x_l$$
 
-$$\mathrm{Attention}(Q,K,V) = \operatorname{softmax}\!\Big(\frac{Q K^{\top}}{\sqrt{d_k}}\Big) V, \qquad U = \sum_{t} w_t\, \hat p_t$$
+$$\mathrm{Attention}(Q,K,V) = \text{softmax}\!\Big(\frac{Q K^{\top}}{\sqrt{d_k}}\Big) V, \qquad U = \sum_{t} w_t\, \hat p_t$$
 
 $$\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\big|\,\mathrm{acc}(b) - \mathrm{conf}(b)\,\big|, \qquad \mathrm{bid} = v \cdot \hat p$$
 
@@ -589,15 +589,15 @@ flowchart TD
 
 **The math that separates them.** Each team fixes a precision floor and maximizes recall under it, since false positives block real users:
 
-$$\max_{\tau}\; \operatorname{Recall}(\tau) \quad \text{s.t.}\quad \operatorname{Precision}(\tau) \ge P_{\min}^{(\text{policy})}$$
+$$\max_{\tau}\; \text{Recall}(\tau) \quad \text{s.t.}\quad \text{Precision}(\tau) \ge P_{\min}^{(\text{policy})}$$
 
 Slack judges the blocker by the acceptance rate of blocked invites, a proxy for how much of what it blocked was actually legitimate:
 
-$$\operatorname{FalseBlockProxy} = \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} = 0.03 \;\;\text{vs}\;\; 0.70 \;\text{under manual rules}$$
+$$\text{FalseBlockProxy} = \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} = 0.03 \;\;\text{vs}\;\; 0.70 \;\text{under manual rules}$$
 
 Under a skewed base rate (Bumble at 0.1 percent positives) accuracy is useless, so the operating point is set on the precision-recall curve instead:
 
-$$\operatorname{Precision} = \frac{tp}{tp + fp}, \qquad \operatorname{Recall} = \frac{tp}{tp + fn}$$
+$$\text{Precision} = \frac{tp}{tp + fp}, \qquad \text{Recall} = \frac{tp}{tp + fn}$$
 
 ```mermaid
 quadrantChart
@@ -1386,7 +1386,7 @@ flowchart LR
 
 **The math that separates them.**
 
-$$\textbf{CUPED variance reduction: } \operatorname{Var}(\bar{Y}_{cv}) = \operatorname{Var}(\bar{Y})\,(1 - \rho^2), \quad \theta = \frac{\operatorname{Cov}(Y, X)}{\operatorname{Var}(X)}$$
+$$\textbf{CUPED variance reduction: } \text{Var}(\bar{Y}_{cv}) = \text{Var}(\bar{Y})\,(1 - \rho^2), \quad \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
 
 $$\textbf{Type I, type II, and power: } \alpha = P(\text{reject} \mid H_0), \quad \beta = P(\text{accept} \mid H_1), \quad \text{power} = 1 - \beta$$
 

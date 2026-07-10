@@ -10,7 +10,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) *(Ranking Model)*
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(Feature Store And Training Serving Skew)*
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(Realtime Serving And Deployment)*
-- [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(Online Experimentation And AB Testing)*
+- [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(Online Experimentation And Ab Testing)*
 - [On the Factory Floor: ML engineering for industrial-scale ads](https://arxiv.org/abs/2209.05310) *(Ads Ctr Prediction)*
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(ML Monitoring And Drift)*
 - [Mapping Africa's Buildings with Satellite Imagery](https://research.google/blog/mapping-africas-buildings-with-satellite-imagery/) *(Computer Vision)*
@@ -47,7 +47,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Innovative Recommendation Applications Using Two Tower Embeddings](https://www.uber.com/blog/innovative-recommendation-applications-using-two-tower-embeddings/) *(Candidate Retrieval)*
 - [Meet Michelangelo: Uber's Machine Learning Platform](https://www.uber.com/blog/michelangelo-machine-learning-platform/) *(Feature Store And Training Serving Skew)*
 - [Meet Michelangelo: Uber's Machine Learning Platform](https://www.uber.com/us/en/blog/michelangelo-machine-learning-platform/) *(Realtime Serving And Deployment)*
-- [Under the Hood of Uber's Experimentation Platform](https://www.uber.com/blog/xp/) *(Online Experimentation And AB Testing)*
+- [Under the Hood of Uber's Experimentation Platform](https://www.uber.com/blog/xp/) *(Online Experimentation And Ab Testing)*
 - [Relational Graph Learning to Detect Collusion](https://www.uber.com/blog/fraud-detection/) *(Fraud And Anomaly Detection)*
 - [Risk Entity Watch: anomaly detection to fight fraud](https://www.uber.com/us/en/blog/risk-entity-watch/) *(Fraud And Anomaly Detection)*
 - [D3: an automated system to detect data drifts](https://www.uber.com/blog/d3-an-automated-system-to-detect-data-drifts/) *(ML Monitoring And Drift)*
@@ -66,7 +66,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Embedding-Based Retrieval for Airbnb Search](https://airbnb.tech/ai-ml/embedding-based-retrieval-for-airbnb-search/) *(Candidate Retrieval)*
 - [Applying Deep Learning to Airbnb Search](https://medium.com/airbnb-engineering/applying-deep-learning-to-airbnb-search-7ebd7230891f) *(Ranking Model)*
 - [Listing Embeddings in Search Ranking](https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e) *(Sequential Recommendation)*
-- [Designing Experimentation Guardrails](https://medium.com/airbnb-engineering/designing-experimentation-guardrails-ed6a976ec669) *(Online Experimentation And AB Testing)*
+- [Designing Experimentation Guardrails](https://medium.com/airbnb-engineering/designing-experimentation-guardrails-ed6a976ec669) *(Online Experimentation And Ab Testing)*
 - [Listing Embeddings in Search Ranking](https://medium.com/airbnb-engineering/listing-embeddings-for-similar-listing-recommendations-and-real-time-personalization-in-search-601172f7603e) *(Embeddings And Representation Learning)*
 - [fraud and trust engineering](https://medium.com/airbnb-engineering) *(Fraud And Anomaly Detection)*
 - [Fighting Financial Fraud with Targeted Friction](https://medium.com/airbnb-engineering/fighting-financial-fraud-with-targeted-friction-82d950d8900e) *(Fraud And Anomaly Detection)*
@@ -83,7 +83,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [An industrial-scale sequential recommender for feed ranking](https://arxiv.org/abs/2602.12354) *(Sequential Recommendation)*
 - [Feathr feature store](https://github.com/feathr-ai/feathr) *(Feature Store And Training Serving Skew)*
 - [Pensieve: an embedding feature platform](https://www.linkedin.com/blog/engineering/ai/pensieve) *(Realtime Serving And Deployment)*
-- [Detecting interference: an A/B test of A/B tests](https://www.linkedin.com/blog/engineering/ab-testing-experimentation/detecting-interference-an-a-b-test-of-a-b-tests) *(Online Experimentation And AB Testing)*
+- [Detecting interference: an A/B test of A/B tests](https://www.linkedin.com/blog/engineering/ab-testing-experimentation/detecting-interference-an-a-b-test-of-a-b-tests) *(Online Experimentation And Ab Testing)*
 - [Improving Post Search at LinkedIn](https://www.linkedin.com/blog/engineering/search/improving-post-search-at-linkedin) *(Search Ranking)*
 - [Lessons from a deep-learning ads CTR prediction model](https://www.linkedin.com/blog/engineering/machine-learning/challenges-and-practical-lessons-from-building-a-deep-learning-b) *(Ads Ctr Prediction)*
 - [Building The LinkedIn Knowledge Graph](https://www.linkedin.com/blog/engineering/knowledge/building-the-linkedin-knowledge-graph) *(Natural Language Processing)*
@@ -96,7 +96,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Introducing Voyager: Spotify's nearest-neighbor search library](https://engineering.atspotify.com/2023/10/introducing-voyager-spotifys-new-nearest-neighbor-search-library) *(Candidate Retrieval)*
 - [Modality-aware multi-task learning for ad targeting](https://research.atspotify.com/2025/8/modality-aware-multi-task-learning-to-optimize-ad-targeting-at-scale) *(Ranking Model)*
 - [Contextual and sequential user embeddings for music](https://research.atspotify.com/contextual-and-sequential-user-embeddings-for-music-recommendation/) *(Sequential Recommendation)*
-- [Risk-Aware Product Decisions in A/B Tests with Multiple Metrics](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics) *(Online Experimentation And AB Testing)*
+- [Risk-Aware Product Decisions in A/B Tests with Multiple Metrics](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics) *(Online Experimentation And Ab Testing)*
 - [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/) *(Embeddings And Representation Learning)*
 - [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/) *(Search Ranking)*
 - [Unsupervised Speaker Diarization using Sparse Optimization](https://research.atspotify.com/2022/09/unsupervised-speaker-diarization-using-sparse-optimization) *(Speech And Audio)*
@@ -120,8 +120,8 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [Integrating Netflix Foundation Model into Personalization](https://netflixtechblog.medium.com/integrating-netflixs-foundation-model-into-personalization-applications-cf176b5860eb) *(Sequential Recommendation)*
 - [Automated Canary Analysis with Kayenta](https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69) *(Realtime Serving And Deployment)*
-- [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) *(Online Experimentation And AB Testing)*
-- [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21) *(Online Experimentation And AB Testing)*
+- [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) *(Online Experimentation And Ab Testing)*
+- [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21) *(Online Experimentation And Ab Testing)*
 - [ML Observability: transparency for payments and beyond](https://netflixtechblog.com/ml-observability-bring-transparency-to-payments-and-beyond-33073e260a38) *(ML Monitoring And Drift)*
 - [Accelerating Video Quality Control with Pixel Error Detection](https://netflixtechblog.com/accelerating-video-quality-control-at-netflix-with-pixel-error-detection-47ef7af7ca2e) *(Computer Vision)*
 - [Building In-Video Search](https://netflixtechblog.com/building-in-video-search-936766f0017c) *(Computer Vision)*
@@ -158,7 +158,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Lyft (4)
 
 - [Millions of real-time decisions with LyftLearn Serving](https://eng.lyft.com/powering-millions-of-real-time-decisions-with-lyftlearn-serving-9bb1f73318dc) *(Realtime Serving And Deployment)*
-- [Experimentation in a Ridesharing Marketplace](https://eng.lyft.com/experimentation-in-a-ridesharing-marketplace-b39db027a66e) *(Online Experimentation And AB Testing)*
+- [Experimentation in a Ridesharing Marketplace](https://eng.lyft.com/experimentation-in-a-ridesharing-marketplace-b39db027a66e) *(Online Experimentation And Ab Testing)*
 - [Full-Spectrum ML Model Monitoring at Lyft](https://eng.lyft.com/full-spectrum-ml-model-monitoring-at-lyft-a4cdaf828e8f) *(ML Monitoring And Drift)*
 - [Causal Forecasting at Lyft (Part 1)](https://eng.lyft.com/causal-forecasting-at-lyft-part-1-14cca6ff3d6d) *(Demand Forecasting And Time Series)*
 
@@ -211,7 +211,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Booking.com (2)
 
 - [The engineering behind a high-performance ranking platform](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6) *(Realtime Serving And Deployment)*
-- [Experimentation quality as the main platform KPI](https://medium.com/booking-product/why-we-use-experimentation-quality-as-the-main-kpi-for-our-experimentation-platform-f4c1ce381b81) *(Online Experimentation And AB Testing)*
+- [Experimentation quality as the main platform KPI](https://medium.com/booking-product/why-we-use-experimentation-quality-as-the-main-kpi-for-our-experimentation-platform-f4c1ce381b81) *(Online Experimentation And Ab Testing)*
 
 ### Bumble (2)
 

@@ -26,7 +26,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Google | [On the Factory Floor: ML engineering for industrial-scale ads](https://arxiv.org/abs/2209.05310) | Ads Ctr Prediction |
 | Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Feature Store And Training Serving Skew |
 | Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Realtime Serving And Deployment |
-| Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Online Experimentation And AB Testing |
+| Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Online Experimentation And Ab Testing |
 | Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | ML Monitoring And Drift |
 | Google | [Sampling-Bias-Corrected Neural Modeling for Large Corpus Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/) | Candidate Retrieval |
 | Google | [Tacotron 2: Generating Human-like Speech from Text](https://research.google/blog/tacotron-2-generating-human-like-speech-from-text/) | Speech And Audio |
@@ -112,10 +112,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Netflix | [Automated Canary Analysis with Kayenta](https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69) | Realtime Serving And Deployment |
 | Netflix | [Building In-Video Search](https://netflixtechblog.com/building-in-video-search-936766f0017c) | Computer Vision |
 | Netflix | [Infra for Contextual Bandits and Reinforcement Learning](https://netflixtechblog.com/ml-platform-meetup-infra-for-contextual-bandits-and-reinforcement-learning-4a90305948ef) | Cold Start And Exploration |
-| Netflix | [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) | Online Experimentation And AB Testing |
+| Netflix | [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) | Online Experimentation And Ab Testing |
 | Netflix | [Integrating Netflix Foundation Model into Personalization](https://netflixtechblog.medium.com/integrating-netflixs-foundation-model-into-personalization-applications-cf176b5860eb) | Sequential Recommendation |
 | Netflix | [ML Observability: transparency for payments and beyond](https://netflixtechblog.com/ml-observability-bring-transparency-to-payments-and-beyond-33073e260a38) | ML Monitoring And Drift |
-| Netflix | [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21) | Online Experimentation And AB Testing |
+| Netflix | [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21) | Online Experimentation And Ab Testing |
 | Spotify | [Calibrated Recommendations with Contextual Bandits on the Homepage](https://research.atspotify.com/2025/9/calibrated-recommendations-with-contextual-bandits-on-spotify-homepage) | Cold Start And Exploration |
 | Spotify | [Contextual and sequential user embeddings for music](https://research.atspotify.com/contextual-and-sequential-user-embeddings-for-music-recommendation/) | Sequential Recommendation |
 | Spotify | [Identifying New Podcasts with a Pure-Exploration Infinitely-Armed Bandit](https://research.atspotify.com/publications/identifying-new-podcasts-with-high-general-appeal-using-a-pure-exploration-infinitely-armed-bandit-strategy) | Cold Start And Exploration |
@@ -124,7 +124,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Spotify | [Introducing Natural Language Search for Podcast Episodes](https://engineering.atspotify.com/2022/03/introducing-natural-language-search-for-podcast-episodes/) | Search Ranking |
 | Spotify | [Introducing Voyager: Spotify's nearest-neighbor search library](https://engineering.atspotify.com/2023/10/introducing-voyager-spotifys-new-nearest-neighbor-search-library) | Candidate Retrieval |
 | Spotify | [Modality-aware multi-task learning for ad targeting](https://research.atspotify.com/2025/8/modality-aware-multi-task-learning-to-optimize-ad-targeting-at-scale) | Ranking Model |
-| Spotify | [Risk-Aware Product Decisions in A/B Tests with Multiple Metrics](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics) | Online Experimentation And AB Testing |
+| Spotify | [Risk-Aware Product Decisions in A/B Tests with Multiple Metrics](https://engineering.atspotify.com/2024/03/risk-aware-product-decisions-in-a-b-tests-with-multiple-metrics) | Online Experimentation And Ab Testing |
 | Spotify | [Unsupervised Speaker Diarization using Sparse Optimization](https://research.atspotify.com/2022/09/unsupervised-speaker-diarization-using-sparse-optimization) | Speech And Audio |
 
 ## Social platforms (36)
@@ -137,7 +137,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | LinkedIn | [An industrial-scale sequential recommender for feed ranking](https://arxiv.org/abs/2602.12354) | Sequential Recommendation |
 | LinkedIn | [Automated Fake Account Detection at LinkedIn](https://www.linkedin.com/blog/engineering/trust-and-safety/automated-fake-account-detection-at-linkedin) | Content Moderation |
 | LinkedIn | [Building The LinkedIn Knowledge Graph](https://www.linkedin.com/blog/engineering/knowledge/building-the-linkedin-knowledge-graph) | Natural Language Processing |
-| LinkedIn | [Detecting interference: an A/B test of A/B tests](https://www.linkedin.com/blog/engineering/ab-testing-experimentation/detecting-interference-an-a-b-test-of-a-b-tests) | Online Experimentation And AB Testing |
+| LinkedIn | [Detecting interference: an A/B test of A/B tests](https://www.linkedin.com/blog/engineering/ab-testing-experimentation/detecting-interference-an-a-b-test-of-a-b-tests) | Online Experimentation And Ab Testing |
 | LinkedIn | [Feathr feature store](https://github.com/feathr-ai/feathr) | Feature Store And Training Serving Skew |
 | LinkedIn | [Homepage feed multi-task learning using TensorFlow](https://www.linkedin.com/blog/engineering/feed/homepage-feed-multi-task-learning-using-tensorflow) | Ranking Model |
 | LinkedIn | [Improving Post Search at LinkedIn](https://www.linkedin.com/blog/engineering/search/improving-post-search-at-linkedin) | Search Ranking |
@@ -194,7 +194,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Grab | [Understanding Supply and Demand in Ride-hailing Through Data](https://engineering.grab.com/understanding-supply-demand-ride-hailing-data) | Demand Forecasting And Time Series |
 | Grab | [Unsupervised graph anomaly detection for new fraud](https://engineering.grab.com/graph-anomaly-model) | Fraud And Anomaly Detection |
 | Lyft | [Causal Forecasting at Lyft (Part 1)](https://eng.lyft.com/causal-forecasting-at-lyft-part-1-14cca6ff3d6d) | Demand Forecasting And Time Series |
-| Lyft | [Experimentation in a Ridesharing Marketplace](https://eng.lyft.com/experimentation-in-a-ridesharing-marketplace-b39db027a66e) | Online Experimentation And AB Testing |
+| Lyft | [Experimentation in a Ridesharing Marketplace](https://eng.lyft.com/experimentation-in-a-ridesharing-marketplace-b39db027a66e) | Online Experimentation And Ab Testing |
 | Lyft | [Full-Spectrum ML Model Monitoring at Lyft](https://eng.lyft.com/full-spectrum-ml-model-monitoring-at-lyft-a4cdaf828e8f) | ML Monitoring And Drift |
 | Lyft | [Millions of real-time decisions with LyftLearn Serving](https://eng.lyft.com/powering-millions-of-real-time-decisions-with-lyftlearn-serving-9bb1f73318dc) | Realtime Serving And Deployment |
 | Uber | [Applying Customer Feedback: NLP and Deep Learning Improve Uber's Maps](https://www.uber.com/gb/en/blog/nlp-deep-learning-uber-maps/) | Natural Language Processing |
@@ -212,7 +212,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Uber | [Relational Graph Learning to Detect Collusion](https://www.uber.com/blog/fraud-detection/) | Fraud And Anomaly Detection |
 | Uber | [Risk Entity Watch: anomaly detection to fight fraud](https://www.uber.com/us/en/blog/risk-entity-watch/) | Fraud And Anomaly Detection |
 | Uber | [Uber's Real-Time Document Check](https://www.uber.com/en-GB/blog/ubers-real-time-document-check/) | Computer Vision |
-| Uber | [Under the Hood of Uber's Experimentation Platform](https://www.uber.com/blog/xp/) | Online Experimentation And AB Testing |
+| Uber | [Under the Hood of Uber's Experimentation Platform](https://www.uber.com/blog/xp/) | Online Experimentation And Ab Testing |
 
 ## Travel and hospitality (20)
 
@@ -222,7 +222,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Airbnb | [Applying Deep Learning to Airbnb Search](https://medium.com/airbnb-engineering/applying-deep-learning-to-airbnb-search-7ebd7230891f) | Ranking Model |
 | Airbnb | [Building Airbnb's Listing Knowledge from big text data](https://medium.com/airbnb-engineering/wisdom-of-unstructured-data-building-airbnbs-listing-knowledge-from-big-text-data-7c533466a63c) | Natural Language Processing |
 | Airbnb | [Categorizing Listing Photos at Airbnb](https://medium.com/airbnb-engineering/categorizing-listing-photos-at-airbnb-f9483f3ab7e3) | Computer Vision |
-| Airbnb | [Designing Experimentation Guardrails](https://medium.com/airbnb-engineering/designing-experimentation-guardrails-ed6a976ec669) | Online Experimentation And AB Testing |
+| Airbnb | [Designing Experimentation Guardrails](https://medium.com/airbnb-engineering/designing-experimentation-guardrails-ed6a976ec669) | Online Experimentation And Ab Testing |
 | Airbnb | [Embedding-Based Retrieval for Airbnb Search](https://airbnb.tech/ai-ml/embedding-based-retrieval-for-airbnb-search/) | Candidate Retrieval |
 | Airbnb | [Fighting Financial Fraud with Targeted Friction](https://medium.com/airbnb-engineering/fighting-financial-fraud-with-targeted-friction-82d950d8900e) | Fraud And Anomaly Detection |
 | Airbnb | [fraud and trust engineering](https://medium.com/airbnb-engineering) | Fraud And Anomaly Detection |
@@ -233,7 +233,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Airbnb | [Using Machine Learning to Predict Value of Homes on Airbnb](https://medium.com/airbnb-engineering/using-machine-learning-to-predict-value-of-homes-on-airbnb-9272d3d4739d) | Predictive Modeling Tabular |
 | Booking | [Leverage graph technology for real-time Fraud Detection and Prevention](https://medium.com/booking-com-development/leverage-graph-technology-for-real-time-fraud-detection-and-prevention-438336076ea5) | Fraud And Anomaly Detection |
 | Booking | [The Engineering Behind High-Performance Ranking Platform: A System Overview](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6) | Search Ranking |
-| Booking.com | [Experimentation quality as the main platform KPI](https://medium.com/booking-product/why-we-use-experimentation-quality-as-the-main-kpi-for-our-experimentation-platform-f4c1ce381b81) | Online Experimentation And AB Testing |
+| Booking.com | [Experimentation quality as the main platform KPI](https://medium.com/booking-product/why-we-use-experimentation-quality-as-the-main-kpi-for-our-experimentation-platform-f4c1ce381b81) | Online Experimentation And Ab Testing |
 | Booking.com | [The engineering behind a high-performance ranking platform](https://medium.com/booking-com-development/the-engineering-behind-booking-coms-ranking-platform-a-system-overview-2fb222003ca6) | Realtime Serving And Deployment |
 | Expedia | [Candidate generation using a two-tower approach](https://medium.com/expedia-group-tech/candidate-generation-using-a-two-tower-approach-with-expedia-group-traveler-data-ca6a0dcab83e) | Candidate Retrieval |
 | Expedia | [Expedia Group's Customer Lifetime Value Prediction Model](https://medium.com/expedia-group-tech/expedia-groups-customer-lifetime-value-prediction-model-7927cdd44342) | Predictive Modeling Tabular |
