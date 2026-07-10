@@ -56,16 +56,16 @@ flowchart LR
 **The math that separates them.**
 
 **In-batch softmax loss**
-$$L = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{e^{\,s(x_i,y_i)}}{\sum_{j=1}^{B} e^{\,s(x_i,y_j)}}$$
+$$L = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{e^{ s(x_i,y_i)}}{\sum_{j=1}^{B} e^{ s(x_i,y_j)}}$$
 
 **logQ-corrected logit (YouTube, Expedia)**
 $$s^{c}(x_i,y_j) = u(x_i)^{\top} v(y_j) - \log Q(y_j)$$
 
 **Dot vs Euclidean, magnitude matters (Airbnb)**
-$$u^{\top}v = \lVert u\rVert\,\lVert v\rVert\cos\theta, \qquad \lVert u-v\rVert^{2} = \lVert u\rVert^{2} + \lVert v\rVert^{2} - 2\,u^{\top}v$$
+$$u^{\top}v = \lVert u\rVert \lVert v\rVert\cos\theta, \qquad \lVert u-v\rVert^{2} = \lVert u\rVert^{2} + \lVert v\rVert^{2} - 2 u^{\top}v$$
 
 **Index bytes, full vs 4-bit PQ (Etsy)**
-$$\text{bytes}_{\text{full}} = N\,d\cdot 4, \qquad \text{bytes}_{\text{PQ}} = N\,m\cdot\tfrac{4}{8}$$
+$$\text{bytes}_{\text{full}} = N d\cdot 4, \qquad \text{bytes}_{\text{PQ}} = N m\cdot\tfrac{4}{8}$$
 
 ```mermaid
 quadrantChart
@@ -141,13 +141,13 @@ flowchart TD
 
 **The math that separates them.**
 
-$$z = \text{concat}\Big(x_{dense},\ \{\ \langle e_i,\ e_j\rangle\ :\ i<j\ \}\Big)$$
+$$z = \text{concat}\Big(x_{dense},\ \lbrace \ \langle e_i,\ e_j\rangle\ :\ i<j\ \rbrace \Big)$$
 
-$$x_{l+1} = x_0 \odot (W_l\, x_l + b_l) + x_l$$
+$$x_{l+1} = x_0 \odot (W_l x_l + b_l) + x_l$$
 
-$$\mathrm{Attention}(Q,K,V) = \text{softmax}\!\Big(\frac{Q K^{\top}}{\sqrt{d_k}}\Big) V, \qquad U = \sum_{t} w_t\, \hat p_t$$
+$$\mathrm{Attention}(Q,K,V) = \text{softmax}\Big(\frac{Q K^{\top}}{\sqrt{d_k}}\Big) V, \qquad U = \sum_{t} w_t \hat p_t$$
 
-$$\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\big|\,\mathrm{acc}(b) - \mathrm{conf}(b)\,\big|, \qquad \mathrm{bid} = v \cdot \hat p$$
+$$\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} \big| \mathrm{acc}(b) - \mathrm{conf}(b) \big|, \qquad \mathrm{bid} = v \cdot \hat p$$
 
 ```mermaid
 quadrantChart
@@ -232,11 +232,11 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\textbf{attention over history:}\quad z = \sum_{t=1}^{N} \text{softmax}_t\!\left(\frac{Q K_t^\top}{\sqrt{d}}\right) V_t$$
+$$\textbf{attention over history:}\quad z = \sum_{t=1}^{N} \text{softmax}_t\left(\frac{Q K_t^\top}{\sqrt{d}}\right) V_t$$
 
-$$\textbf{target-attn (DIN pool):}\quad v_u(c) = \sum_{t=1}^{N} a(e_t, c)\, e_t \quad\text{(no softmax norm)}$$
+$$\textbf{target-attn (DIN pool):}\quad v_u(c) = \sum_{t=1}^{N} a(e_t, c) e_t \quad\text{(no softmax norm)}$$
 
-$$\textbf{lifelong two-stage (TWIN):}\quad z = \text{ESU}\!\left(\text{GSU}(c, \{C_k\}), c\right),\quad |seq| \sim 10^{6}$$
+$$\textbf{lifelong two-stage (TWIN):}\quad z = \text{ESU}\left(\text{GSU}(c, \lbrace C_k\rbrace ), c\right),\quad |seq| \sim 10^{6}$$
 
 $$\textbf{NDCG at k:}\quad \text{NDCG}@k = \frac{1}{Z}\sum_{i=1}^{k} \frac{2^{rel_i}-1}{\log_2(i+1)}$$
 
@@ -319,11 +319,11 @@ flowchart LR
 
 $$\textbf{eCPM = bid times pCTR} : \quad \text{eCPM} = 1000 \cdot b \cdot \hat{p}(\text{click})$$
 
-$$\textbf{log loss, a proper score} : \quad \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \big[\, y_i \log \hat{p}_i + (1-y_i)\log(1-\hat{p}_i)\,\big]$$
+$$\textbf{log loss, a proper score} : \quad \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \big[ y_i \log \hat{p}_i + (1-y_i)\log(1-\hat{p}_i) \big]$$
 
-$$\textbf{expected calibration error} : \quad \text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\big|\,\text{acc}(b) - \text{conf}(b)\,\big|$$
+$$\textbf{expected calibration error} : \quad \text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} \big| \text{acc}(b) - \text{conf}(b) \big|$$
 
-$$\textbf{fake-negative weighted loss} : \quad \mathcal{L}_w = -\frac{1}{N}\sum_{i=1}^{N} w_i \big[\, y_i \log \hat{p}_i + (1-y_i)\log(1-\hat{p}_i)\,\big]$$
+$$\textbf{fake-negative weighted loss} : \quad \mathcal{L}_w = -\frac{1}{N}\sum_{i=1}^{N} w_i \big[ y_i \log \hat{p}_i + (1-y_i)\log(1-\hat{p}_i) \big]$$
 
 ```mermaid
 quadrantChart
@@ -410,7 +410,7 @@ $$x_{l+1} = x_0 \odot (W_l x_l + b_l) + x_l$$
 
 Position-debiased training (GetYourGuide, Amazon) weights each logged label by the inverse propensity of its slot, decoupling relevance from exposure:
 
-$$L_{IPS} = \sum_{i} \frac{y_i}{p(\text{rank}_i)} \, \ell\big(f(x_i), y_i\big)$$
+$$L_{IPS} = \sum_{i} \frac{y_i}{p(\text{rank}_i)} \ell\big(f(x_i), y_i\big)$$
 
 ```mermaid
 quadrantChart
@@ -492,7 +492,7 @@ flowchart TD
 
 **Cost-asymmetric operating point (shared by all).** Choose the threshold that minimizes expected cost, not error rate:
 
-$$L(\tau) = c_{FP}\,\mathrm{FP}(\tau) + c_{FN}\,\mathrm{FN}(\tau), \qquad \tau^{\star} = \arg\min_{\tau} L(\tau)$$
+$$L(\tau) = c_{FP} \mathrm{FP}(\tau) + c_{FN} \mathrm{FN}(\tau), \qquad \tau^{\star} = \arg\min_{\tau} L(\tau)$$
 
 **Airbnb three-action loss (friction as a middle option).** A friction term recovers good users that a hard block would have lost:
 
@@ -500,7 +500,7 @@ $$L = \mathrm{FP}\cdot G \cdot V + \mathrm{FN}\cdot C + \mathrm{TP}\cdot(1-F)\cd
 
 **RGCN relation-specific message passing (Uber, Grab).** Each edge type gets its own transform, so a shared device and a shared city carry different weight:
 
-$$h_i^{(l+1)} = \sigma\!\left(W_0^{(l)} h_i^{(l)} + \sum_{r \in R}\sum_{j \in N_i^{r}} \frac{1}{|N_i^{r}|} W_r^{(l)} h_j^{(l)}\right)$$
+$$h_i^{(l+1)} = \sigma\left(W_0^{(l)} h_i^{(l)} + \sum_{r \in R}\sum_{j \in N_i^{r}} \frac{1}{|N_i^{r}|} W_r^{(l)} h_j^{(l)}\right)$$
 
 **GraphBEAN reconstruction anomaly (Grab, unsupervised).** Score is reconstruction error over node and edge attributes plus structure, so the rare reconstructs poorly:
 
@@ -589,11 +589,11 @@ flowchart TD
 
 **The math that separates them.** Each team fixes a precision floor and maximizes recall under it, since false positives block real users:
 
-$$\max_{\tau}\; \text{Recall}(\tau) \quad \text{s.t.}\quad \text{Precision}(\tau) \ge P_{\min}^{(\text{policy})}$$
+$$\max_{\tau}\ \text{Recall}(\tau) \quad \text{s.t.}\quad \text{Precision}(\tau) \ge P_{\min}^{(\text{policy})}$$
 
 Slack judges the blocker by the acceptance rate of blocked invites, a proxy for how much of what it blocked was actually legitimate:
 
-$$\text{FalseBlockProxy} = \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} = 0.03 \;\;\text{vs}\;\; 0.70 \;\text{under manual rules}$$
+$$\text{FalseBlockProxy} = \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} = 0.03 \ \ \text{vs}\ \ 0.70 \ \text{under manual rules}$$
 
 Under a skewed base rate (Bumble at 0.1 percent positives) accuracy is useless, so the operating point is set on the precision-recall curve instead:
 
@@ -667,7 +667,7 @@ $$\textbf{Wake-word operating point:}\quad \mathrm{FA/hr},\quad \mathrm{FRR} = \
 
 $$\textbf{Equal error rate (Apple):}\quad \mathrm{FAR}(\lambda) = \mathrm{FRR}(\lambda)$$
 
-$$\textbf{Speaker match (cosine):}\quad s = \frac{\mathbf{e}\cdot\mathbf{p}}{\lVert\mathbf{e}\rVert\,\lVert\mathbf{p}\rVert} > \lambda$$
+$$\textbf{Speaker match (cosine):}\quad s = \frac{\mathbf{e}\cdot\mathbf{p}}{\lVert\mathbf{e}\rVert \lVert\mathbf{p}\rVert} > \lambda$$
 
 ```mermaid
 quadrantChart
@@ -753,7 +753,7 @@ $$\tilde{\mu}_a \sim \mathrm{Beta}(\alpha_a + s_a,\ \beta_a + f_a), \qquad a_t =
 
 **IPS off-policy estimate**
 
-$$\hat{V}_{\mathrm{IPS}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \frac{\pi(a_i \mid x_i)}{\pi_0(a_i \mid x_i)}\, r_i$$
+$$\hat{V}_{\mathrm{IPS}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \frac{\pi(a_i \mid x_i)}{\pi_0(a_i \mid x_i)} r_i$$
 
 **Doubly-robust estimate**
 
@@ -830,15 +830,15 @@ $$IoU = \frac{|A \cap B|}{|A \cup B|}$$
 
 Detectors (Airbnb amenities, Google buildings) report mean average precision, the mean over classes of area under each precision-recall curve at a fixed IoU:
 
-$$mAP = \frac{1}{C}\sum_{c=1}^{C} \int_{0}^{1} p_c(r)\, dr$$
+$$mAP = \frac{1}{C}\sum_{c=1}^{C} \int_{0}^{1} p_c(r) dr$$
 
 Gate-style classifiers (Bumble, Cars24, Uber) pick an operating point by fixing precision and taking the recall achievable there:
 
-$$R_{\text{op}} = \max\{\, R : P(t) \ge P_{\min} \,\}$$
+$$R_{\text{op}} = \max\lbrace R : P(t) \ge P_{\min} \rbrace $$
 
 Screening models (diabetic retinopathy) headline the harmonic mean of precision and recall so a collapse in either is punished:
 
-$$F_1 = \frac{2\,P\,R}{P + R}$$
+$$F_1 = \frac{2 P R}{P + R}$$
 
 ```mermaid
 quadrantChart
@@ -915,11 +915,11 @@ flowchart TD
 
 $$\textbf{per-class F1: } F_1 = \frac{2 \cdot P \cdot R}{P + R}, \quad P = \frac{TP}{TP+FP}, \quad R = \frac{TP}{TP+FN}$$
 
-$$\textbf{weighted cross-entropy: } \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} w_{y_i}\, \log p_{\theta}(y_i \mid x_i)$$
+$$\textbf{weighted cross-entropy: } \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} w_{y_i} \log p_{\theta}(y_i \mid x_i)$$
 
-$$\textbf{F-beta (correction, } \beta=0.5\textbf{): } F_{\beta} = (1+\beta^2)\,\frac{P \cdot R}{\beta^2 P + R}$$
+$$\textbf{F-beta (correction, } \beta=0.5\textbf{): } F_{\beta} = (1+\beta^2) \frac{P \cdot R}{\beta^2 P + R}$$
 
-$$\textbf{seq2seq attention decode: } p(y_t \mid y_{<t}, x) = \mathrm{softmax}\!\left(W \sum_{j} \alpha_{tj}\, h_j\right)$$
+$$\textbf{seq2seq attention decode: } p(y_t \mid y_{<t}, x) = \mathrm{softmax}\left(W \sum_{j} \alpha_{tj} h_j\right)$$
 
 ```mermaid
 quadrantChart
@@ -995,7 +995,7 @@ $$\mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n}\left| y_i - \hat{y}_i \right|$$
 
 Interval and probabilistic teams (Uber, Zalando, Amazon, Wayfair) score quantiles with the pinball loss, penalizing under and over prediction asymmetrically by quantile level $\tau$:
 
-$$L_\tau(y,\hat{q}) = \max\big(\tau\,(y-\hat{q}),\ (\tau-1)\,(y-\hat{q})\big)$$
+$$L_\tau(y,\hat{q}) = \max\big(\tau (y-\hat{q}),\ (\tau-1) (y-\hat{q})\big)$$
 
 Baseline-relative teams (Uber classic, Google Maps, Oda) judge skill against a naive forecast, e.g. MASE scaling error by the in-sample one-step naive error:
 
@@ -1003,7 +1003,7 @@ $$\mathrm{MASE} = \frac{\frac{1}{n}\sum_{i=1}^{n}\left| y_i - \hat{y}_i \right|}
 
 Full-distribution replenishment teams (Zalando, Amazon) evaluate the whole predictive distribution with the weighted quantile loss, an integral of pinball loss over quantile levels:
 
-$$\mathrm{WQL} = 2\int_{0}^{1} L_\tau\big(y,\ \hat{q}(\tau)\big)\, d\tau$$
+$$\mathrm{WQL} = 2\int_{0}^{1} L_\tau\big(y,\ \hat{q}(\tau)\big) d\tau$$
 
 ```mermaid
 quadrantChart
@@ -1078,13 +1078,13 @@ flowchart LR
 
 **The math that separates them.**
 
-$$\textbf{Fixed-window churn label}\qquad y_i=\mathbf{1}\!\left[\text{no activity in }(t,\,t+\Delta]\right],\qquad \hat{p}_i=\sigma\!\left(f(x_i)\right)$$
+$$\textbf{Fixed-window churn label}\qquad y_i=\mathbf{1}\left[\text{no activity in }(t, t+\Delta]\right],\qquad \hat{p}_i=\sigma\left(f(x_i)\right)$$
 
-$$\textbf{Survival from hazard}\qquad S(t)=\Pr(T>t)=\exp\!\left(-\int_{0}^{t}\lambda(u)\,du\right)$$
+$$\textbf{Survival from hazard}\qquad S(t)=\Pr(T>t)=\exp\left(-\int_{0}^{t}\lambda(u) du\right)$$
 
 $$\textbf{CATE uplift (persuadables)}\qquad \tau(x)=\mathbb{E}[Y \mid X{=}x, W{=}1]-\mathbb{E}[Y \mid X{=}x, W{=}0]$$
 
-$$\textbf{Constrained allocation}\qquad \max_{a}\ \sum_i \tau(x_i)\,a_i \quad \text{s.t.} \quad \sum_i c_i\,a_i \le B$$
+$$\textbf{Constrained allocation}\qquad \max_{a}\ \sum_i \tau(x_i) a_i \quad \text{s.t.} \quad \sum_i c_i a_i \le B$$
 
 ```mermaid
 quadrantChart
@@ -1171,7 +1171,7 @@ $$\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\mathrm{sim}(z_i, z_i^{+}) / \
 
 $$s'(x, y) = s(x, y) - \log Q(y) \qquad \textbf{logQ popularity correction}$$
 
-$$\mathrm{sim}(u, v) = \frac{u \cdot v}{\lVert u \rVert \, \lVert v \rVert} \qquad \textbf{cosine relatedness score}$$
+$$\mathrm{sim}(u, v) = \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert} \qquad \textbf{cosine relatedness score}$$
 
 $$\mathcal{L}_{\text{triplet}} = \max\big(0,\ d(a, p) - d(a, n) + m\big) \qquad \textbf{max-margin triplet loss}$$
 
@@ -1244,11 +1244,11 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\hat{x}_i \;=\; x\!\left(e_i,\; \max\{\, t : t \le T_i \,\}\right) \quad\textbf{as-of point-in-time join}$$
+$$\hat{x}_i \ =\ x\left(e_i,\ \max\lbrace t : t \le T_i \rbrace \right) \quad\textbf{as-of point-in-time join}$$
 
-$$\tilde{y}_c \;=\; \frac{n_c\,\bar{y}_c \;+\; m\,\bar{y}}{\,n_c + m\,} \quad\textbf{OOF target-encoding smoothing}$$
+$$\tilde{y}_c \ =\ \frac{n_c \bar{y}_c \ +\ m \bar{y}}{ n_c + m } \quad\textbf{OOF target-encoding smoothing}$$
 
-$$\mathrm{PSI} \;=\; \sum_{b} \left(p_b - q_b\right)\,\ln\!\frac{p_b}{q_b} \quad\textbf{train vs serve skew score}$$
+$$\mathrm{PSI} \ =\ \sum_{b} \left(p_b - q_b\right) \ln\frac{p_b}{q_b} \quad\textbf{train vs serve skew score}$$
 
 ```mermaid
 quadrantChart
@@ -1315,7 +1315,7 @@ flowchart TD
 
 $$\textbf{Batching latency and rate:}\quad L_{\text{batch}} = W + \frac{B}{\text{tput}(B)}, \qquad \text{QPS} = \frac{B}{W}$$
 
-$$\textbf{p99 budget must cover:}\quad T_{p99} \;\geq\; L_{\text{net}} + L_{\text{feat}} + W + L_{\text{model}}(B)$$
+$$\textbf{p99 budget must cover:}\quad T_{p99} \ \geq\ L_{\text{net}} + L_{\text{feat}} + W + L_{\text{model}}(B)$$
 
 $$\textbf{CPU vs GPU cost curve:}\quad L_{\text{CPU}}(B) \approx c_0 + c_1 B, \qquad L_{\text{GPU}}(B) \approx g_0 + g_1 B^{\alpha},\ \alpha < 1$$
 
@@ -1386,11 +1386,11 @@ flowchart LR
 
 **The math that separates them.**
 
-$$\textbf{CUPED variance reduction: } \text{Var}(\bar{Y}_{cv}) = \text{Var}(\bar{Y})\,(1 - \rho^2), \quad \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
+$$\textbf{CUPED variance reduction: } \text{Var}(\bar{Y}_{cv}) = \text{Var}(\bar{Y}) (1 - \rho^2), \quad \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
 
 $$\textbf{Type I, type II, and power: } \alpha = P(\text{reject} \mid H_0), \quad \beta = P(\text{accept} \mid H_1), \quad \text{power} = 1 - \beta$$
 
-$$\textbf{Sample size vs MDE: } n \propto \frac{\sigma^2\,(z_{1-\alpha/2} + z_{1-\beta})^2}{\text{MDE}^2}$$
+$$\textbf{Sample size vs MDE: } n \propto \frac{\sigma^2 (z_{1-\alpha/2} + z_{1-\beta})^2}{\text{MDE}^2}$$
 
 $$\textbf{Spotify joint-power correction: } \beta^{*} = \frac{\beta}{G + 1}, \quad G = \text{guardrail metric count}$$
 

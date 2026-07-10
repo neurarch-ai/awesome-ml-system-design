@@ -31,7 +31,7 @@ followed by a learned affine map $y = \gamma \hat{x} + \beta$. LayerNorm instead
 
 **Q: Why does BatchNorm behave differently at train time versus inference, and what class of bugs does this cause?**
 
-During training BatchNorm uses the current mini-batch statistics $\mu_{\mathcal{B}}, \sigma^2_{\mathcal{B}}$, and simultaneously updates an exponential moving average of them (running mean/var), $\mu_{\text{run}} \leftarrow (1-m)\,\mu_{\text{run}} + m\,\mu_{\mathcal{B}}$. At inference it stops using batch statistics and instead applies the frozen running statistics, so the output for a given input no longer depends on its batch. The classic bugs come from forgetting to switch modes: leaving the model in train mode at eval makes predictions depend on batch composition and become nonreproducible, while calling eval before the running stats have converged (too few updates, or a train/test distribution shift) gives normalization that does not match the data. Another is fine-tuning on a new domain without updating running stats, so the frozen statistics are wrong for the new inputs. Always set eval mode for inference, and make sure running stats reflect the deployment distribution.
+During training BatchNorm uses the current mini-batch statistics $\mu_{\mathcal{B}}, \sigma^2_{\mathcal{B}}$, and simultaneously updates an exponential moving average of them (running mean/var), $\mu_{\text{run}} \leftarrow (1-m) \mu_{\text{run}} + m \mu_{\mathcal{B}}$. At inference it stops using batch statistics and instead applies the frozen running statistics, so the output for a given input no longer depends on its batch. The classic bugs come from forgetting to switch modes: leaving the model in train mode at eval makes predictions depend on batch composition and become nonreproducible, while calling eval before the running stats have converged (too few updates, or a train/test distribution shift) gives normalization that does not match the data. Another is fine-tuning on a new domain without updating running stats, so the frozen statistics are wrong for the new inputs. Always set eval mode for inference, and make sure running stats reflect the deployment distribution.
 
 **Q: Why does BatchNorm break with tiny batch sizes, and why does it not compose cleanly with RNNs?**
 
@@ -53,7 +53,7 @@ All four share the same normalize-then-affine form $y = \gamma \frac{x - \mu}{\s
 |---|---|---|---|---|
 | **BatchNorm** | $N, H, W$ per channel $C$ | Yes | Differs: batch stats in train, frozen running stats at inference | CNNs with large fixed batches (classification backbones) |
 | **LayerNorm** | $C$ (and $H, W$) per example $N$ | No | Identical | Transformers, RNNs, variable-length sequences |
-| **GroupNorm** | a group of channels $\times \, H, W$ per example $N$ | No | Identical | Vision at small batch (detection, segmentation) |
+| **GroupNorm** | a group of channels $\times H, W$ per example $N$ | No | Identical | Vision at small batch (detection, segmentation) |
 | **InstanceNorm** | $H, W$ per channel $C$ per example $N$ | No | Identical | Style transfer, image generation |
 
 The single dividing line is the batch-dependent column: only BatchNorm couples an example's normalization to the rest of the batch, which is exactly why it alone needs the train/inference statistic switch and why it alone degrades at tiny batch size. The following diagram traces the decision:
@@ -77,9 +77,9 @@ Dropout randomly zeros each activation with probability $p$ during training, whi
 
 **Q: Are weight decay and L2 regularization the same thing, and why does that distinction force AdamW?**
 
-For plain SGD they are equivalent: adding $\frac{\lambda}{2}\lVert w \rVert^2$ to the loss produces a gradient term $\lambda w$, so the update $w \leftarrow w - \eta(\nabla L + \lambda w) = (1 - \eta\lambda)\,w - \eta \nabla L$ is identical to directly shrinking each weight by $\eta\lambda$ each step. They stop being equivalent for adaptive optimizers like Adam, because Adam divides the gradient (including the $\lambda w$ term) by a per-parameter running estimate of its magnitude $\sqrt{\hat{v}} + \epsilon$, so weights with large gradients get less effective decay and the intended uniform shrinkage is distorted. AdamW fixes this by decoupling weight decay from the gradient, applying the shrinkage directly to the weights outside the adaptive-scaling path:
+For plain SGD they are equivalent: adding $\frac{\lambda}{2}\lVert w \rVert^2$ to the loss produces a gradient term $\lambda w$, so the update $w \leftarrow w - \eta(\nabla L + \lambda w) = (1 - \eta\lambda) w - \eta \nabla L$ is identical to directly shrinking each weight by $\eta\lambda$ each step. They stop being equivalent for adaptive optimizers like Adam, because Adam divides the gradient (including the $\lambda w$ term) by a per-parameter running estimate of its magnitude $\sqrt{\hat{v}} + \epsilon$, so weights with large gradients get less effective decay and the intended uniform shrinkage is distorted. AdamW fixes this by decoupling weight decay from the gradient, applying the shrinkage directly to the weights outside the adaptive-scaling path:
 
-$$w \leftarrow w - \eta\left(\frac{\hat{m}}{\sqrt{\hat{v}} + \epsilon} + \lambda w\right) \quad \text{(Adam+L2)} \qquad\text{vs.}\qquad w \leftarrow w - \eta\,\frac{\hat{m}}{\sqrt{\hat{v}} + \epsilon} - \eta\lambda w \quad \text{(AdamW)}.$$
+$$w \leftarrow w - \eta\left(\frac{\hat{m}}{\sqrt{\hat{v}} + \epsilon} + \lambda w\right) \quad \text{(Adam+L2)} \qquad\text{vs.}\qquad w \leftarrow w - \eta \frac{\hat{m}}{\sqrt{\hat{v}} + \epsilon} - \eta\lambda w \quad \text{(AdamW)}.$$
 
 Use AdamW rather than Adam-plus-L2 whenever you want weight decay to actually behave like weight decay, which is now the default for transformers.
 
@@ -89,7 +89,7 @@ Early stopping monitors validation loss and halts training when it stops improvi
 
 **Q: What does label smoothing actually do to the logits and to calibration, and when should you use it?**
 
-Label smoothing replaces the hard one-hot target with a soft target that puts $1 - \epsilon$ on the true class and spreads $\epsilon$ uniformly over the remaining $K - 1$ classes, i.e. $y_k^{\text{LS}} = (1-\epsilon)\,y_k + \frac{\epsilon}{K}$, so the model is no longer pushed to drive the correct logit to infinity. This bounds the gap between the correct logit and the others, preventing the overconfident, saturated logits that hard labels encourage and generally improving calibration so predicted probabilities better match accuracy. The cost is that it deliberately makes the model less confident and tends to collapse the within-class spread of representations, which can hurt when you need the raw logits for downstream tasks like knowledge distillation or retrieval. Use it when you want better generalization and calibration on classification with many classes; avoid or reduce it when you need well-separated feature embeddings or faithful teacher logits.
+Label smoothing replaces the hard one-hot target with a soft target that puts $1 - \epsilon$ on the true class and spreads $\epsilon$ uniformly over the remaining $K - 1$ classes, i.e. $y_k^{\text{LS}} = (1-\epsilon) y_k + \frac{\epsilon}{K}$, so the model is no longer pushed to drive the correct logit to infinity. This bounds the gap between the correct logit and the others, preventing the overconfident, saturated logits that hard labels encourage and generally improving calibration so predicted probabilities better match accuracy. The cost is that it deliberately makes the model less confident and tends to collapse the within-class spread of representations, which can hurt when you need the raw logits for downstream tasks like knowledge distillation or retrieval. Use it when you want better generalization and calibration on classification with many classes; avoid or reduce it when you need well-separated feature embeddings or faithful teacher logits.
 
 **Q: Why is data augmentation a form of regularization, and where does it help most?**
 
@@ -147,7 +147,7 @@ A model is calibrated when, among examples it assigns score $p$, a fraction $p$ 
 
 **Q: Platt scaling vs isotonic regression vs temperature scaling, and when do you use each?**
 
-Platt scaling fits a one-dimensional logistic regression (two parameters), $\hat p = \sigma(a\,s + b)$, mapping raw scores $s$ to probabilities; it is data-efficient and ideal for small validation sets and roughly sigmoidal distortion, as with SVMs. Isotonic regression fits any monotone step function, so it corrects arbitrary-shaped miscalibration but needs more data and can overfit on small sets. Temperature scaling divides logits by a single learned scalar $T$ before softmax, $\hat p = \text{softmax}(z/T)$; it fixes the confidence of modern neural nets without changing their argmax, so accuracy and ranking are preserved. Use Platt for small data or SVMs, isotonic for larger data with non-sigmoidal distortion, and temperature scaling for multi-class neural networks where you want to keep predictions unchanged.
+Platt scaling fits a one-dimensional logistic regression (two parameters), $\hat p = \sigma(a s + b)$, mapping raw scores $s$ to probabilities; it is data-efficient and ideal for small validation sets and roughly sigmoidal distortion, as with SVMs. Isotonic regression fits any monotone step function, so it corrects arbitrary-shaped miscalibration but needs more data and can overfit on small sets. Temperature scaling divides logits by a single learned scalar $T$ before softmax, $\hat p = \text{softmax}(z/T)$; it fixes the confidence of modern neural nets without changing their argmax, so accuracy and ranking are preserved. Use Platt for small data or SVMs, isotonic for larger data with non-sigmoidal distortion, and temperature scaling for multi-class neural networks where you want to keep predictions unchanged.
 
 **Q: How do resampling and class weighting distort calibration, and how do you correct it?**
 
@@ -163,7 +163,7 @@ The $0.5$ threshold is optimal only when the score is calibrated and false posit
 
 $$p^*=\frac{C_{fp}}{C_{fp}+C_{fn}}$$
 
-If missing a positive is ten times costlier than a false alarm ($C_{fn}=10\,C_{fp}$), then $p^*\approx 0.09$, well below $0.5$, trading precision for recall. Pick the threshold from the cost structure and the calibrated probabilities, then verify it on the PR curve at the operating base rate.
+If missing a positive is ten times costlier than a false alarm ($C_{fn}=10 C_{fp}$), then $p^*\approx 0.09$, well below $0.5$, trading precision for recall. Pick the threshold from the cost structure and the calibrated probabilities, then verify it on the PR curve at the operating base rate.
 
 **Q: Explain the precision-recall tradeoff and how you pick an operating point.**
 
@@ -171,9 +171,9 @@ Lowering the threshold flags more items, raising recall but admitting more false
 
 **Q: When do you use F1 vs F-beta vs weighted/macro F1?**
 
-$F_1$ is the harmonic mean of precision and recall, $F_1=\frac{2\,\text{P}\cdot\text{R}}{\text{P}+\text{R}}$, weighting them equally, which suits a single rare class when both error types matter similarly. $F_\beta$ generalizes this,
+$F_1$ is the harmonic mean of precision and recall, $F_1=\frac{2 \text{P}\cdot\text{R}}{\text{P}+\text{R}}$, weighting them equally, which suits a single rare class when both error types matter similarly. $F_\beta$ generalizes this,
 
-$$F_\beta = (1+\beta^2)\,\frac{\text{P}\cdot\text{R}}{\beta^2\,\text{P}+\text{R}}$$
+$$F_\beta = (1+\beta^2) \frac{\text{P}\cdot\text{R}}{\beta^2 \text{P}+\text{R}}$$
 
 so $\beta>1$ (e.g. $F_2$) weights recall more, appropriate when misses are costlier, while $\beta<1$ favors precision. For multi-class, macro $F_1$ averages per-class $F_1$ unweighted so rare classes count as much as frequent ones, whereas weighted $F_1$ weights by support and can hide poor minority-class performance. Choose $\beta$ from your cost asymmetry, and macro over weighted when you specifically want to expose rare-class quality.
 
@@ -193,7 +193,7 @@ so its penalty is bounded and gentler on extreme mistakes. Use log-loss when con
 
 ECE bins predictions by predicted probability, then averages the absolute gap between each bin's mean confidence and its empirical accuracy, weighted by bin population:
 
-$$\text{ECE} = \sum_b \frac{|B_b|}{N}\,\bigl\lvert \text{acc}(B_b)-\text{conf}(B_b)\bigr\rvert$$
+$$\text{ECE} = \sum_b \frac{|B_b|}{N} \bigl\lvert \text{acc}(B_b)-\text{conf}(B_b)\bigr\rvert$$
 
 It gives a single scalar summarizing how far the model's stated probabilities drift from reality. Its weaknesses: the value depends on the binning scheme and bin count, it can hide compensating over- and under-confidence within a bin, and it is unstable when some bins are sparse. Use it as a quick calibration summary alongside a reliability diagram, which shows where the miscalibration lives rather than collapsing it to one number.
 
@@ -311,7 +311,7 @@ When a field has hundreds of millions of values, a dense embedding row per value
 
 Dot product and cosine are used because they are cheap, decomposable across the two towers, and directly supported by ANN indexes, which is what lets you serve them at scale. The key difference is that dot product $u \cdot v$ is sensitive to vector magnitude while cosine
 
-$$\cos(u, v) = \frac{u \cdot v}{\lVert u \rVert \, \lVert v \rVert}$$
+$$\cos(u, v) = \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert}$$
 
 normalizes it away, so an unnormalized dot product can encode popularity or confidence in the norm, letting frequently trained items grow larger vectors and win more retrievals. That is sometimes desirable (a built-in popularity prior) and sometimes harmful (runaway head bias), so the choice is really about whether you want magnitude to carry signal. Cosine or $L_2$-normalized embeddings ($\lVert v \rVert = 1$) make similarity purely directional, which stabilizes training and makes a fixed ANN threshold meaningful across items. Normalization also interacts with the loss temperature, since normalized vectors have $u \cdot v \in [-1, 1]$ that must be rescaled by $1/\tau$ to produce sharp softmax distributions.
 
@@ -319,13 +319,13 @@ normalizes it away, so an unnormalized dot product can encode popularity or conf
 
 Matryoshka representation learning trains a single embedding so that its leading prefixes (say the first 32, 64, 128 dims) are each independently useful, by summing the loss computed at several truncation lengths during training:
 
-$$\mathcal{L}_{\text{MRL}} = \sum_{d \in \{32, 64, 128, \dots\}} \mathcal{L}\big(v_{[:d]}\big)$$
+$$\mathcal{L}_{\text{MRL}} = \sum_{d \in \lbrace 32, 64, 128, \dots\rbrace } \mathcal{L}\big(v_{[:d]}\big)$$
 
 This gives you one vector you can shorten at serving time to trade accuracy for speed and memory without retraining or maintaining separate models. In retrieval it enables adaptive two-stage search: run ANN on a short prefix over the whole corpus for a cheap first pass, then rerank the survivors with the full-length vector for precision. It is worth it when you have a wide latency/quality operating range or heterogeneous hardware, and less compelling when you only ever serve one fixed dimension, since forcing the prefix property costs a little peak accuracy versus a bespoke fixed-dim embedding. The win is operational flexibility from a single artifact.
 
 **Q: Contrastive learning depends heavily on temperature; what does it control and how do you set it?**
 
-Temperature scales the logits before the softmax in a contrastive loss. For an InfoNCE objective over one positive $v^+$ and a set of negatives $\{v^-_k\}$:
+Temperature scales the logits before the softmax in a contrastive loss. For an InfoNCE objective over one positive $v^+$ and a set of negatives $\lbrace v^-_k\rbrace $:
 
 $$\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp\big((u \cdot v^+)/\tau\big)}{\exp\big((u \cdot v^+)/\tau\big) + \sum_{k} \exp\big((u \cdot v^-_k)/\tau\big)}$$
 
@@ -424,7 +424,7 @@ The leak comes from fitting any data-dependent transform on the full dataset bef
 
 Target encoding replaces a category with the mean of the label for that category, so if you compute that mean using a row's own label, the feature literally contains the answer, which is catastrophic for high-cardinality columns where many categories have one row. Even computed over the whole training set, it leaks because each row contributes to the statistic used to encode it, biasing the model toward memorizing the training targets. The fix is out-of-fold encoding: split the data and encode each fold using target means computed only from the other folds, so a row's own label never touches its encoding. You also smooth toward the global mean for rare categories, blending the category mean $\bar y_c$ over its $n$ rows with the global mean $\bar y$ through a prior weight $m$:
 
-$$\hat y_c = \frac{n\,\bar y_c + m\,\bar y}{n + m}$$
+$$\hat y_c = \frac{n \bar y_c + m \bar y}{n + m}$$
 
 so a category with few rows ($n \ll m$) is pulled toward $\bar y$ and only well-supported categories trust their own mean. You must fit the encoding inside the CV loop, not once beforehand. At serving time you apply the encoding learned from training data only.
 
@@ -444,7 +444,7 @@ The usual root cause is that the offline evaluation was optimistic: leakage, a r
 
 Data drift is a change in the input distribution $P(X)$, for example a new device type dominating traffic, while the relationship between inputs and target stays the same. Concept drift is a change in $P(y \mid X)$, the actual mapping from features to outcome, for example fraud tactics evolving so the same features now imply a different risk. Data drift you can detect without labels by tracking feature distributions and a population stability index (PSI) against a training baseline and alerting on divergence. PSI compares the training and live share of each of $k$ bins,
 
-$$\mathrm{PSI} = \sum_{i=1}^{k} (p_i - q_i)\,\ln\frac{p_i}{q_i}$$
+$$\mathrm{PSI} = \sum_{i=1}^{k} (p_i - q_i) \ln\frac{p_i}{q_i}$$
 
 where $p_i$ and $q_i$ are the training and live fractions in bin $i$; the common rule of thumb is that $\mathrm{PSI} < 0.1$ is stable, $0.1$ to $0.25$ is moderate shift, and $> 0.25$ is a serious move worth alerting on. Concept drift requires labels or a proxy, so you monitor prediction quality over time (calibration, rolling AUC as labels arrive) and watch for degradation even when inputs look stable. The responses differ: data drift may need reweighting or retraining on fresh inputs, while concept drift needs relabeling and model updates, so distinguishing them tells you what to fix.
 
@@ -532,7 +532,7 @@ Modern distributed GBDT (LightGBM, XGBoost) is histogram-based: each feature's v
 
 **Q: When should tabular/GBDT run on CPU versus GPU, and how does that compare to deep models?**
 
-GBDT histogram construction is memory-bandwidth bound with irregular access, and for moderate-sized tabular datasets a well-optimized multi-core CPU (LightGBM) is often competitive with or cheaper than GPU. GPUs help GBDT mainly when datasets are very large and dense enough to keep the device busy, since building histograms in parallel across many bins can then win. Deep models, by contrast, are dominated by large dense matmuls (cost $\approx O(B\,d_{\text{in}}\,d_{\text{out}})$ per layer) that map perfectly onto GPU tensor cores, so they are almost always GPU-bound and see order-of-magnitude speedups. The practical rule: reach for GPU when the workload is dense linear algebra (deep nets, large embeddings) and stay on CPU for small-to-medium GBDT and classic ML where the bottleneck is branchy, cache-unfriendly work. Recsys often mixes both: CPU or parameter-server for sparse features, GPU for the dense tower and large embeddings.
+GBDT histogram construction is memory-bandwidth bound with irregular access, and for moderate-sized tabular datasets a well-optimized multi-core CPU (LightGBM) is often competitive with or cheaper than GPU. GPUs help GBDT mainly when datasets are very large and dense enough to keep the device busy, since building histograms in parallel across many bins can then win. Deep models, by contrast, are dominated by large dense matmuls (cost $\approx O(B d_{\text{in}} d_{\text{out}})$ per layer) that map perfectly onto GPU tensor cores, so they are almost always GPU-bound and see order-of-magnitude speedups. The practical rule: reach for GPU when the workload is dense linear algebra (deep nets, large embeddings) and stay on CPU for small-to-medium GBDT and classic ML where the bottleneck is branchy, cache-unfriendly work. Recsys often mixes both: CPU or parameter-server for sparse features, GPU for the dense tower and large embeddings.
 
 **Q: What is online / incremental / continual training and what are its main pitfalls?**
 
@@ -672,7 +672,7 @@ A linear SVM finds the separating hyperplane $w^\top x + b = 0$ that maximizes t
 
 **Q: Explain the kernel trick and when kernels genuinely help versus when they are a trap.**
 
-The kernel trick replaces every inner product $\langle x, x'\rangle$ in the SVM's dual formulation with a kernel function $K(x,x')=\langle \phi(x), \phi(x')\rangle$ that equals an inner product in some higher-dimensional feature space $\phi(\cdot)$, so you get a nonlinear boundary without ever materializing those features. It helps when the true boundary is nonlinear but the data still lives on a structure a kernel can capture, such as smooth curvature via an RBF kernel $K(x,x')=\exp\!\big(-\gamma \lVert x-x'\rVert^2\big)$, and when you have enough data to fit but not so much that the kernel matrix becomes unwieldy. It becomes a trap on very large datasets, because the Gram matrix is quadratic in the number of samples and training cost grows roughly cubically, and an RBF kernel with a poorly chosen bandwidth $\gamma$ will either overfit or blur everything. On high-dimensional, already-linearly-separable data like text bag-of-words, a linear kernel usually wins and the nonlinear kernel just adds cost and variance. Match the kernel to a real hypothesis about the geometry, not as a default upgrade.
+The kernel trick replaces every inner product $\langle x, x'\rangle$ in the SVM's dual formulation with a kernel function $K(x,x')=\langle \phi(x), \phi(x')\rangle$ that equals an inner product in some higher-dimensional feature space $\phi(\cdot)$, so you get a nonlinear boundary without ever materializing those features. It helps when the true boundary is nonlinear but the data still lives on a structure a kernel can capture, such as smooth curvature via an RBF kernel $K(x,x')=\exp\big(-\gamma \lVert x-x'\rVert^2\big)$, and when you have enough data to fit but not so much that the kernel matrix becomes unwieldy. It becomes a trap on very large datasets, because the Gram matrix is quadratic in the number of samples and training cost grows roughly cubically, and an RBF kernel with a poorly chosen bandwidth $\gamma$ will either overfit or blur everything. On high-dimensional, already-linearly-separable data like text bag-of-words, a linear kernel usually wins and the nonlinear kernel just adds cost and variance. Match the kernel to a real hypothesis about the geometry, not as a default upgrade.
 
 **Q: Why do SVMs scale poorly to huge datasets when linear models do not?**
 
@@ -712,7 +712,7 @@ The clean definition is about how model capacity scales: a parametric model has 
 
 **Q: Naive Bayes and logistic regression form the classic generative-versus-discriminative pair. What is the real difference and its consequences?**
 
-A generative classifier like Naive Bayes models how the data is produced, learning the class-conditional feature distribution $P(x \mid y)$ and the class prior $P(y)$, then applying Bayes' rule $P(y \mid x) \propto P(x \mid y)\,P(y)$ to get the posterior. A discriminative classifier like logistic regression models the posterior $P(y \mid x)$ directly, spending no capacity on how the features are distributed. The consequence is a bias-variance and data-regime tradeoff: the generative model, leaning on stronger assumptions, converges faster and wins with little training data, while the discriminative model has lower asymptotic error and overtakes it once data is plentiful, because it is not penalized when the generative assumptions are wrong. Generative models also let you generate samples, handle missing features more naturally, and detect novelty, whereas discriminative models usually give better calibrated boundaries. Pick generative for scarce data or when you need the data model, discriminative for accuracy at scale.
+A generative classifier like Naive Bayes models how the data is produced, learning the class-conditional feature distribution $P(x \mid y)$ and the class prior $P(y)$, then applying Bayes' rule $P(y \mid x) \propto P(x \mid y) P(y)$ to get the posterior. A discriminative classifier like logistic regression models the posterior $P(y \mid x)$ directly, spending no capacity on how the features are distributed. The consequence is a bias-variance and data-regime tradeoff: the generative model, leaning on stronger assumptions, converges faster and wins with little training data, while the discriminative model has lower asymptotic error and overtakes it once data is plentiful, because it is not penalized when the generative assumptions are wrong. Generative models also let you generate samples, handle missing features more naturally, and detect novelty, whereas discriminative models usually give better calibrated boundaries. Pick generative for scarce data or when you need the data model, discriminative for accuracy at scale.
 
 **Q: When does a simple linear model actually beat a deep neural network?**
 
@@ -753,7 +753,7 @@ Bagging trains many high-variance, low-bias learners (deep trees) on bootstrap r
 | Error targeted | Variance | Bias |
 | Base learner | Strong, low-bias, high-variance (deep trees) | Weak, high-bias (shallow trees) |
 | Training structure | Parallel, independent | Sequential, each fits the residual of the running model |
-| Combination | Equal-weight average / vote | Additive, $F_M=\sum_{m=1}^{M}\nu\,h_m$ |
+| Combination | Equal-weight average / vote | Additive, $F_M=\sum_{m=1}^{M}\nu h_m$ |
 | More trees | Plateaus, hard to overfit | Keeps lowering train loss, can overfit |
 | Use when | Base learner overfits | Base learner underfits |
 
@@ -789,7 +789,7 @@ Gradient boosting treats the ensemble as a function $F$ that it optimizes by fun
 
 $$r_i=-\left[\frac{\partial L(y_i,F(x_i))}{\partial F(x_i)}\right],$$
 
-the direction in function space that most reduces loss. A new weak learner $h_m$ is fit by least squares to those pseudo-residuals, then added with a step size (learning rate) as $F_m=F_{m-1}+\nu\, h_m$, so each tree is one gradient step. For squared-error loss $L=\tfrac{1}{2}(y-F)^2$ the negative gradient is literally the ordinary residual $r_i=y_i-F(x_i)$, which is why the intuition "fit the residuals" is exactly correct there; for logistic or other losses the pseudo-residual is a loss-specific quantity, which is what lets the same algorithm handle classification and ranking.
+the direction in function space that most reduces loss. A new weak learner $h_m$ is fit by least squares to those pseudo-residuals, then added with a step size (learning rate) as $F_m=F_{m-1}+\nu h_m$, so each tree is one gradient step. For squared-error loss $L=\tfrac{1}{2}(y-F)^2$ the negative gradient is literally the ordinary residual $r_i=y_i-F(x_i)$, which is why the intuition "fit the residuals" is exactly correct there; for logistic or other losses the pseudo-residual is a loss-specific quantity, which is what lets the same algorithm handle classification and ranking.
 
 **Q: What do XGBoost and LightGBM's histogram-based split finding actually change, and what is the tradeoff?**
 
@@ -801,7 +801,7 @@ Level-wise (depth-wise) growth expands all nodes at a given depth before going d
 
 **Q: How do XGBoost and LightGBM regularize a boosted ensemble beyond just limiting tree count?**
 
-XGBoost adds an explicit regularization term to its objective: a penalty proportional to the number of leaves $T$ (weight $\gamma$) plus an $L_2$ ($\lambda$) and optional $L_1$ ($\alpha$) penalty on leaf weights $w$, so the regularized objective is $\mathcal{L}=\sum_i L(y_i,F(x_i))+\gamma T+\tfrac{1}{2}\lambda\lVert w\rVert_2^2+\alpha\lVert w\rVert_1$. This is baked into the gain formula so a split is only taken if its loss reduction exceeds the complexity cost. On top of that, shrinkage (the learning rate $\nu$) scales every tree's contribution as $F_m=F_{m-1}+\nu\, h_m$ so no single tree dominates, and stochastic subsampling of rows and columns per tree injects the same decorrelation bagging uses. These act on different axes: the leaf penalties control per-tree complexity, shrinkage controls how fast the ensemble commits, and subsampling controls correlation. The tradeoff is that heavier regularization or smaller $\nu$ needs proportionally more trees to reach the same fit, so you trade compute for generalization.
+XGBoost adds an explicit regularization term to its objective: a penalty proportional to the number of leaves $T$ (weight $\gamma$) plus an $L_2$ ($\lambda$) and optional $L_1$ ($\alpha$) penalty on leaf weights $w$, so the regularized objective is $\mathcal{L}=\sum_i L(y_i,F(x_i))+\gamma T+\tfrac{1}{2}\lambda\lVert w\rVert_2^2+\alpha\lVert w\rVert_1$. This is baked into the gain formula so a split is only taken if its loss reduction exceeds the complexity cost. On top of that, shrinkage (the learning rate $\nu$) scales every tree's contribution as $F_m=F_{m-1}+\nu h_m$ so no single tree dominates, and stochastic subsampling of rows and columns per tree injects the same decorrelation bagging uses. These act on different axes: the leaf penalties control per-tree complexity, shrinkage controls how fast the ensemble commits, and subsampling controls correlation. The tradeoff is that heavier regularization or smaller $\nu$ needs proportionally more trees to reach the same fit, so you trade compute for generalization.
 
 **Q: How do XGBoost and LightGBM handle sparsity and missing values, and why is that better than pre-imputation?**
 
@@ -825,7 +825,7 @@ Trees partition space with axis-aligned thresholds and predict a constant in eac
 
 **Q: How do learning rate (shrinkage) and early stopping interact in boosting, and how should they be set together?**
 
-Shrinkage multiplies each new tree's contribution by a small factor $\nu$ so the ensemble approaches the target slowly, $F_m=F_{m-1}+\nu\, h_m$, which smooths the fit and improves generalization but requires more trees to reach a given training loss. Early stopping monitors validation loss and halts when it stops improving, which sets the effective number of trees automatically and prevents the overfitting that boosting will otherwise drift into. The two are coupled: a smaller $\nu$ needs a larger tree budget $M$ (roughly $M\propto 1/\nu$ to reach the same fit), so you set $\nu$ as low as compute allows and let early stopping choose $M$ rather than tuning the count by hand. The tradeoff is straightforward: lower $\nu$ plus more trees generally generalizes better but costs proportionally more training time, so the learning rate is really a compute-versus-accuracy dial.
+Shrinkage multiplies each new tree's contribution by a small factor $\nu$ so the ensemble approaches the target slowly, $F_m=F_{m-1}+\nu h_m$, which smooths the fit and improves generalization but requires more trees to reach a given training loss. Early stopping monitors validation loss and halts when it stops improving, which sets the effective number of trees automatically and prevents the overfitting that boosting will otherwise drift into. The two are coupled: a smaller $\nu$ needs a larger tree budget $M$ (roughly $M\propto 1/\nu$ to reach the same fit), so you set $\nu$ as low as compute allows and let early stopping choose $M$ rather than tuning the count by hand. The tradeoff is straightforward: lower $\nu$ plus more trees generally generalizes better but costs proportionally more training time, so the learning rate is really a compute-versus-accuracy dial.
 
 **Q: In gradient boosting, why is the second-order (Newton) split gain used by XGBoost preferred over fitting trees to the raw gradient alone?**
 
@@ -845,7 +845,7 @@ Correlation measures that two variables move together, but that co-movement can 
 
 Pearson measures the strength of a linear relationship and is the covariance normalized by the two standard deviations,
 
-$$r = \frac{\operatorname{cov}(X,Y)}{\sigma_X \sigma_Y} = \frac{\sum_i (x_i - \bar x)(y_i - \bar y)}{\sqrt{\sum_i (x_i - \bar x)^2}\,\sqrt{\sum_i (y_i - \bar y)^2}},$$
+$$r = \frac{\operatorname{cov}(X,Y)}{\sigma_X \sigma_Y} = \frac{\sum_i (x_i - \bar x)(y_i - \bar y)}{\sqrt{\sum_i (x_i - \bar x)^2} \sqrt{\sum_i (y_i - \bar y)^2}},$$
 
 so it is maximized ($|r| = 1$) only when the points fall on a straight line. Spearman $\rho$ is Pearson computed on the ranks $\operatorname{rank}(x_i), \operatorname{rank}(y_i)$, so it detects any monotonic relationship and is invariant to any monotone transform of either variable. Prefer Spearman when the relationship is monotone but curved (for example saturating), when you have ordinal data, or when heavy tails and outliers are present, because a single extreme point can swing Pearson dramatically while barely moving ranks. The pitfall is reading a low Pearson as "no relationship": a perfect U-shape has $r \approx 0$ yet is fully deterministic, so always plot the data. Conversely a high Spearman with low Pearson signals nonlinearity worth modeling.
 
@@ -862,7 +862,7 @@ so it is maximized ($|r| = 1$) only when the points fall on a straight line. Spe
 
 The CLT says the sampling distribution of a sum or mean of many independent, finite-variance random variables approaches a normal distribution regardless of the shape of the underlying population:
 
-$$\frac{\bar X - \mu}{\sigma / \sqrt{n}} \;\xrightarrow{d}\; \mathcal{N}(0, 1) \quad\text{as } n \to \infty.$$
+$$\frac{\bar X - \mu}{\sigma / \sqrt{n}} \ \xrightarrow{d}\ \mathcal{N}(0, 1) \quad\text{as } n \to \infty.$$
 
 This is what lets us attach normal-based standard errors ($\text{SE} = \sigma / \sqrt{n}$), confidence intervals, and $z$ or $t$ tests to means even when the raw data are not normal, which is why so many procedures "just work" at moderate sample sizes. It fails when variance is infinite or the tails are heavy enough that no finite variance exists (for example a Cauchy, or a power law with small exponent), where the mean does not stabilize and normal approximations are wrong. It also degrades under strong dependence, because the effective sample size $n_{\text{eff}} \ll n$, so naive standard errors are too small and confidence intervals are overconfident. The practical lesson is that CLT-based inference on the mean can be dangerous for revenue, latency tails, or network data where extremes and correlation dominate.
 
@@ -878,13 +878,13 @@ Consistency means the estimator converges in probability to the true value as th
 
 Maximum likelihood picks the parameter that makes the observed data most probable,
 
-$$\hat\theta_{\text{MLE}} = \arg\max_\theta \; p(\mathcal{D} \mid \theta),$$
+$$\hat\theta_{\text{MLE}} = \arg\max_\theta \ p(\mathcal{D} \mid \theta),$$
 
 MAP adds a prior and maximizes the posterior (which is likelihood times prior),
 
-$$\hat\theta_{\text{MAP}} = \arg\max_\theta \; p(\mathcal{D} \mid \theta)\, p(\theta),$$
+$$\hat\theta_{\text{MAP}} = \arg\max_\theta \ p(\mathcal{D} \mid \theta) p(\theta),$$
 
-and full Bayesian inference keeps the entire posterior $p(\theta \mid \mathcal{D}) \propto p(\mathcal{D} \mid \theta)\, p(\theta)$ rather than a single point. The prior injects information you hold before seeing the data, and mechanically it acts as regularization: a Gaussian prior $\theta \sim \mathcal{N}(0, \tau^2)$ on weights gives MAP identical to $L_2$-penalized likelihood, and a Laplace prior gives $L_1$. As the sample grows the likelihood dominates and MAP and MLE converge, so priors matter most in the small-data or high-dimensional regime where the data underdetermine the parameters. The advantage of staying fully Bayesian is calibrated uncertainty and the ability to propagate it, while the cost is computation and the honest burden that a badly chosen prior biases conclusions in ways a point estimate hides.
+and full Bayesian inference keeps the entire posterior $p(\theta \mid \mathcal{D}) \propto p(\mathcal{D} \mid \theta) p(\theta)$ rather than a single point. The prior injects information you hold before seeing the data, and mechanically it acts as regularization: a Gaussian prior $\theta \sim \mathcal{N}(0, \tau^2)$ on weights gives MAP identical to $L_2$-penalized likelihood, and a Laplace prior gives $L_1$. As the sample grows the likelihood dominates and MAP and MLE converge, so priors matter most in the small-data or high-dimensional regime where the data underdetermine the parameters. The advantage of staying fully Bayesian is calibrated uncertainty and the ability to propagate it, while the cost is computation and the honest burden that a badly chosen prior biases conclusions in ways a point estimate hides.
 
 **Q: What is a p-value, and what is it emphatically not?**
 
@@ -909,7 +909,7 @@ The tension is that lowering $\alpha$ to avoid false positives raises $\beta$ an
 
 If you run $m$ tests each at $\alpha = 0.05$, the chance that at least one true null produces a false positive grows quickly; for $m$ independent nulls it is $1 - (1 - \alpha)^m$, so with $m = 20$ you expect about one spurious "discovery." Bonferroni controls the family-wise error rate $\text{FWER} = P(\text{at least one false positive})$ by testing each hypothesis at $\alpha / m$, which is safe but very conservative and kills power when there are thousands of tests. The Benjamini-Hochberg procedure instead controls the false discovery rate,
 
-$$\text{FDR} = \mathbb{E}\!\left[\frac{\text{false positives}}{\max(\text{total rejections},\,1)}\right],$$
+$$\text{FDR} = \mathbb{E}\left[\frac{\text{false positives}}{\max(\text{total rejections}, 1)}\right],$$
 
 which is far more powerful and appropriate when you expect many true effects, as in genomics or feature screening. The practical point is to decide which error you care about: FWER when any single false positive is costly, FDR when you can tolerate a known fraction of false leads in exchange for finding more real ones.
 
@@ -925,11 +925,11 @@ $$H(p) = -\sum_x p(x) \log p(x),$$
 
 so it measures uncertainty and is maximized by the uniform distribution. Cross-entropy is the cost of encoding data from $p$ using a code optimized for $q$, and KL divergence is the extra cost,
 
-$$H(p, q) = -\sum_x p(x)\log q(x) = H(p) + D_{\mathrm{KL}}(p \,\|\, q), \qquad D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x)\log\frac{p(x)}{q(x)} \ge 0,$$
+$$H(p, q) = -\sum_x p(x)\log q(x) = H(p) + D_{\mathrm{KL}}(p \Vert q), \qquad D_{\mathrm{KL}}(p \Vert q) = \sum_x p(x)\log\frac{p(x)}{q(x)} \ge 0,$$
 
-so KL measures how far $q$ is from $p$, is zero only when they match, and is asymmetric ($D_{\mathrm{KL}}(p\|q) \ne D_{\mathrm{KL}}(q\|p)$). Minimizing cross-entropy loss in classification is exactly minimizing $D_{\mathrm{KL}}(p \,\|\, q)$ from the model to the data distribution since the data entropy $H(p)$ is fixed. Mutual information is the KL between a joint distribution and the product of its marginals,
+so KL measures how far $q$ is from $p$, is zero only when they match, and is asymmetric ($D_{\mathrm{KL}}(p\Vert q) \ne D_{\mathrm{KL}}(q\Vert p)$). Minimizing cross-entropy loss in classification is exactly minimizing $D_{\mathrm{KL}}(p \Vert q)$ from the model to the data distribution since the data entropy $H(p)$ is fixed. Mutual information is the KL between a joint distribution and the product of its marginals,
 
-$$I(X; Y) = D_{\mathrm{KL}}\!\big(p(x,y) \,\|\, p(x)p(y)\big) = H(X) - H(X \mid Y),$$
+$$I(X Y) = D_{\mathrm{KL}}\big(p(x,y) \Vert p(x)p(y)\big) = H(X) - H(X \mid Y),$$
 
 quantifying how much knowing one variable reduces uncertainty about another; in decision trees, information gain is the mutual information between the split feature and the label, which is why splits are chosen to maximize the entropy reduction they produce.
 
@@ -945,7 +945,7 @@ Sampling bias occurs when the mechanism that draws your sample makes it unrepres
 
 The law of large numbers says the sample mean converges to the true expected value as the sample grows, $\bar X_n \xrightarrow{p} \mu$, so it tells you the average eventually gets the location right. The CLT is a finer statement about the fluctuations around that limit: it says those deviations, scaled by $\sqrt{n}$, follow an approximately normal distribution,
 
-$$\sqrt{n}\,(\bar X_n - \mu) \xrightarrow{d} \mathcal{N}(0, \sigma^2),$$
+$$\sqrt{n} (\bar X_n - \mu) \xrightarrow{d} \mathcal{N}(0, \sigma^2),$$
 
 which quantifies how fast and in what shape the mean concentrates. So the LLN gives consistency while the CLT gives the rate ($\sim 1/\sqrt{n}$) and the error bars, and you need the CLT, not the LLN, to build confidence intervals. A subtlety is that the LLN can hold while the CLT fails: a distribution with finite mean but infinite variance still has a convergent average but no normal fluctuation law, so standard error formulas silently break.
 
@@ -955,7 +955,7 @@ Skew describes the direction of the long tail: a left-skewed (negatively skewed)
 
 **Q: Two variables have a Pearson correlation near zero. What are the distinct explanations, and how would you tell them apart?**
 
-Near-zero Pearson ($r \approx 0$) can mean genuine independence, but it can equally mean a strong nonlinear relationship whose linear component cancels, such as a symmetric U-shape or a periodic curve where positive and negative slopes average out. It can also be an artifact of outliers or of mixing subpopulations with opposing slopes that cancel in aggregate, or of range restriction that flattens an existing trend. To tell them apart, plot the scatter first, then compute Spearman $\rho$ or distance correlation and mutual information $I(X; Y)$, which detect monotone and general dependence respectively, and check within subgroups for a canceling mixture. The key lesson is that $r = 0$ is a statement only about the linear projection, never a certificate of independence: independence implies $r = 0$, but $r = 0$ does not imply independence, and treating it as one is a frequent modeling mistake that hides real structure.
+Near-zero Pearson ($r \approx 0$) can mean genuine independence, but it can equally mean a strong nonlinear relationship whose linear component cancels, such as a symmetric U-shape or a periodic curve where positive and negative slopes average out. It can also be an artifact of outliers or of mixing subpopulations with opposing slopes that cancel in aggregate, or of range restriction that flattens an existing trend. To tell them apart, plot the scatter first, then compute Spearman $\rho$ or distance correlation and mutual information $I(X Y)$, which detect monotone and general dependence respectively, and check within subgroups for a canceling mixture. The key lesson is that $r = 0$ is a statement only about the linear projection, never a certificate of independence: independence implies $r = 0$, but $r = 0$ does not imply independence, and treating it as one is a frequent modeling mistake that hides real structure.
 
 **Q: What is the bias-variance-noise decomposition of expected test error, and what is the irreducible term?**
 
@@ -969,7 +969,7 @@ Bias is systematic error from a model too simple to capture $f$, variance is sen
 
 Bayes' theorem inverts a conditional probability using the base rate:
 
-$$P(D \mid +) = \frac{P(+ \mid D)\, P(D)}{P(+ \mid D)\, P(D) + P(+ \mid \neg D)\, P(\neg D)}.$$
+$$P(D \mid +) = \frac{P(+ \mid D) P(D)}{P(+ \mid D) P(D) + P(+ \mid \neg D) P(\neg D)}.$$
 
 Even a highly accurate test can yield a low posterior when the condition is rare, because the prior $P(D)$ multiplies the sensitivity: with a disease prevalence of $1\%$, a test at $99\%$ sensitivity and $99\%$ specificity gives $P(D \mid +) = \frac{0.99 \times 0.01}{0.99 \times 0.01 + 0.01 \times 0.99} = 0.5$, so a positive result is only a coin flip. The intuition trap is base-rate neglect: people anchor on the test accuracy and ignore that the pool of true negatives is so large that false positives swamp true positives. In ML this is exactly why precision collapses on imbalanced classes at a fixed recall, and why you report precision and recall or a PR curve rather than raw accuracy when positives are rare.
 
@@ -995,7 +995,7 @@ If you put a sigmoid on the output and apply MSE, the loss surface as a function
 
 **Q: Explain cross-entropy as negative log-likelihood and its relationship to KL divergence.**
 
-Cross-entropy is $H(p, q) = -\sum_c p(c)\log q(c)$, where $p$ is the true label distribution and $q$ the model's predicted distribution; for a one-hot label this reduces to $-\log q(c^\star)$, the negative log of the probability assigned to the correct class, which is exactly the negative log-likelihood of the data under the model. It decomposes as $H(p, q) = H(p) + D_{\mathrm{KL}}(p \,\|\, q)$, where $H(p)$ is the entropy of the labels and does not depend on the model. Since $H(p)$ is constant with respect to the parameters, minimizing cross-entropy is equivalent to minimizing $D_{\mathrm{KL}}(p \,\|\, q)$ from the true label distribution to the predicted one. So training pushes the predicted distribution toward the empirical label distribution in the KL sense, which is why cross-entropy is the natural objective whenever you are fitting a probability model.
+Cross-entropy is $H(p, q) = -\sum_c p(c)\log q(c)$, where $p$ is the true label distribution and $q$ the model's predicted distribution; for a one-hot label this reduces to $-\log q(c^\star)$, the negative log of the probability assigned to the correct class, which is exactly the negative log-likelihood of the data under the model. It decomposes as $H(p, q) = H(p) + D_{\mathrm{KL}}(p \Vert q)$, where $H(p)$ is the entropy of the labels and does not depend on the model. Since $H(p)$ is constant with respect to the parameters, minimizing cross-entropy is equivalent to minimizing $D_{\mathrm{KL}}(p \Vert q)$ from the true label distribution to the predicted one. So training pushes the predicted distribution toward the empirical label distribution in the KL sense, which is why cross-entropy is the natural objective whenever you are fitting a probability model.
 
 **Q: How does focal loss address class imbalance, and what does the focusing parameter do?**
 
@@ -1003,14 +1003,14 @@ Focal loss multiplies the standard cross-entropy term by a modulating factor, $\
 
 **Q: Contrast hinge loss and logistic loss for a linear classifier.**
 
-Hinge loss, $\max(0,\, 1 - y\,f(x))$ with labels $y \in \{-1, +1\}$, penalizes a point only until it is on the correct side of the margin by at least one unit, then contributes exactly zero. This yields sparse support: only margin-violating and boundary points influence the solution, which is the SVM's defining property, but the output is an uncalibrated score, not a probability. Logistic loss, $\log\!\left(1 + e^{-y\,f(x)}\right)$, never reaches zero; even correctly classified points keep a small residual gradient, and it directly models the log-odds so its outputs are probabilities. Use hinge when you want a max-margin decision boundary and do not need probabilities; use logistic when you need calibrated probability estimates or want gradients everywhere for smoother optimization.
+Hinge loss, $\max(0, 1 - y f(x))$ with labels $y \in \lbrace -1, +1\rbrace $, penalizes a point only until it is on the correct side of the margin by at least one unit, then contributes exactly zero. This yields sparse support: only margin-violating and boundary points influence the solution, which is the SVM's defining property, but the output is an uncalibrated score, not a probability. Logistic loss, $\log\left(1 + e^{-y f(x)}\right)$, never reaches zero; even correctly classified points keep a small residual gradient, and it directly models the log-odds so its outputs are probabilities. Use hinge when you want a max-margin decision boundary and do not need probabilities; use logistic when you need calibrated probability estimates or want gradients everywhere for smoother optimization.
 
 **Q: What is the pinball (quantile) loss and how does it give you quantile regression?**
 
 The pinball loss for a target quantile $\tau$ weights positive and negative residuals asymmetrically,
 
 $$
-L_\tau(y, \hat y) = \begin{cases} \tau\,(y - \hat y) & y \ge \hat y \\ (1 - \tau)\,(\hat y - y) & y < \hat y \end{cases}
+L_\tau(y, \hat y) = \begin{cases} \tau (y - \hat y) & y \ge \hat y \\ (1 - \tau) (\hat y - y) & y < \hat y \end{cases}
 $$
 
 so it charges $\tau$ times the residual when the prediction is too low and $(1 - \tau)$ times the magnitude when it is too high. Minimizing it drives the prediction to the point where the fraction of targets falling below it equals $\tau$, so the fitted value is the conditional $\tau$-quantile rather than the mean. Setting $\tau = 0.5$ recovers MAE (up to a factor of $\tfrac{1}{2}$) and hence the median; setting $\tau = 0.9$ fits the 90th percentile. Train several $\tau$ values (jointly or separately) to produce full predictive intervals without assuming a parametric noise model, which is invaluable when downstream decisions depend on tail behavior such as demand upper bounds or worst-case latency.
@@ -1025,7 +1025,7 @@ Pointwise losses treat ranking as regression or classification on each item's re
 
 **Q: What is label smoothing, mechanically, and why does it help?**
 
-Label smoothing replaces the one-hot target with a soft target that puts $1 - \epsilon$ on the true class and spreads $\epsilon$ uniformly across the remaining $K - 1$ classes, $y_c^{\text{smooth}} = (1 - \epsilon)\,\mathbb{1}[c = c^\star] + \tfrac{\epsilon}{K - 1}\,\mathbb{1}[c \ne c^\star]$, then applies the usual cross-entropy. Because the target for the correct class is now less than one, the model is no longer driven to push its logit to infinity, which prevents the overconfident, large-logit solutions that plain one-hot cross-entropy encourages. This acts as a regularizer that improves calibration and often generalization, and it tightens the geometry of the learned representation by keeping the correct-class logit a bounded margin above the others. The tradeoff is that very aggressive smoothing can wash out genuine confidence and slightly hurt tasks like knowledge distillation that rely on the fine structure of the logits.
+Label smoothing replaces the one-hot target with a soft target that puts $1 - \epsilon$ on the true class and spreads $\epsilon$ uniformly across the remaining $K - 1$ classes, $y_c^{\text{smooth}} = (1 - \epsilon) \mathbb{1}[c = c^\star] + \tfrac{\epsilon}{K - 1} \mathbb{1}[c \ne c^\star]$, then applies the usual cross-entropy. Because the target for the correct class is now less than one, the model is no longer driven to push its logit to infinity, which prevents the overconfident, large-logit solutions that plain one-hot cross-entropy encourages. This acts as a regularizer that improves calibration and often generalization, and it tightens the geometry of the learned representation by keeping the correct-class logit a bounded margin above the others. The tradeoff is that very aggressive smoothing can wash out genuine confidence and slightly hurt tasks like knowledge distillation that rely on the fine structure of the logits.
 
 **Q: What is a proper scoring rule, and why do log-loss and Brier score reward calibration?**
 
@@ -1037,7 +1037,7 @@ Class weighting multiplies each example's loss by a factor $w_c$ inversely relat
 
 **Q: Explain contrastive and triplet losses, and the roles of the margin and temperature.**
 
-Contrastive and triplet losses train an embedding space by geometry rather than by predicting labels: they pull semantically similar examples together and push dissimilar ones apart. Triplet loss takes an anchor $a$, a positive $p$, and a negative $n$ and enforces that the anchor-positive distance is smaller than the anchor-negative distance by at least a margin $m$, $\max\!\left(0,\; \lVert a - p \rVert^2 - \lVert a - n \rVert^2 + m\right)$, so the margin sets how much separation is demanded and prevents the trivial collapse where all embeddings coincide. Contrastive/InfoNCE formulations instead use a softmax over cosine similarities scaled by a temperature $\tau$, $-\log \frac{\exp(\text{sim}(a, p)/\tau)}{\sum_{k}\exp(\text{sim}(a, k)/\tau)}$: a low temperature sharpens the distribution and heavily emphasizes the hardest negatives, while a high temperature softens it and treats negatives more uniformly. Choosing the margin (triplet) or temperature (InfoNCE) trades off how aggressively the model focuses on hard negatives against training stability, and hard-negative mining matters because easy negatives already satisfy the constraint and produce no gradient.
+Contrastive and triplet losses train an embedding space by geometry rather than by predicting labels: they pull semantically similar examples together and push dissimilar ones apart. Triplet loss takes an anchor $a$, a positive $p$, and a negative $n$ and enforces that the anchor-positive distance is smaller than the anchor-negative distance by at least a margin $m$, $\max\left(0,\ \lVert a - p \rVert^2 - \lVert a - n \rVert^2 + m\right)$, so the margin sets how much separation is demanded and prevents the trivial collapse where all embeddings coincide. Contrastive/InfoNCE formulations instead use a softmax over cosine similarities scaled by a temperature $\tau$, $-\log \frac{\exp(\text{sim}(a, p)/\tau)}{\sum_{k}\exp(\text{sim}(a, k)/\tau)}$: a low temperature sharpens the distribution and heavily emphasizes the hardest negatives, while a high temperature softens it and treats negatives more uniformly. Choosing the margin (triplet) or temperature (InfoNCE) trades off how aggressively the model focuses on hard negatives against training stability, and hard-negative mining matters because easy negatives already satisfy the constraint and produce no gradient.
 
 **Q: A model must both classify well and output trustworthy probabilities under heavy imbalance. How do you design the objective?**
 
@@ -1056,7 +1056,7 @@ The loss you optimize is a differentiable surrogate for the metric you actually 
 | Huber | quadratic within $\lvert r\rvert \le \delta$, linear beyond | Yes (bounded influence) | Mean-like, robustified | Want robustness plus stable gradients near zero |
 | Cross-entropy | $-\sum_c y_c \log \hat p_c$ | N/A (classification) | Calibrated class probability | Default for classification; proper scoring rule |
 | Focal | $-(1 - p_t)^\gamma \log p_t$ | N/A (down-weights easy) | Class probability, hard-example focus | Extreme foreground-background imbalance |
-| Hinge | $\max(0,\, 1 - y\,f(x))$ | Partly (zero past margin) | Max-margin decision boundary | Want SVM-style margin, no probabilities needed |
+| Hinge | $\max(0, 1 - y f(x))$ | Partly (zero past margin) | Max-margin decision boundary | Want SVM-style margin, no probabilities needed |
 | Pinball | $\tau$ vs $(1 - \tau)$ weighted residual | Yes (asymmetric $L_1$) | Conditional $\tau$-quantile | Predictive intervals, tail-sensitive decisions |
 
 ## Commonly asked, commonly missed
