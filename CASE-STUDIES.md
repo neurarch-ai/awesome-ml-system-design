@@ -20,6 +20,23 @@ same systems [by company](CASE-STUDIES-BY-COMPANY.md) or [by industry](CASE-STUD
 
 **What they share.** Every system is one two-tower skeleton: an offline item tower embeds the whole catalog into an ANN index, and only the user/query tower runs online, emitting one vector for a single nearest-neighbor lookup before ranking. The real budget goes to two choices: which negatives to train against, and how to keep the index fresh and fast.
 
+**The reference pipeline.** Strip away the product differences and every writeup here walks the same nine stages, from mining pairs out of the log to unioning candidate sources before ranking. The two-tower training loop and the offline-embed / online-lookup split are fixed; the systems below differ only in what they plug into the shaded stages.
+
+```mermaid
+flowchart LR
+  LOG["interaction log"] --> PAIR["build (user, positive-item) pairs"]
+  PAIR --> TRAIN["train two-tower (in-batch negatives + logQ)"]
+  TRAIN --> ITOW["item tower"]
+  TRAIN --> UTOW["user tower (weights -> online service)"]
+  ITOW --> EMBED["embed entire catalog (offline batch)"]
+  EMBED --> BUILD["build / upsert ANN index"]
+  UTOW --> ONLINE["online: embed one user per request"]
+  BUILD --> LOOKUP["ANN nearest-neighbor lookup"]
+  ONLINE --> LOOKUP
+  LOOKUP --> UNION["union + dedup retrieval sources"]
+  UNION --> RANK["to ranking"]
+```
+
 ```mermaid
 flowchart LR
   ITEM["item tower (offline batch)"] --> EMB["catalog embeddings"]
@@ -61,8 +78,17 @@ $$L = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{e^{ s(x_i,y_i)}}{\sum_{j=1}^{B} e^{ 
 **logQ-corrected logit (YouTube, Expedia)**
 $$s^{c}(x_i,y_j) = u(x_i)^{\top} v(y_j) - \log Q(y_j)$$
 
+**Temperature-scaled cosine InfoNCE (Snap)**
+$$\cos(u,v) = \frac{u^{\top} v}{\lVert u\rVert \lVert v\rVert}, \qquad L = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{e^{\cos(u_i,v_i)/\tau}}{\sum_{j=1}^{B} e^{\cos(u_i,v_j)/\tau}}$$
+
+**User-level masked InfoNCE (Pinterest dedup)**
+$$L_i = -\log \frac{e^{s(x_i,y_i)}}{e^{s(x_i,y_i)} + \sum_{j \in \mathcal{N}_i} e^{s(x_i,y_j)}}, \qquad \mathcal{N}_i = \lbrace j : u_j \neq u_i \rbrace$$
+
 **Dot vs Euclidean, magnitude matters (Airbnb)**
 $$u^{\top}v = \lVert u\rVert \lVert v\rVert\cos\theta, \qquad \lVert u-v\rVert^{2} = \lVert u\rVert^{2} + \lVert v\rVert^{2} - 2 u^{\top}v$$
+
+**IVF scan cost, the recall/latency knob (Airbnb)**
+$$C_{\text{scan}} \approx \text{nprobe} \cdot \frac{N}{n_{\text{cells}}}, \qquad \text{recall and latency both rise with nprobe}$$
 
 **Index bytes, full vs 4-bit PQ (Etsy)**
 $$\text{bytes}_{\text{full}} = N d\cdot 4, \qquad \text{bytes}_{\text{PQ}} = N m\cdot\tfrac{4}{8}$$
@@ -83,6 +109,15 @@ quadrantChart
   "Expedia ScaNN": [0.50, 0.70]
   "Snap HNSW": [0.78, 0.80]
 ```
+
+**Interview watch-outs.**
+
+- **Do the towers share weights?** The reflex answer is "yes, to save parameters." Wrong: users and items have different feature distributions, so the towers stay separate; the only thing they share is the output embedding space, enforced by the dot-product loss. Uber sharing a UUID embedding layer is the deliberate exception, not the rule.
+- **Where does the logQ correction go?** People say "rerank the ANN results by subtracting log popularity at serving." Wrong: logQ is subtracted from the logits during training so the embedding space itself is unbiased; serving stays a plain dot-product / cosine lookup with no correction term.
+- **Why not add cross features for accuracy?** Candidates reach for "concatenate user and item early and push through an MLP." Wrong for retrieval: any early crossing makes the score depend on the user, which kills offline precompute and ANN. Early crossing is ranking's job (NCF, cross networks); retrieval must keep the join at a final dot product.
+- **Is high offline recall enough to ship?** The trap is treating recall@k as the decision metric. Right answer: retrieval recall@k is a ceiling on everything downstream, so you measure it in isolation, but offline recall and online engagement do not always move together (Glassdoor saw 40-60% offline versus +5% online), so you gate on an A/B test too.
+- **Bigger batch means more free negatives, so always scale it?** Wrong: request-sorted or user-concentrated batches push the in-batch false-negative rate from near 0% to about 30% (Pinterest), because a user's own engaged items show up as "negatives." The fix is user-level masking of same-user candidates, not simply more batch.
+- **Is HNSW always the right index?** Candidates default to "HNSW, best recall/latency." Wrong when the catalog churns hard or needs filters: Airbnb chose IVF because HNSW's rebuild cost could not absorb price/availability updates and geo filters ran poorly over graph traversal; IVF turns a filter into cheap cluster selection. Match the index to update rate, filtering, and memory, not to a default.
 
 **The systems**
 
@@ -105,6 +140,17 @@ quadrantChart
 ### [Ranking model](topics/02-ranking-model.md) · 15 systems
 
 **What they share.** Every ranker assembles dense numeric features beside sparse ids that pass through embeddings (or a sequence of item embeddings), scores candidates inside a hard latency budget, then either calibrates and blends per-objective scores into a utility or sorts on raw order. What differs is only how interactions are modeled, how many objectives are optimized, and whether the score feeds an auction.
+
+**The reference pipeline.** Strip the branding and every system runs the same skeleton: retrieval hands over a few hundred candidates, features are assembled once for the shared user context and per candidate for item and cross signals, one model batch-scores the set, a post-hoc step calibrates the raw outputs, and a utility combination sorts the list. The interesting engineering is only where each system spends its compute along this spine.
+
+```mermaid
+flowchart LR
+  CAND["candidates from retrieval"] --> FEAT["assemble features: user (once), item + cross (per candidate)"]
+  FEAT --> MODEL["batch-score: DNN / DLRM / GBDT / transformer"]
+  MODEL --> CALIB["calibrate: Platt / isotonic / ECE-monitored"]
+  CALIB --> SCORE["utility = weighted per-objective sum, then sort"]
+  SCORE --> OUT["ordered list"]
+```
 
 ```mermaid
 flowchart TD
@@ -149,6 +195,18 @@ $$\mathrm{Attention}(Q,K,V) = \text{softmax}\Big(\frac{Q K^{\top}}{\sqrt{d_k}}\B
 
 $$\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} \big| \mathrm{acc}(b) - \mathrm{conf}(b) \big|, \qquad \mathrm{bid} = v \cdot \hat p$$
 
+The multi-task body optimizes a weighted sum of per-head log losses, so one gradient signal trains every objective and the head weights $w_k$ trade off how much each outcome counts:
+
+$$L = \sum_{k=1}^{K} w_k \Big( -\frac{1}{N} \sum_{i=1}^{N} \big[ y_{ik} \log \hat p_{ik} + (1 - y_{ik}) \log (1 - \hat p_{ik}) \big] \Big)$$
+
+The learning-to-rank systems (Airbnb, Yelp) do not minimize per-item loss at all; the LambdaMART gradient between a more-relevant item $i$ and a less-relevant item $j$ is scaled by the ranking-metric change from swapping them, so pairs that move NDCG most get the largest pull:
+
+$$\lambda_{ij} = \frac{-\sigma}{1 + \exp\big(\sigma (s_i - s_j)\big)} \big| \Delta \mathrm{NDCG}_{ij} \big|$$
+
+The MMoE/PLE rankers (Spotify, Snap) route a shared expert pool through per-task softmax gates, so each objective $k$ mixes the experts $f_i$ its own way before its tower $h_k$, which is what softens conflict between negatively correlated tasks:
+
+$$g^k(x) = \text{softmax}(W_k x), \qquad y_k = h_k\Big( \sum_{i=1}^{n} g^k(x)_i f_i(x) \Big)$$
+
 ```mermaid
 quadrantChart
   title "Model complexity vs offline AUC lift"
@@ -170,6 +228,20 @@ quadrantChart
   "Snap MMoE DCN-v2": [0.82, 0.80]
   "Spotify CAMoE DCN-v2": [0.88, 0.82]
 ```
+
+**Interview watch-outs.** The traps that sink ranking answers, with the wrong reflex and the correction:
+
+- **Where the interaction sits.** Trap: "the deep MLP will learn the crosses." Wrong answer: feed concatenated embeddings straight into a top MLP and call it DLRM. Right answer: take explicit pairwise dot products after the embeddings and bottom MLP, before the top MLP; that structured second-order layer is the whole point, and the bottom MLP output width must equal the embedding dimension or the dot products are undefined.
+
+- **Offline up, online flat.** Trap: treating a higher AUC as a ship signal. Wrong answer: promote the model because the offline metric moved. Right answer: suspect the training-to-serving seam first (feature skew, label leakage via non-point-in-time joins, position bias, or an offline metric that does not match the online objective), then gate on an A/B test on the business metric.
+
+- **Calibration versus ordering.** Trap: assuming a good ranker gives good probabilities. Wrong answer: send raw scores into an auction or a cross-task blend. Right answer: ordering is enough only when you just sort; the moment a score feeds a bid, a threshold, or a weighted utility, add a post-hoc Platt or isotonic step and monitor ECE, because negative sampling and stratified training both distort the base rate.
+
+- **Multi-task as a free win.** Trap: adding heads always helps. Wrong answer: share one body across weakly or negatively correlated objectives and expect every task to improve. Right answer: shared representation helps correlated tasks, but conflict can let one drown another, so split towers or use MMoE/PLE gating and watch per-task metrics; and keep the utility weights outside the loss so the business can retune without retraining.
+
+- **Id embeddings everywhere.** Trap: an embedding table for every categorical, including item id. Wrong answer: learn per-listing id embeddings when each id has a handful of labels (Airbnb: a listing books at most about 365 times a year). Right answer: id embeddings need dense repeated exposure; for sparse-per-id or churning-vocabulary settings, lean on content, context, and hashing, and warm-start often so fresh ids do not go out-of-vocabulary.
+
+- **Latency treated as an afterthought.** Trap: pick the architecture, then worry about serving. Wrong answer: score each candidate through a full monolithic tower. Right answer: state the budget out loud (say 500 candidates in about 20 ms, well under 0.1 ms each) and design backward: batch the forward pass, compute the shared user tower once and reuse it across candidates, and keep the per-candidate cost flat as candidate count grows.
 
 **The systems**
 
@@ -194,6 +266,26 @@ quadrantChart
 ### [Sequential & personalized recommendation](topics/03-sequential-recommendation.md) · 12 systems
 
 **What they share.** Every system turns an ordered list of user interactions into item plus side-feature embeddings, runs a sequence model that weighs which past actions matter now, and pools the result into one user-intent vector that feeds a ranking head or retrieval tower. They diverge on the encoder, how much history they carry, how fresh the user state is, and whether the model is per-surface or a shared foundation.
+
+**The reference pipeline.** Before the divergence, here is the canonical sequential-recsys skeleton every one of these systems is a variation on: an offline path that builds causal sequences and trains the encoder, and an online path that keeps the sequence fresh through streaming ingest and encodes it per request. The one non-negotiable is that both paths build the sequence with identical logic, or the model serves on a distribution it never trained on.
+
+```mermaid
+flowchart TD
+  LOG["interaction logs"] --> SEQB["build per-user ordered sequences<br/>(dedup, filter, cap recent N)"]
+  SEQB --> PAIR["causal (sequence, next-item) pairs"]
+  PAIR --> TRAIN["train sequence encoder<br/>(self-attention over history)"]
+  TRAIN --> GATE{"offline gate?"}
+  GATE -->|"recall@k, NDCG pass"| DEPLOY["push encoder + item embeddings"]
+  ACT["user latest action"] -->|"streaming ingest"| STORE["fast online store<br/>(recent events keyed by user)"]
+  SEQB -.shared build logic.-> STORE
+  DEPLOY --> ENC["online sequence encoder"]
+  STORE --> ENC
+  ENC --> UV["user intent vector"]
+  LT["long-term / batch user embedding"] -.optional fusion.-> UV
+  UV --> HEAD{"funnel position?"}
+  HEAD -->|"retrieval"| ANN["user tower into ANN candidate gen"]
+  HEAD -->|"ranking"| RANK["ranking feature into CTR / engagement head"]
+```
 
 ```mermaid
 flowchart TD
@@ -234,9 +326,15 @@ flowchart TD
 
 $$\textbf{attention over history:}\quad z = \sum_{t=1}^{N} \text{softmax}_t\left(\frac{Q K_t^\top}{\sqrt{d}}\right) V_t$$
 
-$$\textbf{target-attn (DIN pool):}\quad v_u(c) = \sum_{t=1}^{N} a(e_t, c) e_t \quad\text{(no softmax norm)}$$
+$$\textbf{time-aware score (recency, not just order):}\quad \alpha_t = \text{softmax}_t\left(\frac{Q K_t^\top}{\sqrt{d}} + \phi(\Delta_t)\right)$$
 
-$$\textbf{lifelong two-stage (TWIN):}\quad z = \text{ESU}\left(\text{GSU}(c, \lbrace C_k\rbrace ), c\right),\quad |seq| \sim 10^{6}$$
+$$\textbf{target-attn (DIN pool):}\quad v_u(c) = \sum_{t=1}^{N} a(e_t, c)\, e_t \quad\text{(no softmax norm)}$$
+
+$$\textbf{lifelong two-stage (TWIN):}\quad z = \text{ESU}\left(\text{GSU}(c, \lbrace C_k\rbrace ), c\right),\quad \Vert seq \Vert \sim 10^{6}$$
+
+$$\textbf{sampled-softmax retrieval:}\quad \mathcal{L} = -\log \frac{\exp(u^\top v_{+})}{\exp(u^\top v_{+}) + \sum_{j \in \mathcal{N}} \exp(u^\top v_{j})}$$
+
+$$\textbf{all-action loss (PinnerFormer):}\quad \mathcal{L} = \frac{1}{\Vert W \Vert}\sum_{f \in W} \ell(u, v_{f}) \quad\text{(window of future actions, not just t+1)}$$
 
 $$\textbf{NDCG at k:}\quad \text{NDCG}@k = \frac{1}{Z}\sum_{i=1}^{k} \frac{2^{rel_i}-1}{\log_2(i+1)}$$
 
@@ -263,6 +361,15 @@ quadrantChart
   "Airbnb": [0.35, 0.50]
 ```
 
+**Interview watch-outs.**
+
+- **Aggregates lose the signal.** The classic wrong answer is a bag of lifetime category counts, which erases order and recency, the two things that carry intent. A user who just switched from cooking to travel looks identical to a steady cooking fan under counts. Instacart found that shuffling sequence order drops recall 10 to 45%, which is the direct evidence that order is the signal.
+- **Attention vs RNN, and why.** Interviewers expect you to justify self-attention over recurrence: it weighs arbitrary past actions directly and parallelizes, without the sequential bottleneck of an RNN. Naming that bottleneck (and that Spotify CoSeRNN accepts it because it only reacts at session granularity) is the point.
+- **Position is not time.** Injecting a plain positional index (1st, 2nd, 3rd action) is only half right. Two actions a second apart differ from two a month apart, so strong answers encode the actual time gaps between events so recency is weighted, not just order. This is the single detail most candidates skip.
+- **Training-serving skew is the headline failure mode.** The user sequence is built by a batch pipeline offline and a streaming pipeline online; if their dedup, filtering, or tie-ordering of simultaneous events differ, the model serves on a distribution it never trained on. Say explicitly that the construction logic must be shared code, not two implementations.
+- **DIN is not a sequence model.** DIN's activation pool deliberately has no softmax normalization (it preserves interest intensity) and ignores order entirely; BST is what adds order. Claiming DIN models sequence order, or that its attention is normalized, is a common and telling miss.
+- **Cold start is degradation, not a second model.** A new user degrades down the same model: session-only sequence, then content features over id embeddings, then popularity and context fallback. Also cap sequence length for tail latency on power users, and watch a diversity guardrail for the recency filter-bubble, since that failure never shows up in offline recall.
+
 **The systems**
 
 - **Alibaba** [Behavior Sequence Transformer for E-commerce Recommendation](https://arxiv.org/abs/1905.06874): A transformer over the user behavior sequence lifts CTR in Taobao ranking. *(product design)*
@@ -283,6 +390,22 @@ quadrantChart
 ### [Ads CTR prediction](topics/10-ads-ctr-prediction.md) · 11 systems
 
 **What they share.** Every system pulls eligible ads, scores each with a sparse-embedding model into a calibrated pCTR, and feeds `eCPM = bid x pCTR` into the auction; they diverge only on how feature interactions are carried and how calibration is defended as labels drift and conversions land late.
+
+**The reference pipeline.** Strip away the model-family and calibration choices and every one of these systems is the same skeleton: a request resolves a candidate set, a sparse-embedding net produces a raw pCTR, a calibration step maps that score onto true rates, and the auction turns the calibrated probability into money via eCPM. Delayed conversions and the show-only-what-you-scored logging policy feed the next training cycle.
+
+```mermaid
+flowchart LR
+  REQ["ad request<br/>(user + context)"] --> CAND["candidate ads<br/>(targeting / eligibility)"]
+  CAND --> FEAT["assemble features<br/>(sparse ids + dense + crosses)"]
+  FEAT --> MODEL["pCTR model<br/>(embeddings + interactions)"]
+  MODEL --> CAL["calibration<br/>(map raw score to true rate)"]
+  CAL --> ECPM["eCPM = bid x pCTR"]
+  ECPM --> AUCT{"clears reserve?"}
+  AUCT -->|"yes"| SERVE["served ad<br/>(second-price charge)"]
+  AUCT -->|"no"| NOFILL["no fill / house ad"]
+  SERVE --> LOG["log impression + click<br/>+ (delayed) conversion"]
+  LOG -.->|"late labels + correction"| FEAT
+```
 
 ```mermaid
 flowchart LR
@@ -325,6 +448,12 @@ $$\textbf{expected calibration error} : \quad \text{ECE} = \sum_{b=1}^{B} \frac{
 
 $$\textbf{fake-negative weighted loss} : \quad \mathcal{L}_w = -\frac{1}{N}\sum_{i=1}^{N} w_i \big[ y_i \log \hat{p}_i + (1-y_i)\log(1-\hat{p}_i) \big]$$
 
+$$\textbf{second-price charge} : \quad \text{price} = \frac{\text{eCPM}_{\text{runner up}}}{1000 \cdot \hat{p}(\text{click})}$$
+
+$$\textbf{Platt-scaled calibration} : \quad q = \sigma(a \cdot s + b) = \frac{1}{1 + e^{-(a s + b)}}$$
+
+$$\textbf{delayed-feedback observed positive} : \quad \Pr(\text{convert by elapsed } e) = p(x)\big(1 - e^{-\lambda(x) e}\big)$$
+
 ```mermaid
 quadrantChart
   title "Calibration gain vs system complexity"
@@ -343,6 +472,15 @@ quadrantChart
   "Instacart transfer": [0.50, 0.78]
   "LinkedIn 3-tower": [0.82, 0.85]
 ```
+
+**Interview watch-outs.** The traps that separate a passing answer from a stalled one, each as trap, the wrong reflex, and the right move.
+
+- **Calibration vs ranking quality.** Trap: the interviewer notes AUC went up but revenue fell. Wrong: chase a fancier interaction model to lift AUC further. Right: suspect calibration first, because AUC only reads order while the auction prices off the absolute pCTR, so a shifted probability distribution mis-prices every eCPM even at identical AUC.
+- **Where the parameters live.** Trap: asked to size and shard the model. Wrong: fixate on the top MLP FLOPs and dense-layer parallelism. Right: name the embedding tables as the billions-of-parameters bottleneck, put model parallelism on the tables and data parallelism on the MLP, and bound the open-ended id space with feature hashing plus accepted collisions.
+- **Delayed conversions as negatives.** Trap: a purchase lands three days after the click. Wrong: label every not-yet-converted click as a confirmed negative and train immediately. Right: treat it as an unresolved label, use a delay-aware or fake-negative weighted loss (or a bounded attribution window with a tail correction), since counting it negative biases pCVR down and under-bids real value.
+- **The logging feedback loop.** Trap: asked whether training on your own served clicks is circular. Wrong: wave it away because AUC on the logged set looks healthy. Right: acknowledge the loop, since the model only ever sees outcomes for ads it chose to show, and break it with exploration (off-policy or randomized traffic), inverse-propensity weighting, and position-bias correction.
+- **Naming the interaction models apart.** Trap: DeepFM vs DCN vs DLRM vs Wide-and-Deep. Wrong: call them interchangeable deep CTR models. Right: distinguish them by how interactions are carried, FM-plus-deep in parallel over shared embeddings (DeepFM), explicit bounded-degree cross layers (DCN), explicit pairwise dot products before a top MLP (DLRM), linear memorization plus deep generalization branches (Wide-and-Deep).
+- **Calibration cadence vs retrain cadence.** Trap: campaigns and demand shift hourly but the heavy net retrains daily. Wrong: retrain the whole DNN more often to chase freshness. Right: decouple the two, recalibrate with a lightweight layer (Platt, isotonic, or a shallow tower) on a fast cadence and partially refresh id embeddings, so calibration tracks drift without the cost of a full retrain, and monitor sliced ECE not one global number.
 
 **The systems**
 
@@ -364,7 +502,25 @@ quadrantChart
 
 ## Search ranking, side by side
 
-**What they share.** Every system splits search into a cheap retrieval stage that fetches candidates and a learned ranking stage that orders them, and all struggle with the same core problem: the training labels (clicks, bookings) are biased by where a result was shown, so relevance and exposure get tangled.
+**What they share.** Every system splits search into a cheap retrieval stage that fetches candidates and a learned ranking stage that orders them, and all struggle with the same core problem: the training labels (clicks, bookings) are biased by where a result was shown, so relevance and exposure get tangled. Underneath the product-specific detail they run one skeleton: understand the query, retrieve with a lexical arm and an embedding arm, then score the survivors with a learning-to-rank model trained on fused human judgments plus debiased engagement.
+
+**The reference pipeline.** The canonical search stack is four stages in sequence. A raw query is first understood (intent, spelling, expansion, rewrites), which drives two retrieval arms in parallel (BM25 over an inverted index and ANN over embeddings). The arms are unioned and deduped into roughly a thousand candidates, a learning-to-rank model orders them, and an optional re-rank pass adds diversity and freshness before the top results render. Engagement plus human judgments flow back as labels that retrain the ranker.
+
+```mermaid
+flowchart TD
+  Q["query"] --> QU["query understanding<br/>(intent, spell, expansion, rewrite)"]
+  QU --> LEX["lexical retrieval<br/>(BM25, inverted index)"]
+  QU --> EMB["embedding retrieval<br/>(ANN over two-tower vectors)"]
+  LEX --> U["union + dedupe<br/>(~1,000 candidates)"]
+  EMB --> U
+  U --> LTR["learning-to-rank<br/>(pairwise / listwise)"]
+  LTR --> RR["re-rank<br/>(diversity, freshness)"]
+  RR --> R["ranked results (~10 shown)"]
+  R -.engagement + judgments.-> LBL["debiased relevance labels"]
+  LBL -.train.-> LTR
+```
+
+Where teams diverge is which arm dominates and where the labeling budget goes, not the shape.
 
 ```mermaid
 flowchart TD
@@ -398,19 +554,31 @@ flowchart TD
 
 **The math that separates them.** Pointwise learning-to-rank (Yelp) fits each candidate independently against a graded label:
 
-$$L_{point} = \sum_{i} \left( f(x_i) - y_i \right)^2$$
+$$L_{point} = \sum_{i} \left( f(x_i) - y_i \right)^{2}$$
 
-A two-tower retrieval model (Spotify, Pinterest) with in-batch negatives maximizes the softmax over batch positives, so a batch of size $B$ supplies $B^2 - B$ negatives for free:
+A two-tower retrieval model (Spotify, Pinterest) with in-batch negatives maximizes the softmax over batch positives, so a batch of size $B$ supplies $B^{2} - B$ negatives for free:
 
-$$L_{tower} = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{\exp(\text{sim}(q_i, d_i)/\tau)}{\sum_{j=1}^{B} \exp(\text{sim}(q_i, d_j)/\tau)}$$
+$$L_{tower} = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{\exp\left(\text{sim}(q_i, d_i)/\tau\right)}{\sum_{j=1}^{B} \exp\left(\text{sim}(q_i, d_j)/\tau\right)}$$
 
 DCN V2 (Google) stacks explicit feature crosses where each layer multiplies against the original input, so interaction order grows with depth $l$:
 
-$$x_{l+1} = x_0 \odot (W_l x_l + b_l) + x_l$$
+$$x_{l+1} = x_0 \odot \left(W_l x_l + b_l\right) + x_l$$
 
-Position-debiased training (GetYourGuide, Amazon) weights each logged label by the inverse propensity of its slot, decoupling relevance from exposure:
+The lexical arm scores documents with BM25, which rewards term frequency $f(t, D)$ with saturation and discounts common terms by inverse document frequency, normalized by document length $|D|$ against the average $L_{avg}$:
 
-$$L_{IPS} = \sum_{i} \frac{y_i}{p(\text{rank}_i)} \ell\big(f(x_i), y_i\big)$$
+$$\text{BM25}(Q, D) = \sum_{t \in Q} \text{IDF}(t) \cdot \frac{f(t, D) \cdot (k_1 + 1)}{f(t, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{L_{avg}}\right)}$$
+
+When the two retrieval arms are fused without comparable score scales (Instacart), reciprocal rank fusion combines them by rank alone, where $r_a(d)$ is the rank of document $d$ in arm $a$ and $k$ (often $60$) damps the top slots:
+
+$$\text{RRF}(d) = \sum_{a \in \{\text{lex}, \text{sem}\}} \frac{1}{k + r_a(d)}$$
+
+The graded, position-weighted offline metric is NDCG, where DCG discounts each graded relevance $rel_i$ by the log of its position and IDCG is the DCG of the ideal ordering, so the ratio lands in $[0, 1]$:
+
+$$\text{DCG@}K = \sum_{i=1}^{K} \frac{2^{rel_i} - 1}{\log_{2}(i + 1)}, \qquad \text{NDCG@}K = \frac{\text{DCG@}K}{\text{IDCG@}K}$$
+
+Position-debiased training (GetYourGuide, Amazon) weights each logged label by the inverse propensity $p(\text{rank}_i)$ of its slot, decoupling relevance from exposure:
+
+$$L_{IPW} = \sum_{i} \frac{y_i}{p(\text{rank}_i)} \, \ell\left(f(x_i), y_i\right)$$
 
 ```mermaid
 quadrantChart
@@ -434,6 +602,15 @@ quadrantChart
   "Amazon bandit": [0.88, 0.68]
 ```
 
+**Interview watch-outs.**
+
+- **Position bias is the headline trap.** Naive click training teaches the model to predict rank, not relevance, and locks in whatever order you already shipped. Reach for inverse-propensity weighting or position-as-a-train-time-feature (fixed at serving), and inject a little randomization so you can keep estimating propensities. GetYourGuide bakes it into a position-discounted feature; Amazon uses controlled exploration.
+- **Name your label source and its bias.** Clicks are abundant but exposure-biased, human judgments are clean but scarce and slow, conversions and bookings are truthful but sparse and optimize buying rather than relevance. The strong answer fuses them: human judgments anchor and validate, engagement provides volume and freshness.
+- **Offline NDCG can lie.** It is computed against labels that are themselves biased clicks plus a thin layer of human judgments, so a lift there routinely fails to survive online. Wire NDCG as a fast offline pre-gate and make the ship decision an interleaving experiment or an A/B test on engagement and reformulation rate.
+- **Point-in-time correctness is load-bearing.** Bookings and clicks happen after the ranking event, so a join by key alone leaks future labels into features. Assemble the training set with point-in-time joins (GetYourGuide, LinkedIn both flag this) or the offline metric is inflated.
+- **Match the loss to the metric.** Pointwise regression optimizes absolute scores everywhere, including deep in the list where it does not matter; the metric is about order and is position-weighted, so pairwise (RankNet) or listwise (LambdaMART targets NDCG directly) is the senior default. Yelp gets away with pointwise only because its task is essentially match-or-not per candidate.
+- **Neither retrieval arm is optional.** Lexical alone misses synonyms and paraphrases (the vocabulary gap); semantic alone drifts on rare terms, exact strings, and product codes. Fuse both, and normalize scores or fuse by rank (RRF) before the ranker sees a mixed set.
+
 **The systems**
 
 - **Wang et al.** [DCN V2: Improved Deep & Cross Network](https://arxiv.org/abs/2008.13535): Explicit, efficient feature crosses in a ranking model used at web scale. *(ranking model)*
@@ -456,6 +633,27 @@ quadrantChart
 ### [Fraud & anomaly detection](topics/08-fraud-and-anomaly-detection.md) · 16 systems
 
 **What they share.** Every team scores a rare-positive fraud signal over engineered features and then acts under a cost-asymmetric threshold. They diverge on model family, how much they lean on labels, whether they reason over an entity graph, and what action the score triggers.
+
+**The reference pipeline.** Strip the branding and every system is the same funnel: an event lands, real-time features (velocity aggregates plus graph and entity signals over shared devices, cards, and addresses) are assembled, a model scores it, a cost-sensitive threshold turns the score into allow, block, or route-to-review, analysts work the borderline queue, and their verdicts plus settled outcomes flow back as labels. The only fast feedback is the human queue; the ground-truth chargeback label closes the loop weeks later.
+
+```mermaid
+flowchart TD
+  EV["transaction / event<br/>(amount, device, merchant, geo)"] --> FEAT["real-time features<br/>(velocity aggregates + graph / entity signals)"]
+  FEAT --> MODEL["model<br/>(supervised classifier and/or anomaly detector)"]
+  MODEL --> THRESH{"cost-sensitive threshold"}
+  THRESH -->|"low"| ALLOW["allow"]
+  THRESH -->|"high"| BLOCK["block / step-up auth"]
+  THRESH -->|"borderline"| REVIEW["route to review"]
+  REVIEW --> HUMAN["human review<br/>(analyst verdict)"]
+  HUMAN --> LABELS["label store"]
+  ALLOW --> OUTCOME["outcome arrives later<br/>(chargeback / dispute, weeks)"]
+  BLOCK --> OUTCOME
+  OUTCOME --> LABELS
+  LABELS -->|"fast: review verdicts"| MODEL
+  LABELS -->|"slow: settled chargebacks"| MODEL
+```
+
+The teardowns below are variations on this skeleton: they swap the model box, decide how much of the feature box is graph versus per-transaction, and change what the threshold branches into.
 
 ```mermaid
 flowchart TD
@@ -492,7 +690,23 @@ flowchart TD
 
 **Cost-asymmetric operating point (shared by all).** Choose the threshold that minimizes expected cost, not error rate:
 
-$$L(\tau) = c_{FP} \mathrm{FP}(\tau) + c_{FN} \mathrm{FN}(\tau), \qquad \tau^{\star} = \arg\min_{\tau} L(\tau)$$
+$$L(\tau) = c_{FP} \cdot \mathrm{FP}(\tau) + c_{FN} \cdot \mathrm{FN}(\tau), \qquad \tau^{\star} = \arg\min_{\tau} L(\tau)$$
+
+**Cost-optimal threshold in closed form (why 0.5 is wrong).** For a calibrated probability, block when the expected cost of allowing exceeds the expected cost of blocking, which reduces to a fixed probability cutoff:
+
+$$\text{block when } p(\text{fraud} \mid x) \; \ge \; \frac{c_{FP}}{c_{FP} + c_{FN}}, \qquad \tau^{\star} = \frac{c_{FP}}{c_{FP} + c_{FN}}$$
+
+When a missed fraud costs far more than a blocked good user (large $c_{FN}$), the cutoff drops well below 0.5 and the system catches more at the price of more false alarms.
+
+**PR-AUC (average precision), the metric that survives a 0.2 percent base rate.** Summarize the precision-recall curve as a recall-weighted sum of precision, which ROC-AUC cannot do once the true-negative mass dwarfs the positives:
+
+$$\mathrm{AP} = \sum_{k} \left( R_k - R_{k-1} \right) \cdot P_k, \qquad P_k = \frac{\mathrm{TP}_k}{\mathrm{TP}_k + \mathrm{FP}_k}, \quad R_k = \frac{\mathrm{TP}_k}{\mathrm{TP}_k + \mathrm{FN}_k}$$
+
+**Focal loss (down-weight the easy legit majority).** An alternative to resampling that shrinks the loss on well-classified examples so the rare fraud class dominates the gradient:
+
+$$\mathrm{FL}(p_t) = -\, \alpha_t \, \left( 1 - p_t \right)^{\gamma} \log(p_t), \qquad p_t = \begin{cases} p & y = 1 \\ 1 - p & y = 0 \end{cases}$$
+
+The modulating factor $(1 - p_t)^{\gamma}$ goes to zero for confident correct predictions, so an easy legitimate transaction contributes almost nothing while a hard or misclassified fraud keeps full weight.
 
 **Airbnb three-action loss (friction as a middle option).** A friction term recovers good users that a hard block would have lost:
 
@@ -530,6 +744,15 @@ quadrantChart
   "Airbnb friction": [0.3, 0.65]
 ```
 
+**Interview watch-outs.** The traps that separate a leaderboard answer from a systems answer:
+
+- **Imbalance kills accuracy.** At a 0.2 percent base rate a "never fraud" model scores 99.8 percent and catches nothing. Lead with PR-AUC plus precision and recall at the operating point, handle the skew with class weights or focal loss before reaching for SMOTE, and always evaluate on the true base rate, never on a rebalanced set.
+- **Label delay poisons train and eval.** Chargebacks land 30 to 120 days late, so recent transactions have no mature label. Respect a maturation window, treat fast review verdicts as a leading indicator, reconcile against settled labels, and never treat unmatured recent data as legitimate.
+- **The adversary makes drift the default.** Fraud shifts on purpose the moment a tactic stops working, so a great model decays as steady state. Expect short retrain cadence, input and score-distribution drift alarms as a safety system, and an anomaly path for attacks with no labels yet.
+- **Calibration gates the threshold.** The cost-optimal cutoff $c_{FP}/(c_{FP}+c_{FN})$ only holds if the score is a true probability. Joint logits (wide-and-deep), tree ensembles, and resampled training all distort calibration, so calibrate before you threshold on cost.
+- **The block-side blind spot.** You only see chargebacks on transactions you allowed; blocked-good transactions never generate a label, so the model can never learn it was wrong to block. Mitigate with a small randomized allow-through hold-out and lean on review verdicts.
+- **Graph edges carry noise.** Shared-attribute edges expose rings but incidental shared identifiers (public Wi-Fi, a recycled IP) inflate false links. Prune high-degree nodes, bound traversal depth for the p99 budget, and keep node features in rather than trusting topology alone.
+
 **The systems**
 
 - **Chawla et al.** [SMOTE: Synthetic Minority Over-sampling Technique](https://arxiv.org/abs/1106.1813): the classic approach to extreme class imbalance, synthesizing minority samples instead of naive oversampling. *(class imbalance)*
@@ -554,6 +777,29 @@ quadrantChart
 ### [Content moderation and trust and safety](topics/16-content-moderation.md) · 11 systems
 
 **What they share.** Every system scores user content or accounts for a policy violation and must hold a fixed precision floor, because a false positive silences a real user or blocks a legitimate invite. They diverge on modality, whether the decision is a learned classifier or a hash-match, whether it fires before or after the content spreads, and where the human sits.
+
+**The reference pipeline.** Strip away the company-specific choices and every stack above is the same funnel: hash-match the known mass, run a per-policy classifier on the novel tail, let a policy engine turn scores into actions, route the uncertain middle to humans, and feed every human decision back as a label. This is the canonical shape each teardown is a variation on.
+
+```mermaid
+flowchart TD
+    A[Incoming content or account] --> B{Known-bad fingerprint?}
+    B -->|hash hit| C[Auto-action plus report if legally required]
+    B -->|no match| D[Per-policy classifier by modality]
+    D --> E[Policy engine: score plus threshold plus context]
+    E -->|confident harm| F[Auto-enforce]
+    E -->|confident benign| G[Allow]
+    E -->|borderline or high severity| H[Human review queue, priority ranked]
+    H --> I[Reviewer decision]
+    I --> J[Enforce or restore on appeal]
+    I --> K[Label store]
+    C --> K
+    K --> L[Retraining pipeline]
+    L --> D
+    K --> M[Confirmed items grow the hash set]
+    M --> B
+```
+
+**Where they diverge.**
 
 ```mermaid
 flowchart TD
@@ -587,17 +833,27 @@ flowchart TD
 | Proactive vs reactive | Proactive at send or publish (Slack, Nextdoor, Bumble, LinkedIn proactive DNN), reactive on engagement (LinkedIn viral, Pinterest online-plus-batch) | Whether you can score before harm reaches an audience, or must watch the spread signal |
 | Human routing | Auto-enforce (Slack, Bumble, Nextdoor), prioritize-then-review (Google, Pinterest, Roblox), challenge or appeal (LinkedIn, Roblox multimodal) | The cost of a wrong auto-action versus the volume a human queue can absorb |
 
-**The math that separates them.** Each team fixes a precision floor and maximizes recall under it, since false positives block real users:
+**The math that separates them.** Each team fixes a precision floor and maximizes recall under it, since false positives block real users. Writing the operating point as a constrained argmax over the decision threshold makes the per-policy floor explicit:
 
-$$\max_{\tau}\ \text{Recall}(\tau) \quad \text{s.t.}\quad \text{Precision}(\tau) \ge P_{\min}^{(\text{policy})}$$
+$$\tau^{\star} \;=\; \operatorname*{arg\,max}_{\tau}\ \operatorname{Recall}(\tau) \qquad \text{subject to}\qquad \operatorname{Precision}(\tau)\ \ge\ P_{\min}^{(\text{policy})}$$
+
+where precision and recall come from the confusion counts at that threshold:
+
+$$\operatorname{Precision}(\tau) \;=\; \frac{tp(\tau)}{tp(\tau)+fp(\tau)}, \qquad \operatorname{Recall}(\tau) \;=\; \frac{tp(\tau)}{tp(\tau)+fn(\tau)}$$
+
+The floor itself is not arbitrary. It falls out of a cost-weighted objective in which a missed harm and a false flag carry very different weights, and severe policies set the miss cost orders of magnitude above the false-flag cost:
+
+$$\tau^{\star} \;=\; \operatorname*{arg\,min}_{\tau}\ \Big[\, c_{fn}\cdot fn(\tau) \;+\; c_{fp}\cdot fp(\tau) \,\Big], \qquad \frac{c_{fn}}{c_{fp}} \;\gg\; 1 \ \text{ for CSAM, terrorism, imminent violence}$$
+
+A finite human queue turns routing into a second constrained problem: rank the uncertain middle by expected damage so scarce reviewer-minutes land on the worst items first:
+
+$$\operatorname{Priority}(x) \;=\; \operatorname{Severity}(\text{policy})\ \times\ \operatorname{Reach}(x), \qquad \text{review in order of decreasing } \operatorname{Priority}$$
 
 Slack judges the blocker by the acceptance rate of blocked invites, a proxy for how much of what it blocked was actually legitimate:
 
-$$\text{FalseBlockProxy} = \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} = 0.03 \ \ \text{vs}\ \ 0.70 \ \text{under manual rules}$$
+$$\operatorname{FalseBlockProxy} \;=\; \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} \;=\; 0.03 \quad \text{versus}\quad 0.70 \ \text{ under manual rules}$$
 
-Under a skewed base rate (Bumble at 0.1 percent positives) accuracy is useless, so the operating point is set on the precision-recall curve instead:
-
-$$\text{Precision} = \frac{tp}{tp + fp}, \qquad \text{Recall} = \frac{tp}{tp + fn}$$
+Under a skewed base rate (Bumble at 0.1 percent positives) accuracy is useless: a model that flags nothing scores 99.9 percent, so the operating point is set on the precision-recall curve, never on accuracy.
 
 ```mermaid
 quadrantChart
@@ -616,6 +872,15 @@ quadrantChart
     "Roblox voice": [0.55, 0.40]
     "Google CSAI match": [0.60, 0.20]
 ```
+
+**Interview watch-outs.**
+
+- **State the precision floor before any model.** The objective is recall at a fixed per-policy precision floor, not accuracy and not blind F1. A single accuracy or AUC number on skewed data (Bumble at 0.1 percent positives) is the fastest way to fail the signal check; report recall at precision P per policy instead.
+- **Auto-action only the confident tail.** The floor is high for auto-enforce policies and the uncertain middle routes to humans. CSAM does not auto-action on a classifier score at all: it hashes for known material and routes novel content to expert review, because the false-positive cost is legally unacceptable.
+- **Assume adversarial drift.** The threat model is non-stationary. A sudden drop in a policy's flag rate is as likely to be a successful new evasion as a genuine drop in harm, so alert on both directions. Defenses are process (adversarial augmentation, continuous retraining on fresh labels, perceptual hashing, red-teaming), not one trick.
+- **Treat the human loop as the core, not a fallback.** Every reviewer decision is a gold label drawn from exactly the hard distribution the models miss. Reviewer capacity is the real ceiling, so model precision and queue load are coupled: over-flagging directly starves the queue. Priority-rank by severity times reach.
+- **Guard the audit sample.** If you only label the uncertain middle you routed to humans, you can no longer measure true recall on the full distribution. Keep a random, independently labeled audit stream and watch for feedback-loop poisoning via mass false-reporting.
+- **Own the over-censorship failure.** At scale even a low false-positive rate silences a large absolute number of real users and floods appeals. Handle borderline content (satire, reclaimed slurs, counter-speech, news, educational nudity) with soft enforcement or pre-post nudges rather than removal, and make appeals fast, since a restored item is a confirmed false positive and a free label.
 
 **The systems**
 
@@ -636,6 +901,20 @@ quadrantChart
 ### [Speech and audio](topics/17-speech-and-audio.md) · 11 systems
 
 **What they share.** Every system captures 16 kHz audio, frames it, and turns it into log-mel features before a task-specific head. They diverge on causality (can it see future audio), where compute runs, and which metric gates release.
+
+**The reference pipeline.** Strip away the task-specific heads and every recognizer walks the same canonical ASR path: raw audio becomes frames, frames become features, an acoustic or sequence model scores them, and a decoder turns scores into text. Streaming and batch differ only in whether the model can see future frames before the decoder commits.
+
+```mermaid
+flowchart TD
+  A[Mic 16 kHz waveform] --> B[Frame + window, 10 to 25 ms hops]
+  B --> C[Feature: log-mel spectrogram or raw-waveform encoder]
+  C --> D[Acoustic / sequence model: CTC, RNN-T, or Conformer seq2seq]
+  D --> E{Causal?}
+  E -- streaming, no future frames --> F[Greedy or small-beam decode, emit partials]
+  E -- batch, full utterance --> G[Beam search decode, optional external LM]
+  F --> H[Transcript + endpoint]
+  G --> I[Transcript, punctuation, casing]
+```
 
 ```mermaid
 flowchart TD
@@ -663,11 +942,21 @@ flowchart TD
 
 $$\textbf{Word error rate:}\quad \mathrm{WER} = \frac{S + I + D}{N}$$
 
+where $S$, $I$, $D$ are substituted, inserted, and deleted words and $N$ is reference-word count. Character error rate swaps words for characters and is the fairer cross-language signal.
+
 $$\textbf{Wake-word operating point:}\quad \mathrm{FA/hr},\quad \mathrm{FRR} = \frac{\text{missed triggers}}{\text{true triggers}}$$
+
+$$\textbf{False-accept rate:}\quad \mathrm{FAR} = \frac{\text{wrong activations}}{\text{negative trials}}$$
 
 $$\textbf{Equal error rate (Apple):}\quad \mathrm{FAR}(\lambda) = \mathrm{FRR}(\lambda)$$
 
-$$\textbf{Speaker match (cosine):}\quad s = \frac{\mathbf{e}\cdot\mathbf{p}}{\lVert\mathbf{e}\rVert \lVert\mathbf{p}\rVert} > \lambda$$
+$$\textbf{Speaker match (cosine):}\quad s = \frac{\mathbf{e}\cdot\mathbf{p}}{\lVert\mathbf{e}\rVert \, \lVert\mathbf{p}\rVert} > \lambda$$
+
+$$\textbf{Real-time factor:}\quad \mathrm{RTF} = \frac{T_{\text{compute}}}{T_{\text{audio}}}$$
+
+$\mathrm{RTF} < 1$ means the model runs faster than real time, the hard gate for streaming on a single low-power core.
+
+$$\textbf{Diarization error rate:}\quad \mathrm{DER} = \frac{T_{\text{miss}} + T_{\text{false}} + T_{\text{confusion}}}{T_{\text{total}}}$$
 
 ```mermaid
 quadrantChart
@@ -685,6 +974,15 @@ quadrantChart
   "Diarization (Spotify)": [0.60, 0.60]
   "Tacotron 2 TTS (Google)": [0.75, 0.80]
 ```
+
+**Interview watch-outs.**
+
+- **Streaming vs batch is the first fork, not a flag.** Streaming (CTC, RNN-T) is causal and commits left to right under a ~300 ms first-partial budget; batch (Conformer, Whisper) attends over the whole clip and self-corrects. Proposing one model with a "streaming mode" toggle signals you missed that these are two serving paths and two decoding regimes.
+- **A single WER number is a trap.** All errors weigh equally, so a dropped "the" scores like a mangled name or dosage. Normalization (casing, numbers, punctuation) can swing WER by points, so two systems are not comparable unless normalized identically. Always slice by accent, noise, and domain, and report entity and numeric WER alongside the aggregate.
+- **On-device is a memory and power envelope, not a smaller cloud model.** Quantization to int8 buys roughly 4x compression with a WER cost you validate rather than assume; it also bounds architecture (RNN-T over giant Conformers), beam width, and context. And on-device means no audio logging, so you lose the retraining signal and need federated or on-device metrics.
+- **Wake word is a false-accept vs false-reject tradeoff, measured per hour.** Report false accepts per hour of ambient audio, not recall. The standard shape is a loose always-on first stage to avoid false rejects plus a heavier second-stage verifier (cloud or larger on-device) to kill the resulting false accepts, with thresholds tuned per device class (phone vs far-field).
+- **Endpointing latency is invisible to WER.** A model can be accurate and still feel broken if it hangs waiting for silence or cuts the user off mid-sentence. Track endpoint latency and false cutoffs as separate metrics that trade against each other.
+- **Weakly-supervised batch models hallucinate on silence.** Whisper-style models can emit fluent transcript for non-speech, and attention decoders can loop or truncate. Gate with voice-activity detection and confidence thresholds, and prefer transducer or CTC decoding where robustness matters more than zero-shot breadth.
 
 **The systems**
 
@@ -705,6 +1003,28 @@ quadrantChart
 ### [Cold start and exploration](topics/18-cold-start-and-exploration.md) · 11 systems
 
 **What they share.** Every system logs `(context, action, propensity, reward)`, scores candidates with a reward model, then spends some impressions on uncertainty so a greedy exploit-only policy does not ossify the corpus. They diverge on how exploration is directed, how the arm set is bounded, and how a new policy is scored offline.
+
+**The reference pipeline.** Strip away the per-company specifics and every design collapses to the same loop: a content tower places cold entities so they are retrievable on day zero, an exploration layer reads the uncertainty the reward model already emits, the serve decision is logged with its propensity, and a new policy is scored off-policy before it ever touches live traffic. The four decision points below are exactly where the systems fork.
+
+```mermaid
+flowchart TD
+  NEW[New user or item, zero interactions] --> CT[Content and metadata tower]
+  CT --> IDX[ANN index: online-insertable item vectors]
+  REQ[Request + context] --> RET[Retrieval]
+  IDX --> RET
+  RET --> CAND[Candidate set: hundreds]
+  CAND --> RM[Reward model: point estimate + uncertainty]
+  REQ --> RM
+  RM --> EXP[Exploration layer: epsilon / UCB / Thompson]
+  EXP --> SERVE[Ranked feed served]
+  SERVE --> LOG[(Impression log: features, action, propensity, reward)]
+  LOG --> OPE[Off-policy eval: replay / IPS / doubly-robust]
+  LOG --> TRAIN[Retrain reward model + towers]
+  OPE --> SHIP{Beats logged policy?}
+  SHIP -->|yes| RM
+  TRAIN --> CT
+  TRAIN --> RM
+```
 
 ```mermaid
 flowchart TD
@@ -743,21 +1063,25 @@ flowchart TD
 
 **The math that separates them.**
 
-**UCB optimistic score**
+**UCB optimistic score.** Pick the arm with the highest optimistic value: the estimated mean reward plus a bonus that grows with feature-space uncertainty, where `A` is the feature-covariance matrix accumulated for the chosen arm and `alpha` scales exploration.
 
-$$a_t = \arg\max_a \left( \hat{\theta}^\top x_a + \alpha \sqrt{x_a^\top A^{-1} x_a} \right)$$
+$$a_t = \operatorname*{arg\,max}_a \left( \hat{\theta}^{\top} x_a + \alpha \sqrt{ x_a^{\top} A^{-1} x_a } \right)$$
 
-**Thompson Beta posterior draw**
+**UCB bonus (count form).** For the non-contextual case the bonus reduces to a term that shrinks as an arm is pulled more, where `N_t` is total pulls and `n_{a}` is pulls of arm `a`, so a rarely-tried arm stays optimistic:
 
-$$\tilde{\mu}_a \sim \mathrm{Beta}(\alpha_a + s_a,\ \beta_a + f_a), \qquad a_t = \arg\max_a \tilde{\mu}_a$$
+$$b_t(a) = \alpha \sqrt{ \dfrac{ \ln N_t }{ n_{a} } }$$
 
-**IPS off-policy estimate**
+**Thompson Beta posterior draw.** Maintain a Beta posterior per arm from successes `s_a` and failures `f_a`, draw one sample per arm, and serve the argmax of the samples so wide-posterior arms win often enough to get explored:
 
-$$\hat{V}_{\mathrm{IPS}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \frac{\pi(a_i \mid x_i)}{\pi_0(a_i \mid x_i)} r_i$$
+$$\tilde{\mu}_a \sim \operatorname{Beta}\!\left( \alpha_a + s_a,\ \beta_a + f_a \right), \qquad a_t = \operatorname*{arg\,max}_a \tilde{\mu}_a$$
 
-**Doubly-robust estimate**
+**IPS off-policy estimate.** Reweight each logged reward by the ratio of the new policy probability to the logging policy propensity, giving an unbiased value estimate when every action had nonzero logging probability:
 
-$$\hat{V}_{\mathrm{DR}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \left[ \hat{r}(x_i, \pi) + \frac{\pi(a_i \mid x_i)}{\pi_0(a_i \mid x_i)} \big( r_i - \hat{r}(x_i, a_i) \big) \right]$$
+$$\hat{V}_{\mathrm{IPS}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \frac{ \pi(a_i \mid x_i) }{ \pi_0(a_i \mid x_i) }\, r_i$$
+
+**Doubly-robust estimate.** Add a learned reward model `\hat{r}` as a baseline and importance-weight only its residual, so the estimate stays consistent if either the reward model or the propensities are right:
+
+$$\hat{V}_{\mathrm{DR}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \left[ \hat{r}(x_i, \pi) + \frac{ \pi(a_i \mid x_i) }{ \pi_0(a_i \mid x_i) } \Big( r_i - \hat{r}(x_i, a_i) \Big) \right]$$
 
 ```mermaid
 quadrantChart
@@ -775,6 +1099,15 @@ quadrantChart
   "Neural-linear": [0.88, 0.85]
   "best-arm ID": [0.60, 0.55]
 ```
+
+**Interview watch-outs.**
+
+- **Explore-exploit is a long-horizon bet.** Exploration lowers this session's reward by construction, so it is only rational under a value-of-information objective. If you cannot name the long-term metric it buys (corpus growth, retention), the interviewer reads it as lost revenue with no return.
+- **Ossification is the failure you are defending against.** Greedy argmax serving only collects labels for what it already ranks highly, so demoted items freeze at stale estimates and the served corpus narrows. Say explicitly that the logging policy and the training data are entangled, and that deliberate uncertainty spend is the only escape.
+- **Off-policy eval is only as honest as the propensities.** Replay needs uniformly-random logged traffic and burns most of the log; IPS needs nonzero logging probability on every action; doubly-robust hedges a bad reward model or bad propensities but not both at once. A deterministic argmax with no logged randomness silently breaks all three, so prefer a stochastic policy with propensities that match what actually served.
+- **Large action spaces kill per-arm posteriors.** Do not enumerate millions of items as arms. Cut with a two-stage funnel, share parameters across arms via features so a never-seen item still gets uncertainty, or make the arms ranking strategies instead of raw items.
+- **Uncertainty at ranking latency, not a second model call.** UCB and Thompson need a per-candidate uncertainty cheap enough to compute inline; a full Bayesian posterior per request is too slow, so reach for a linear or neural-linear head whose confidence bonus is a closed form over features.
+- **Bound exploration by a quality floor.** Exploring on a checkout or safety-sensitive surface is reckless. State that the worst exploratory impression must clear a threshold, and that the explore rate on a high-traffic surface stays small and capped.
 
 **The systems**
 
@@ -794,9 +1127,27 @@ quadrantChart
 
 ### [Computer vision](topics/12-computer-vision.md) · 15 systems
 
-## How these vision systems diverge
+**What they share.** Every system ingests an image (or a stroke sequence), runs a learned or hand-crafted feature extractor, and thresholds a score into an action; they diverge on the task head, the backbone weight, how labels are sourced, and where inference runs. The skeleton underneath is always the same four stages: a canonical ingest step, a pretrained backbone that carries the transfer-learning leverage, a task-specific head, and a post-process or serving step that turns raw model output into a product decision. A human-review loop feeds corrected labels back into the backbone.
 
-**What they share.** Every system ingests an image (or a stroke sequence), runs a learned or hand-crafted feature extractor, and thresholds a score into an action; they diverge on the task head, the backbone weight, how labels are sourced, and where inference runs.
+**The reference pipeline.** Read every design below as a specialization of this canonical flow. What changes across systems is which head hangs off the backbone and whether the tail gates a publish, tags a photo, or lands a vector in an index; the ingest and backbone stages are shared infrastructure.
+
+```mermaid
+flowchart LR
+  RAW[Raw input image stroke or document] --> ING[Ingest decode EXIF-fix resize normalize]
+  ING --> BB[Pretrained backbone CNN or transformer]
+  BB --> HEAD[Task head classify detect segment or embed]
+  HEAD --> POST[Post-process threshold NMS connected-components or ANN lookup]
+  POST --> SERVE{Serving shape}
+  SERVE -->|real-time gate| GATE[Block tag or auto-capture on publish path]
+  SERVE -->|offline index| IDX[(ANN index for retrieval)]
+  SERVE -->|batch job| META[(Metadata store)]
+  GATE --> REV[Human review]
+  META --> REV
+  IDX --> REV
+  REV -.fresh labels retrain.-> BB
+```
+
+**Where they diverge.** The first fork is the output shape the head must emit; the second is the latency budget, which sets how heavy a backbone you can afford.
 
 ```mermaid
 flowchart TD
@@ -824,21 +1175,33 @@ flowchart TD
 
 **The math that separates them.**
 
+Precision and recall are the base pair, defined from the confusion counts; almost every metric below is built out of them:
+
+$$P = \frac{TP}{TP + FP} \qquad R = \frac{TP}{TP + FN}$$
+
 Detection and segmentation quality rest on intersection-over-union between a predicted region and ground truth:
 
-$$IoU = \frac{|A \cap B|}{|A \cup B|}$$
+$$IoU = \frac{\lvert A \cap B \rvert}{\lvert A \cup B \rvert}$$
+
+Semantic segmentation (Google buildings, Zalando cutout) averages IoU over the class set, so a single dominant class cannot hide a weak one:
+
+$$mIoU = \frac{1}{C}\sum_{c=1}^{C} \frac{\lvert A_c \cap B_c \rvert}{\lvert A_c \cup B_c \rvert}$$
 
 Detectors (Airbnb amenities, Google buildings) report mean average precision, the mean over classes of area under each precision-recall curve at a fixed IoU:
 
-$$mAP = \frac{1}{C}\sum_{c=1}^{C} \int_{0}^{1} p_c(r) dr$$
+$$mAP = \frac{1}{C}\sum_{c=1}^{C} \int_{0}^{1} p_c(r)\, dr$$
 
 Gate-style classifiers (Bumble, Cars24, Uber) pick an operating point by fixing precision and taking the recall achievable there:
 
-$$R_{\text{op}} = \max\lbrace R : P(t) \ge P_{\min} \rbrace $$
+$$R_{\text{op}} = \max\lbrace R : P(t) \ge P_{\min} \rbrace$$
 
 Screening models (diabetic retinopathy) headline the harmonic mean of precision and recall so a collapse in either is punished:
 
 $$F_1 = \frac{2 P R}{P + R}$$
+
+Retrieval systems (Pinterest, Netflix in-video, Zalando match) headline recall at k over a labeled query set, the fraction of queries whose relevant item lands in the top k of the ANN lookup:
+
+$$R@k = \frac{1}{\lvert Q \rvert}\sum_{q \in Q} \mathbf{1}\!\left[ \text{rel}(q) \in \text{top-}k(q) \right]$$
 
 ```mermaid
 quadrantChart
@@ -858,6 +1221,15 @@ quadrantChart
   "Pinterest embeddings": [0.80, 0.22]
   "Google buildings UNet": [0.70, 0.12]
 ```
+
+**Interview watch-outs.**
+
+- **Labeling is the budget, not GPUs, early on.** Box and mask labels cost far more than image-level tags (Airbnb amenity, Mask R-CNN), so a task-head choice is also a labeling-cost choice; reach for active learning, weak supervision, and human-review-as-labels before asking for a bigger annotation spend.
+- **Class imbalance makes plain accuracy a trap.** Real taxonomies are Zipfian; a model can score 95 percent by ignoring every rare class. Report macro precision and recall, calibrate a threshold per class rather than one global cut, and consider retrieval for the extreme tail where you cannot get enough labels for a head.
+- **GPU serving cost is the line item at scale.** At tens of millions of images a day, state cost per million, not per request. Split real-time moderation onto a distilled low-latency model from throughput-optimized batch tagging on cheap or spot capacity, quantize and compile, and watch that CPU-heavy decode does not starve the GPU.
+- **Match the task head to the output shape.** Classification for a whole-image label, detection when position or a small region matters, segmentation for per-pixel boundaries, embedding for an open growing catalog with no fixed class list. Using classification for a localization job is the most common junior mistake.
+- **Share one backbone across heads.** A single trunk with multiple heads (Pinterest unified embedding) cuts per-image compute and lets a trunk improvement lift every task at once; it is the biggest structural cost win.
+- **Pick the metric and operating point the product implies.** mAP at IoU for detection, mean IoU for segmentation, recall at a fixed precision floor for a harm gate, recall at k for retrieval; then define fail-closed versus fail-open behavior for anything on the publish critical path.
 
 **The systems**
 
@@ -882,6 +1254,30 @@ quadrantChart
 ### [Natural language processing](topics/13-natural-language-processing.md) · 11 systems
 
 **What they share.** Every system normalizes and tokenizes free text once, then fans out to a task-specific model whose score a threshold either auto-acts on or routes to human review, whose verdicts flow back as fresh labels. None puts a large LLM on the inline firehose; volume forces a small, calibratable model on the hot path.
+
+**The reference pipeline.** Under the product framing every system is the same skeleton: text is normalized and tokenized once, encoded by a shared backbone (a fine-tuned BERT-family encoder, or an earlier CNN/LSTM, or a seq2seq encoder-decoder for generation), then a thin task head turns the representation into a decision. A calibrated threshold auto-acts on the confident tail and hands the uncertain middle to human review, whose verdicts return as labels.
+
+```mermaid
+flowchart LR
+  TXT["free text<br/>(ticket / listing / message)"] --> TOK["normalize + tokenize<br/>(subword, language ID)"]
+  TOK --> ENC["shared encoder<br/>(fine-tuned BERT-family<br/>or CNN / LSTM)"]
+  TOK --> EMB["sentence embedding<br/>(bi-encoder)"]
+  TOK --> S2S["seq2seq encoder-decoder<br/>(translation / correction)"]
+  ENC --> CLS["classification head<br/>(route / intent / toxicity / spam)"]
+  ENC --> NER["token-tagging head<br/>(NER / field extraction)"]
+  EMB --> ER["entity resolution<br/>(ANN match to taxonomy)"]
+  CLS --> CAL["calibrate + threshold"]
+  NER --> CAL
+  ER --> CAL
+  S2S --> CAL
+  CAL --> GATE{"confident?"}
+  GATE -->|"yes"| ACT["auto-route / auto-block / emit"]
+  GATE -->|"no / high-risk"| HUM["human review"]
+  HUM --> LBL["new labels"]
+  LBL --> ENC
+```
+
+**Where they diverge.** One tokenization feeds many heads, but the head, model era, latency budget, and supervision each split the field.
 
 ```mermaid
 flowchart TD
@@ -913,13 +1309,21 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\textbf{per-class F1: } F_1 = \frac{2 \cdot P \cdot R}{P + R}, \quad P = \frac{TP}{TP+FP}, \quad R = \frac{TP}{TP+FN}$$
+$$\textbf{precision and recall: } P = \frac{TP}{TP+FP}, \quad R = \frac{TP}{TP+FN}$$
 
-$$\textbf{weighted cross-entropy: } \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} w_{y_i} \log p_{\theta}(y_i \mid x_i)$$
+$$\textbf{per-class F1: } F_1 = \frac{2 \cdot P \cdot R}{P + R}$$
 
-$$\textbf{F-beta (correction, } \beta=0.5\textbf{): } F_{\beta} = (1+\beta^2) \frac{P \cdot R}{\beta^2 P + R}$$
+$$\textbf{macro-averaged F1 over C classes: } F_1^{\text{macro}} = \frac{1}{C}\sum_{c=1}^{C} F_1^{(c)}$$
 
-$$\textbf{seq2seq attention decode: } p(y_t \mid y_{<t}, x) = \mathrm{softmax}\left(W \sum_{j} \alpha_{tj} h_j\right)$$
+$$\textbf{F-beta (correction favors precision, } \beta=0.5\textbf{): } F_{\beta} = (1+\beta^2) \frac{P \cdot R}{\beta^2 P + R}$$
+
+$$\textbf{multiclass cross-entropy: } \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \sum_{c=1}^{C} y_{i,c} \log p_{\theta}(c \mid x_i)$$
+
+$$\textbf{class-weighted cross-entropy (imbalance): } \mathcal{L}_w = -\frac{1}{N}\sum_{i=1}^{N} w_{y_i} \log p_{\theta}(y_i \mid x_i)$$
+
+$$\textbf{temperature-scaled calibration: } p_{\theta}(c \mid x) = \text{softmax}\!\left(\frac{z_c}{T}\right), \quad T > 0$$
+
+$$\textbf{seq2seq attention decode: } p(y_t \mid y_{<t}, x) = \text{softmax}\!\left(W \sum_{j} \alpha_{tj} h_j\right)$$
 
 ```mermaid
 quadrantChart
@@ -943,6 +1347,15 @@ quadrantChart
   "Meta NMT LSTM+attn": [0.82, 0.90]
 ```
 
+**Interview watch-outs.**
+
+- **Fine-tuned encoder vs a big LLM.** The prompt is testing whether you default to "call an LLM." State the tradeoff: a distilled BERT-family encoder classifies in single-digit milliseconds and emits a calibratable score, while a large decoder is orders of magnitude slower and costlier and returns text you must parse. With a few thousand labels the encoder matches or beats a zero-shot LLM on a fixed label set. Use the LLM offline as a label factory and for the long tail, never on the inline firehose.
+- **Class imbalance on abuse and spam.** The positive class is often well under 1 percent, so accuracy is meaningless (predict "not spam" and score 99 percent). Resample or weight the loss, mine hard negatives, report per-class F1 and PR curves, and set a per-class cost-aware threshold rather than one global cutoff.
+- **Multilingual capacity dilution.** A shared multilingual encoder buys cross-lingual transfer but underperforms a dedicated monolingual model on any single language, and morphologically rich or non-Latin scripts fragment into many more subword tokens (more latency and cost). Run language ID up front, and slice eval per language so English metrics never mask a broken one.
+- **Latency budget picks the architecture.** Inline tasks on live traffic (a phone call, a firehose) live in tens of milliseconds, which rules out a large decoder and points to a distilled encoder or efficient attention (Linformer). Offline enrichment or enforcement can batch. Name the budget before you name the model.
+- **Calibration and thresholds, not raw scores.** A raw score is not a decision. Temperature or isotonic calibration makes "0.9" mean roughly 90 percent positive; then auto-act on the confident tail, route the uncertain middle to review, and recalibrate on every retrain since a new model shifts the score distribution and stale thresholds over- or under-act.
+- **Metric must fit the task.** Classification uses per-class F1 and PR curves; NER uses span-level exact and partial F1; correction reports F0.5 because false edits annoy users more than misses; translation needs BLEU or COMET plus human adequacy and fluency, since automatic metrics miss meaning.
+
 **The systems**
 
 - **Uber** [Applying Customer Feedback: NLP and Deep Learning Improve Uber's Maps](https://www.uber.com/gb/en/blog/nlp-deep-learning-uber-maps/): Word2Vec plus a word-level CNN classify support tickets to find map-data errors. *(product design)*
@@ -962,6 +1375,25 @@ quadrantChart
 ### [Demand forecasting & time series](topics/14-demand-forecasting-and-time-series.md) · 14 systems
 
 **What they share.** Every team turns a noisy history of a many-item, geo-temporal marketplace into a forward estimate that a downstream decision (buy, stock, route, position) will spend real money on, validating chronologically against a naive or legacy baseline rather than an absolute error target. What splits them is what the estimate is of (point vs distribution, realized sales vs latent demand, per-item vs hierarchy vs graph) and how hard latency, cold-start, or perishability squeezes the model choice.
+
+**The reference pipeline.** Under the branding, every system walks the same forecast-then-optimize loop: assemble history plus known-future covariates into features, fit a model that emits a distribution (or a point plus interval), reconcile the levels so they add up, hand that distribution to a decision step (an optimizer or a policy, never the forecast itself), take the action, and close the loop with a rolling-origin backtest that retrains as the series drift. The teams differ only in which boxes they invest in: DeepETA and Google Maps live in the residual-on-baseline branch, Zalando and Amazon in the reconcile-then-optimize branch, Wayfair and Ocado in the cold-start branch.
+
+```mermaid
+flowchart TD
+  HIST["historical demand<br/>(per series, timestamped)"] --> FEAT["feature assembly<br/>(lags, rolling stats, calendar, holidays)"]
+  COV["known-future covariates<br/>(calendar, planned promos, price)"] --> FEAT
+  FEAT --> MODEL["forecast model<br/>(classical / global GBT / deep)"]
+  MODEL --> DIST["predictive distribution<br/>(quantiles per series)"]
+  DIST --> RECON["hierarchical reconciliation<br/>(make levels coherent)"]
+  RECON --> DECIDE["forecast-then-optimize<br/>(newsvendor / Monte Carlo / policy)"]
+  DECIDE --> ACTION["order qty / driver placement / quoted ETA"]
+  ACTION --> OUTCOME["realized demand arrives"]
+  OUTCOME --> HIST
+  OUTCOME --> BACKTEST["rolling-origin backtest<br/>(pinball, MASE, WQL, coverage)"]
+  BACKTEST -->|"select / retrain"| MODEL
+```
+
+**Where they diverge.**
 
 ```mermaid
 flowchart TD
@@ -993,9 +1425,9 @@ Point-error teams (Oda, Mercado Libre, Grab) optimize mean absolute error, robus
 
 $$\mathrm{MAE} = \frac{1}{n}\sum_{i=1}^{n}\left| y_i - \hat{y}_i \right|$$
 
-Interval and probabilistic teams (Uber, Zalando, Amazon, Wayfair) score quantiles with the pinball loss, penalizing under and over prediction asymmetrically by quantile level $\tau$:
+Interval and probabilistic teams (Uber, Zalando, Amazon, Wayfair) score quantiles with the pinball (quantile) loss, penalizing under and over prediction asymmetrically by quantile level $\tau$:
 
-$$L_\tau(y,\hat{q}) = \max\big(\tau (y-\hat{q}),\ (\tau-1) (y-\hat{q})\big)$$
+$$L_\tau(y,\hat{q}) = \max\big(\tau \cdot (y-\hat{q}),\ (\tau-1) \cdot (y-\hat{q})\big)$$
 
 Baseline-relative teams (Uber classic, Google Maps, Oda) judge skill against a naive forecast, e.g. MASE scaling error by the in-sample one-step naive error:
 
@@ -1003,7 +1435,19 @@ $$\mathrm{MASE} = \frac{\frac{1}{n}\sum_{i=1}^{n}\left| y_i - \hat{y}_i \right|}
 
 Full-distribution replenishment teams (Zalando, Amazon) evaluate the whole predictive distribution with the weighted quantile loss, an integral of pinball loss over quantile levels:
 
-$$\mathrm{WQL} = 2\int_{0}^{1} L_\tau\big(y,\ \hat{q}(\tau)\big) d\tau$$
+$$\mathrm{WQL} = 2 \cdot \int_{0}^{1} L_\tau\big(y,\ \hat{q}(\tau)\big) \, d\tau$$
+
+The optimizer teams (Zalando newsvendor, Amazon planning) do not stock to the mean: the cost-minimizing order quantity is the demand quantile at the critical fractile set by the ratio of underage cost $c_u$ (lost sale) to overage cost $c_o$ (holding plus waste):
+
+$$q^{*} = F^{-1}\!\left(\frac{c_u}{c_u + c_o}\right)$$
+
+Every probabilistic team must then prove calibration, not just report a loss: the empirical coverage of a nominal $\tau$-quantile should land near $\tau$, using the indicator $\mathbf{1}[\cdot]$ that a realized value falls at or below the forecast:
+
+$$\widehat{\mathrm{cov}}(\tau) = \frac{1}{n}\sum_{i=1}^{n}\mathbf{1}\big[\,y_i \le \hat{q}_i(\tau)\,\big] \approx \tau$$
+
+For a single continuous predictive distribution $F$, the continuous ranked probability score generalizes MAE to the full forecast and is the limit the WQL integral approximates:
+
+$$\mathrm{CRPS}(F, y) = \int_{-\infty}^{\infty}\big(F(z) - \mathbf{1}[\,z \ge y\,]\big)^{2}\, dz$$
 
 ```mermaid
 quadrantChart
@@ -1027,6 +1471,15 @@ quadrantChart
   "Amazon hierarchy": [0.85, 0.85]
 ```
 
+**Interview watch-outs.**
+
+- **Backtesting leakage.** A random train/test split leaks the future; any lag or rolling feature must use only data available at forecast time, and a 7-day-ahead forecast cannot lean on the t-1 lag. Use rolling-origin (walk-forward) evaluation at the production horizon, or your offline numbers are fantasy and collapse live.
+- **Point vs distribution.** No decision cares about the mean: replenishment stocks to a service-level quantile via the critical fractile above, so handing an optimizer a point forecast makes safety stock uncomputable and stocks out at the target quantile. Emit quantiles or a density, then report coverage, not just the loss.
+- **MAPE is a trap.** It is undefined at zero demand (common at the item-store leaf), asymmetric, and explodes on small denominators. Reach for MASE for scale-free point accuracy and pinball/WQL for the distribution, weighted by business value so a million tiny-volume series do not dominate the average.
+- **Hierarchy reconciliation.** Forecast each of item, store, region, and total independently and the numbers will not sum, and the business cannot act on incoherent levels. Reconcile (bottom-up, top-down, or MinT), or emit coherent probabilistic forecasts end to end as Amazon does, and carry the full distribution through reconciliation, not just the point.
+- **ETA residuals and latency.** Predicting absolute travel time from scratch throws away a physical routing baseline that is already close; learn the residual on it (DeepETA, Google Maps), which is easier and lets you update the ML layer without touching the router. ETA is inline in a quote, so keep the model cheap (linear attention, embedding lookups, precomputed features) and use an asymmetric loss because a late ETA and an early one cost differently.
+- **Cold-start and censoring.** New items break lag features, so lean on global models with learned attribute embeddings and hierarchical shrinkage toward the parent, keeping intervals wide until history accrues. And remember observed sales are censored by stock: train on them and you learn the stock ceiling, not true demand, so model latent demand separately (Mercado Libre) when the decision needs it.
+
 **The systems**
 
 - **Uber** [Forecasting at Uber: An Introduction](https://www.uber.com/blog/forecasting-introduction/): An overview of Uber's classical, ML, and deep-learning forecasting stack with prediction intervals. *(product design)*
@@ -1049,6 +1502,21 @@ quadrantChart
 ### [Predictive modeling on tabular data](topics/15-predictive-modeling-tabular.md) · 13 systems
 
 **What they share.** Every system builds point-in-time features, scores an entity, then hands the number to a decision layer that turns it into money, with calibration wedged in whenever the absolute probability (not the ranking) sets the amount.
+
+**The reference pipeline.** The canonical tabular path is a short assembly line: point-in-time features feed a gradient-boosted tree (a survival or uplift model where the question demands it), a post-hoc calibrator maps raw scores to true rates, and a decision policy (expected-value threshold, uplift targeting, or a budget optimizer) converts the calibrated number into an action. Delayed labels close the loop.
+
+```mermaid
+flowchart LR
+  H["history"] --> PIT["point-in-time join<br/>(no future leakage)"]
+  PIT --> FEAT["point-in-time features"]
+  FEAT --> MDL["model<br/>(GBDT; survival or uplift where needed)"]
+  MDL --> CAL["calibration<br/>(Platt / isotonic, sliced)"]
+  CAL --> POL["decision policy<br/>(EV threshold / uplift target / optimizer)"]
+  POL --> ACT["action<br/>(limit, price, incentive, retention)"]
+  ACT -.->|"labels mature, biased + delayed"| H
+```
+
+**The divergence.** Where the reference path forks, and who takes each branch.
 
 ```mermaid
 flowchart LR
@@ -1078,13 +1546,19 @@ flowchart LR
 
 **The math that separates them.**
 
-$$\textbf{Fixed-window churn label}\qquad y_i=\mathbf{1}\left[\text{no activity in }(t, t+\Delta]\right],\qquad \hat{p}_i=\sigma\left(f(x_i)\right)$$
+$$\textbf{Fixed-window churn label}\qquad y_i=\mathbf{1}\left[\text{no activity in }(t,\ t+\Delta]\right],\qquad \hat{p}_i=\sigma\left(f(x_i)\right)$$
 
-$$\textbf{Survival from hazard}\qquad S(t)=\Pr(T>t)=\exp\left(-\int_{0}^{t}\lambda(u) du\right)$$
+$$\textbf{Survival from hazard}\qquad S(t)=\Pr(T>t)=\exp\left(-\int_{0}^{t}\lambda(u)\ du\right)$$
 
-$$\textbf{CATE uplift (persuadables)}\qquad \tau(x)=\mathbb{E}[Y \mid X{=}x, W{=}1]-\mathbb{E}[Y \mid X{=}x, W{=}0]$$
+$$\textbf{Hazard rate}\qquad \lambda(t)=\lim_{\Delta\to 0}\frac{\Pr\left(t\le T<t+\Delta\ \middle|\ T\ge t\right)}{\Delta}=-\frac{d}{dt}\log S(t)$$
 
-$$\textbf{Constrained allocation}\qquad \max_{a}\ \sum_i \tau(x_i) a_i \quad \text{s.t.} \quad \sum_i c_i a_i \le B$$
+$$\textbf{CATE uplift (persuadables)}\qquad \tau(x)=\mathbb{E}\left[Y\ \middle|\ X{=}x,\ W{=}1\right]-\mathbb{E}\left[Y\ \middle|\ X{=}x,\ W{=}0\right]$$
+
+$$\textbf{Expected-value approve rule}\qquad \text{approve}\iff \hat{p}_{\text{good}}\cdot V_{\text{good}}\ >\ \left(1-\hat{p}_{\text{good}}\right)\cdot \text{EAD}\cdot \text{LGD}$$
+
+$$\textbf{Discounted lifetime value}\qquad \text{LTV}=\sum_{t=1}^{H}\frac{S(t)\ m(t)}{\left(1+d\right)^{t}}$$
+
+$$\textbf{Constrained allocation}\qquad \max_{a}\ \sum_i \tau(x_i)\ a_i \quad \text{s.t.} \quad \sum_i c_i\ a_i\le B,\qquad \text{rank by }\frac{\tau(x_i)}{c_i}$$
 
 ```mermaid
 quadrantChart
@@ -1109,6 +1583,15 @@ quadrantChart
   "Gojek uplift + knapsack": [0.88, 0.84]
 ```
 
+**Interview watch-outs.**
+
+- **Why trees win on tabular.** Gradient-boosted trees (XGBoost, LightGBM, CatBoost) are invariant to monotone transforms, handle missing values natively, and capture non-smooth thresholds and interactions without feature engineering. Deep nets earn their place only for very high-cardinality ids (learned embeddings beat one-hot or target encoding) or when tabular columns must fuse with text, images, or event sequences. Reaching for a neural net on already-meaningful columns is the tell of a junior answer.
+- **Calibration is the product, not the ranking.** When a threshold or optimizer multiplies the score into money (an expected loss, an approved limit, a bid), a 0.05 must mean a 5 percent real rate. Train with log loss, fit Platt or isotonic on a held-out slice, apply prior correction if you sampled for imbalance, and monitor reliability sliced by segment and vintage. AUC says nothing about whether the number sets prices correctly.
+- **Uplift, not propensity, for interventions.** Pricing, discounts, incentives, and retention offers are causal questions: target the persuadables whose behavior the treatment changes, not the sure things and lost causes a churn or propensity score would flag. Uplift needs randomized (RCT) variation to identify the effect; observational logs alone confound it. Under a fixed budget, rank by uplift-per-dollar and fill a knapsack or solve a convex allocation, with the ML and the optimizer as separate boxes.
+- **Delayed and biased labels break the offline story.** A 12-month default label leaves the last year of applications unmatured: train only on matured vintages and the model is stale, count immature accounts as good and you bias risk downward. Use matured vintages, a faster-maturing proxy, or survival censoring. And you only observe repayment for approvals, so the model is valid only on the approved region; break the selection-bias loop with reject inference plus a small randomized-approval slice below the cutoff.
+- **Target leakage is the signature silent failure.** A suspiciously high offline AUC usually means a feature encodes the outcome or is knowable only after it (post-default status, a window aggregate that spans the label period, a collections-call count). Enforce point-in-time correctness so every feature is computed as of the decision timestamp, and log served features rather than recomputing them later.
+- **Explainability and fairness are model-family constraints, not afterthoughts.** Regulated credit and insurance decisions owe an adverse-action reason per decline and forbid protected attributes and their proxies. That pushes you toward monotone-constrained GBDTs or scorecards with SHAP reason codes, and is worth trading a little AUC for. Decide this up front, because it constrains the whole design.
+
 **The systems**
 
 - **Nubank** [How Nubank models risk for scalable credit limit increases](https://building.nubank.com/how-nubank-models-risk-for-smarter-scalable-credit-limit-increases/): Survival curves plus two-phase ranking-then-calibration for default risk across 122M customers. *(product design)*
@@ -1129,7 +1612,23 @@ quadrantChart
 
 ### [Embeddings & representation learning](topics/07-embeddings-and-representation-learning.md) · 8 systems
 
-**What they share.** Every system runs the same skeleton: mine positive pairs from behavioral logs, contrast them against negatives to train an encoder, batch-embed the entity set, and load the vectors into an ANN index that retrieval, ranking, and other tasks reuse. What varies is only the join that defines "related" and whether the encoder is inductive or transductive.
+**What they share.** Every system runs the same skeleton: mine positive pairs from behavioral logs, contrast them against negatives to train an encoder, batch-embed the entity set, and load the vectors into an ANN index that retrieval, ranking, and other tasks reuse. What varies is only the join that defines "related" and whether the encoder is inductive or transductive. The store-and-reuse tail is common, and that reuse is the economic point: learn the space once, then serve retrieval, ranking, and fraud from the same vectors.
+
+**The reference pipeline.** Read left to right, this is the canonical path every one of these systems collapses to: raw interaction signal becomes a trained representation, the representation is materialized into an ANN index once, and many downstream tasks read from that one index. The offline encoder job is the throughput bottleneck; the index is the reuse point.
+
+```mermaid
+flowchart LR
+  E["entities + interactions<br/>(sessions, clicks, co-purchases, graph edges)"] --> POS["mine positive pairs<br/>(the join that defines related)"]
+  POS --> RL["representation learning<br/>(contrastive / graph / two-tower / sequence)"]
+  NEG["negatives<br/>(in-batch + hard + logQ correction)"] --> RL
+  RL --> EMB["batch-embed every entity"]
+  EMB --> ST["embedding store + ANN index<br/>(FAISS / HNSW / IVF-PQ)"]
+  ST --> RET["retrieval"]
+  ST --> RK["ranking input"]
+  ST --> FR["fraud / dedup / other tasks"]
+```
+
+**Where they diverge.** Same skeleton, four decision points. This branches the reference pipeline by the choices each system actually made.
 
 ```mermaid
 flowchart TD
@@ -1167,13 +1666,23 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\mathrm{sim}(z_i, z_i^{+}) / \tau)}{\sum_{j} \exp(\mathrm{sim}(z_i, z_j) / \tau)} \qquad \textbf{InfoNCE with temperature}$$
+$$\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\mathrm{sim}(z_i, z_i^{+}) / \tau)}{\exp(\mathrm{sim}(z_i, z_i^{+}) / \tau) + \sum_{j} \exp(\mathrm{sim}(z_i, z_j^{-}) / \tau)} \qquad \textbf{InfoNCE with temperature } \tau$$
+
+The temperature $\tau$ is the sharpness knob: small $\tau$ makes the softmax peaky, so the loss concentrates on the hardest negatives and the boundary tightens; large $\tau$ flattens it and the gradient spreads over easy negatives.
 
 $$s'(x, y) = s(x, y) - \log Q(y) \qquad \textbf{logQ popularity correction}$$
 
-$$\mathrm{sim}(u, v) = \frac{u \cdot v}{\lVert u \rVert \lVert v \rVert} \qquad \textbf{cosine relatedness score}$$
+Here $Q(y)$ is the sampling probability of item $y$. Subtracting $\log Q(y)$ from the logit undoes the fact that popular items appear as in-batch negatives more often, so the in-batch softmax estimates the true full-corpus softmax instead of a popularity-skewed one.
+
+$$\mathrm{sim}(u, v) = \frac{u \cdot v}{\lVert u \rVert \, \lVert v \rVert} = \cos(\theta_{u,v}) \qquad \textbf{cosine relatedness score}$$
+
+Cosine reads relatedness off the angle only, discarding magnitude, which is why encoders that score with cosine usually L2-normalize the output vectors before indexing so ANN distance and training score agree.
 
 $$\mathcal{L}_{\text{triplet}} = \max\big(0,\ d(a, p) - d(a, n) + m\big) \qquad \textbf{max-margin triplet loss}$$
+
+$$\ell_{\text{align}} = \mathbb{E}_{(x, x^{+})} \big\lVert f(x) - f(x^{+}) \big\rVert^{2}, \qquad \ell_{\text{unif}} = \log \, \mathbb{E}_{x, y} \, e^{-2 \lVert f(x) - f(y) \rVert^{2}} \qquad \textbf{alignment and uniformity diagnostics}$$
+
+Alignment (positives land close) and uniformity (the space is spread, not collapsed) are the two diagnostics to track directly; a space can score fine on a cosine probe while quietly collapsing, and only uniformity catches that.
 
 ```mermaid
 quadrantChart
@@ -1194,6 +1703,15 @@ quadrantChart
   "PinSage": [0.90, 0.88]
 ```
 
+**Interview watch-outs.**
+
+- Name the negatives before the encoder. When asked to make embeddings "better," the honest lever is almost always better negatives (hard mining plus logQ correction), not a bigger model. Reaching for architecture first is the common tell.
+- Do not conflate the two clocks. Embedding freshness (a new entity needs a vector) is inductive-vs-transductive; space drift (retraining moves the axes) forces an atomic full reindex because vectors across model versions are not comparable. Upserting new-model vectors into an old index is a classic mistake.
+- Hard negatives cut both ways. They sharpen the boundary but some are unlabeled positives (false negatives) that teach the wrong thing, and too many destabilize training. The defensible recipe is mostly in-batch negatives with a small, tuned hard fraction.
+- Cold start is structural, not a patch. If the encoder consumes content features (text, category, graph neighbors), a brand-new entity maps to a sensible point with zero history; id-only embeddings (LightGCN, matrix factorization) have no vector at all and need a fallback until interactions accrue. Say which side you are on.
+- There is no single accuracy number. Evaluate an embedding by what it powers: recall@k of the retrieval it feeds, plus NDCG or MRR on a probe set, and measure tail recall separately from head so popularity bias cannot hide. Confirm end to end with an online A/B test.
+- Watch for representation collapse. A weak loss or too-easy negatives can map everything into a narrow region where all similarities look high and ranking is meaningless; track embedding-norm spread and pairwise similarity, not just downstream accuracy.
+
 **The systems**
 
 - **Stanford / Hamilton et al.** [GraphSAGE: Inductive Representation Learning on Large Graphs](https://arxiv.org/abs/1706.02216): inductive node embeddings by aggregating neighbor features. *(graph embeddings)*
@@ -1210,6 +1728,28 @@ quadrantChart
 ### [Feature store & training-serving skew](topics/04-feature-store-and-training-serving-skew.md) · 5 systems
 
 **What they share.** Every system drives two stores from one feature definition: an offline store keeping timestamped history for point-in-time joins, and a low-latency online store keeping the latest value per entity. One shared computation is the mechanism that kills code skew.
+
+**The reference pipeline.** Strip the vendors away and the same skeleton remains. Raw events fan into a batch pipeline (warehouse or Spark) and a streaming pipeline (event bus to fresh aggregates); both compile from one shared definition so the aggregate is identical on either path. The batch side writes timestamped history to the offline store and materializes the latest value to the online store; the streaming side pushes fresh values straight to the online store. Training rows are built by an as-of join that reaches back to the feature value valid just before each label's timestamp, while serving reads a single feature vector by entity id. The offline-to-online materialization plus the point-in-time join are the two seams where skew is either killed or created.
+
+```mermaid
+flowchart TD
+  RAW["raw events"] --> BATCH["batch pipeline<br/>(warehouse / Spark)"]
+  RAW --> STREAM["streaming pipeline<br/>(event bus to fresh aggregates)"]
+  DEF["one shared feature definition<br/>(transform, entity, freshness, owner)"] --> BATCH
+  DEF --> STREAM
+  BATCH -->|"write timestamped history"| OFF["offline store<br/>(full history, columnar)"]
+  BATCH -->|"materialize latest value"| ON["online store<br/>(low-latency key-value)"]
+  STREAM -->|"push fresh value (seconds)"| ON
+  STREAM -.->|"log back for backfill"| OFF
+  LABELS["labeled events<br/>(entity id, timestamp T)"] --> PIT{"point-in-time<br/>as-of join"}
+  OFF --> PIT
+  PIT -->|"value valid just before T"| TRAIN["training dataset"]
+  ON -->|"feature vector by entity id"| SERVE["online model serving"]
+  SERVE -.->|"log served features"| PARITY["parity check<br/>(served vs computed)"]
+  TRAIN -.-> PARITY
+```
+
+**The divergence.** From that shared spine, four axes split the field.
 
 ```mermaid
 flowchart TD
@@ -1250,6 +1790,12 @@ $$\tilde{y}_c \ =\ \frac{n_c \bar{y}_c \ +\ m \bar{y}}{ n_c + m } \quad\textbf{O
 
 $$\mathrm{PSI} \ =\ \sum_{b} \left(p_b - q_b\right) \ln\frac{p_b}{q_b} \quad\textbf{train vs serve skew score}$$
 
+$$a_i(T) \ =\ \sum_{t \, \le \, T} y_t \ e^{-\lambda \left(T - t\right)} \quad\textbf{time-decayed streaming window aggregate}$$
+
+$$s_i(T) \ =\ T \ -\ \max\lbrace t : \mathrm{materialized}\left(e_i, t\right) \rbrace \ \le\ \mathrm{SLA} \quad\textbf{online freshness staleness bound}$$
+
+$$\mathrm{parity} \ =\ \frac{1}{N} \sum_{i \, = \, 1}^{N} \mathbf{1}\left[\ \left\lvert x^{\mathrm{serve}}_i - x^{\mathrm{train}}_i \right\rvert \ \le\ \varepsilon\ \right] \quad\textbf{served vs computed match rate}$$
+
 ```mermaid
 quadrantChart
   title Feature store choices: ops burden vs flexibility
@@ -1266,6 +1812,15 @@ quadrantChart
   "Google Rules of ML": [0.1, 0.2]
 ```
 
+**Interview watch-outs.**
+
+- **Joining current values onto past labels.** The classic time-leak: you compute a lifetime aggregate today and stamp it onto a six-month-old event. Offline metrics look amazing, production flops. Always reach for the as-of value valid just before the label timestamp, which means the offline store must keep timestamped history, not just the latest snapshot.
+- **Two code paths for one feature.** A SQL query builds it offline and handwritten service code serves it online; they drift the instant either is edited. Name code skew and insist on one shared definition that compiles to both, or (Google's fallback) log the exact features served and train on those.
+- **Streaming and batch computing different aggregates.** The streaming materialization and the offline backfill must produce the identical number, or you reintroduce data skew at the seam. Interviewers probe whether your windowing, filtering, and late-event handling match on both paths.
+- **Backfilling with today's logic but historical timestamps.** Recomputing a new feature over old data with current code, then stamping it as historical, silently leaks the future. A new feature is not trainable until it is backfilled with correct as-of logic and timestamps.
+- **Unpinned external tables.** A dimension table joined into features mutates between train and serve, so the same event yields different features on each side. Snapshot it or log at serving time; do not join live external state blindly.
+- **Validating only offline accuracy.** There is no single accuracy number for a store: watch served-vs-computed parity, freshness SLAs, and the three sequential skew gaps (train vs holdout, holdout vs next-day, next-day vs live). A silent materialization stall freezes a feature and the model degrades with no offline signal at all.
+
 **The systems**
 
 - **Uber** [Meet Michelangelo: Uber's Machine Learning Platform](https://www.uber.com/blog/michelangelo-machine-learning-platform/): popularized the Palette feature store and the online/offline materialization split. *(platform)*
@@ -1279,6 +1834,24 @@ quadrantChart
 ### [Real-time serving & deployment](topics/05-realtime-serving-and-deployment.md) · 11 systems
 
 **What they share.** Every system separates the model artifact from the server that runs it, loads versioned artifacts by pointer from a registry into stateless replicas, and stages a candidate through shadow or canary before it widens. They diverge on who owns the stack, where inference runs, how batches form, and how a deploy is made safe.
+
+**The reference pipeline.** Strip away the vendor names and every stack here is the same skeleton: a versioned artifact leaves the registry, loads into a stateless server that batches requests, a candidate is proven through shadow or canary before it widens, autoscaling tracks a serving-specific signal, and everything served is logged so monitoring can trip a rollback that is a pointer move, not a rebuild.
+
+```mermaid
+flowchart LR
+  REG["model registry<br/>(versioned artifact + metadata)"] --> SRV["stateless model server<br/>(TF Serving / Triton / MLServer)"]
+  SRV --> BATCH["dynamic batching<br/>(window W, max batch B)"]
+  BATCH --> GATE{"safe deploy gate"}
+  GATE -->|"mirror, no user impact"| SHADOW["shadow replica<br/>(compare vs prod)"]
+  GATE -->|"5 percent real traffic"| CANARY["canary + gradual ramp<br/>(5, 25, 50, 100)"]
+  SHADOW --> AS["autoscale<br/>(queue depth / GPU util)"]
+  CANARY --> AS
+  AS --> MON["log preds + latency<br/>-> monitoring + drift"]
+  MON -->|"health or metric regression"| RB["rollback to last good<br/>(registry pointer)"]
+  RB --> REG
+```
+
+The divergence starts once you ask who owns that skeleton and how each stage is implemented.
 
 ```mermaid
 flowchart TD
@@ -1313,13 +1886,23 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\textbf{Batching latency and rate:}\quad L_{\text{batch}} = W + \frac{B}{\text{tput}(B)}, \qquad \text{QPS} = \frac{B}{W}$$
+$$\textbf{Batching latency and rate:}\quad L_{\text{batch}} \ = \ W \ + \ \frac{B}{\operatorname{tput}(B)}, \qquad \operatorname{QPS} \ = \ \frac{B}{W}$$
 
-$$\textbf{p99 budget must cover:}\quad T_{p99} \ \geq\ L_{\text{net}} + L_{\text{feat}} + W + L_{\text{model}}(B)$$
+$$\textbf{p99 budget must cover:}\quad T_{p99} \ \geq \ L_{\text{net}} \ + \ L_{\text{feat}} \ + \ W \ + \ L_{\text{model}}(B)$$
 
-$$\textbf{CPU vs GPU cost curve:}\quad L_{\text{CPU}}(B) \approx c_0 + c_1 B, \qquad L_{\text{GPU}}(B) \approx g_0 + g_1 B^{\alpha},\ \alpha < 1$$
+$$\textbf{CPU vs GPU cost curve:}\quad L_{\text{CPU}}(B) \ \approx \ c_0 \ + \ c_1 B, \qquad L_{\text{GPU}}(B) \ \approx \ g_0 \ + \ g_1 B^{\alpha}, \quad \alpha \ < \ 1$$
 
-$$\textbf{Little's law replica count:}\quad N_{\text{replicas}} = \left\lceil \frac{\lambda \cdot L_{\text{batch}}}{B_{\max}} \right\rceil$$
+$$\textbf{Little's law replica count:}\quad N_{\text{replicas}} \ = \ \left\lceil \frac{\lambda \cdot L_{\text{batch}}}{B_{\max}} \right\rceil$$
+
+$$\textbf{Little's law, queue form:}\quad \bar{Q} \ = \ \lambda \cdot \bar{W}_{\text{queue}}, \qquad \rho \ = \ \frac{\lambda}{N_{\text{replicas}} \cdot \mu} \ < \ 1$$
+
+$$\textbf{Batch fill efficiency:}\quad \eta \ = \ \frac{\mathbb{E}[B]}{B_{\max}} \ = \ \frac{\min(\lambda W, \ B_{\max})}{B_{\max}}$$
+
+$$\textbf{Shadow and blue-green cost:}\quad \operatorname{Cost}_{\text{deploy}} \ = \ \operatorname{Cost}_{\text{prod}} \cdot (1 \ + \ f_{\text{mirror}}), \qquad f_{\text{mirror}} \in [0, 1]$$
+
+$$\textbf{Autoscale headroom for cold start:}\quad N_{\text{provisioned}} \ = \ \left\lceil (1 \ + \ h) \cdot \frac{\lambda_{\text{peak}}}{\mu} \right\rceil, \qquad h \ \gtrsim \ \frac{T_{\text{coldstart}}}{T_{\text{scale-interval}}}$$
+
+Read them together: the p99 budget is the hard ceiling, batching latency and fill efficiency are the throughput knob that eats into it, Little's law (both forms) sizes the fleet so utilization $\rho$ stays under 1, and the headroom and mirror-cost terms are what safe-but-slow rollout and cold-start protection actually cost.
 
 ```mermaid
 quadrantChart
@@ -1338,6 +1921,15 @@ quadrantChart
   "Booking.com": [0.80, 0.35]
   "Kayenta gate": [0.42, 0.25]
 ```
+
+**Interview watch-outs.**
+
+- Quote p99 and p999, never the average. A healthy mean hides the fat tail that breaches the SLA, and search-time fan-out systems (Booking.com) hold to p999 precisely because tail requests dominate at scale.
+- Name the batching tradeoff both ways. A longer window W and larger max batch raise throughput and raise tail latency; size them backward from the p99 budget, not for peak throughput on idle hardware.
+- Do not autoscale on CPU for an inference service. The bottleneck is GPU memory bandwidth or queue depth, so scale on a serving-specific signal (queue length, batch latency, GPU utilization) and keep cold-start headroom so a spike does not hit half-loaded replicas.
+- Keep shadow and canary distinct. Shadow proves no breakage at zero user risk but cannot measure user impact (no one sees its output); canary measures real effect on a small blast radius. "Great in shadow, tanked in canary" is expected, not a paradox.
+- Make rollback a pointer change, not a rebuild. The registry holds the last good version; wire an automated trigger off a health or metric regression so reverting takes seconds. A deploy you cannot reverse in seconds is not a safe deploy.
+- Push work off the critical path when freshness allows. Not everything needs live serving; precompute stable predictions in batch (LinkedIn Pensieve nearline) and reserve online serving for what depends on real-time context.
 
 **The systems**
 
@@ -1358,6 +1950,27 @@ quadrantChart
 ### [Online experimentation & A/B testing](topics/06-online-experimentation-and-ab-testing.md) · 11 systems
 
 **What they share.** Every platform runs one spine: hash a diversion unit into stable arms, log a pre-declared success metric next to guardrails, squeeze variance, then decide ship-or-hold. All divergence lives in how they cut variance, contain interference, and pull the trigger.
+
+**The reference pipeline.** Strip away the vendor-specific tricks and one canonical experiment loop remains: state a hypothesis with an Overall Evaluation Criterion, randomize a diversion unit into stable arms, log the success metric beside its guardrails, then make an explicit ship / hold / iterate call. Every system below is a specialization of this loop.
+
+```mermaid
+flowchart TD
+  H["hypothesis + OEC<br/>(pre-register direction + MDE)"] --> PWR["power calc:<br/>sample size + duration up front"]
+  PWR --> RAND{"randomize by<br/>diversion unit"}
+  RAND -->|"control arm"| CBUCK["current system"]
+  RAND -->|"treatment arm"| TBUCK["new system"]
+  CBUCK --> MET["log success metric<br/>+ guardrail metrics"]
+  TBUCK --> MET
+  MET --> QC{"quality checks<br/>(SRM, flicker, pre-exposure bias)"}
+  QC -->|"fail"| VOID["invalid: do not read"]
+  QC -->|"pass"| VR["variance reduction<br/>(CUPED / interleaving)"]
+  VR --> DEC{"success lift above MDE<br/>and guardrails safe?"}
+  DEC -->|"yes"| SHIP["ship: ramp to 100%"]
+  DEC -->|"guardrail breach"| KILL["kill: roll back"]
+  DEC -->|"flat / underpowered"| ITER["iterate or run longer"]
+```
+
+**Where they diverge.**
 
 ```mermaid
 flowchart LR
@@ -1386,13 +1999,21 @@ flowchart LR
 
 **The math that separates them.**
 
-$$\textbf{CUPED variance reduction: } \text{Var}(\bar{Y}_{cv}) = \text{Var}(\bar{Y}) (1 - \rho^2), \quad \theta = \frac{\text{Cov}(Y, X)}{\text{Var}(X)}$$
+$$\textbf{CUPED variance reduction: } \mathrm{Var}(\bar{Y}_{cv}) = \mathrm{Var}(\bar{Y}) \cdot (1 - \rho^{2}), \quad \theta = \frac{\mathrm{Cov}(Y, X)}{\mathrm{Var}(X)}$$
 
-$$\textbf{Type I, type II, and power: } \alpha = P(\text{reject} \mid H_0), \quad \beta = P(\text{accept} \mid H_1), \quad \text{power} = 1 - \beta$$
+where the adjusted metric is $Y_{cv} = Y - \theta \cdot (X - \mathbb{E}[X])$, the covariate $X$ is a pre-experiment measurement, and $\rho$ is the correlation between $X$ and $Y$. A correlation of $\rho = 0.7$ removes about half the variance; $\rho \approx 0$ removes nothing.
 
-$$\textbf{Sample size vs MDE: } n \propto \frac{\sigma^2 (z_{1-\alpha/2} + z_{1-\beta})^2}{\text{MDE}^2}$$
+$$\textbf{Type I, type II, and power: } \alpha = P(\text{reject } H_0 \mid H_0 \text{ true}), \quad \beta = P(\text{fail to reject } H_0 \mid H_1 \text{ true}), \quad \text{power} = 1 - \beta$$
 
-$$\textbf{Spotify joint-power correction: } \beta^{*} = \frac{\beta}{G + 1}, \quad G = \text{guardrail metric count}$$
+$\alpha$ is the false-positive rate (ship a change that does nothing, commonly set to $0.05$); $\beta$ is the false-negative rate (miss a real win); power is the chance of catching a true effect (commonly targeted at $0.80$).
+
+$$\textbf{Sample size vs MDE (per arm, difference of means): } n \approx \frac{2 \cdot \sigma^{2} \cdot (z_{1 - \alpha/2} + z_{1 - \beta})^{2}}{\mathrm{MDE}^{2}}$$
+
+where $\sigma^{2}$ is the per-unit metric variance, $\mathrm{MDE}$ is the smallest effect worth shipping, and $z_{q}$ is the standard-normal quantile at probability $q$. Because $n$ scales as $1 / \mathrm{MDE}^{2}$, halving the effect you want to detect roughly quadruples the required traffic and duration.
+
+$$\textbf{Spotify joint-power correction: } \beta^{*} = \frac{\beta}{G + 1}, \quad G = \text{number of guardrail metrics}$$
+
+requiring all $G$ guardrails to pass plus one success metric erodes joint power, so each individual metric is powered at the tighter $\beta^{*}$ to hit the intended overall $\beta$. False-positive rates are not corrected across guardrails, because requiring all of them to pass does not compound $\alpha$ the way independent tests would.
 
 ```mermaid
 quadrantChart
@@ -1410,6 +2031,15 @@ quadrantChart
   "Cluster randomization": [0.78, 0.35]
   "Geo / time switchback": [0.83, 0.27]
 ```
+
+**Interview watch-outs.**
+
+- **Peeking.** Checking a fixed-horizon test daily and stopping the moment it crosses $\alpha = 0.05$ inflates the real false-positive rate far above the stated level. Fix the sample size and look once, or switch to a method built for continuous looks (sequential testing, mSPRT, always-valid p-values, group-sequential boundaries).
+- **Interference (SUTVA violation).** Per-user splits assume one unit's outcome does not depend on another's assignment. That breaks in marketplaces (shared inventory sells out and hurts the control arm) and social graphs (treatment leaks across connections). Recognize it, say the naive split is biased, then name cluster, geo, or switchback randomization; LinkedIn's dual-design check detects it.
+- **Novelty and primacy effects.** Users click anything new (novelty spike that decays) or resist anything new (primacy dip that recovers), so an early significant reading can be an artifact. Plot the daily treatment effect, not just the cumulative number, and run whole multiples of a week to absorb weekly seasonality.
+- **Guardrails need non-inferiority, not "not significant."** A guardrail that fails to reach significance is not proven safe; it may just be underpowered. Use non-inferiority tests with an explicit margin (Airbnb, Spotify), and separate ordinary guardrails from deterioration metrics where harm is unacceptable.
+- **Sample ratio mismatch (SRM).** If you asked for a 50/50 split and observe 50.8/49.2 at scale, randomization or logging is broken and the whole experiment is invalid no matter how good the result looks. Chi-squared test the observed ratio against intended on every readout and refuse to read on failure; Uber also excludes flicker (arm-switching) users.
+- **Within-unit correlation and multiple comparisons.** Diverting by user but analyzing request-level rows as independent makes confidence intervals too narrow and manufactures false winners; cluster or bootstrap variance at the diversion unit. Testing many metrics at $\alpha$ each expects roughly one false positive by chance, so pre-declare one primary metric and correct the rest (Bonferroni, Benjamini-Hochberg FDR).
 
 **The systems**
 
@@ -1430,6 +2060,25 @@ quadrantChart
 ### [ML monitoring & drift](topics/11-ml-monitoring-and-drift.md) · 10 systems
 
 **What they share.** Every system logs production predictions alongside the exact features that produced them, runs cheap label-free distribution and data-health checks on that log immediately, and waits for labels to confirm true performance. The dividing line is whether a system stops at detection or closes the loop by gating, retraining, or rolling back on its own.
+
+**The reference pipeline.** The canonical monitoring loop runs beside serving: predictions and served features stream into one log, three cheap detectors (feature drift, prediction or score drift, data-health) fire off that log immediately, and a slower performance-decay signal joins in once labels land. Breaches feed one tiered alerting layer that pages a human, triggers a retrain, or fires a rollback, and the retrain flows back into serving to close the loop.
+
+```mermaid
+flowchart TD
+  SERVE["online serving<br/>(model + features)"] -->|"log predictions + served features"| LOG["prediction + feature log"]
+  LOG --> FD["feature drift<br/>(input distribution)"]
+  LOG --> LD["prediction / score drift"]
+  LOG --> DQ["data-health<br/>(nulls, schema, freshness)"]
+  OUT["outcomes / labels<br/>(arrive later)"] --> JOIN["join labels back"]
+  JOIN --> PERF["performance decay<br/>(AUC, calibration, recall) by segment"]
+  FD --> ALERT{"threshold breached?"}
+  LD --> ALERT
+  DQ --> ALERT
+  PERF --> ALERT
+  ALERT -->|"yes"| ACT["alert (tiered)"]
+  ACT --> RESP["retrain or rollback trigger"]
+  RESP --> SERVE
+```
 
 ```mermaid
 flowchart TD
@@ -1453,11 +2102,19 @@ flowchart TD
 
 $$\textbf{Population Stability Index}\quad \mathrm{PSI}=\sum_{i}\left(p_i-q_i\right)\ln\frac{p_i}{q_i}$$
 
+where $p_i$ and $q_i$ are the reference and current fraction of mass in bin $i$. A common field rule reads $\mathrm{PSI}<0.1$ as stable, $0.1$ to $0.25$ as moderate shift, and above $0.25$ as a material move worth an alert.
+
 $$\textbf{Data drift moves inputs}\quad P_{\text{cur}}(X)\neq P_{\text{ref}}(X),\qquad P(y\mid X)\ \text{unchanged}$$
 
 $$\textbf{Concept drift moves the mapping}\quad P(y\mid X)\ \text{shifts},\qquad P(X)\ \text{fixed}$$
 
+The split matters because the fix differs: retraining on fresh data cleanly repairs data drift where only $P(X)$ moved, but only helps concept drift once enough re-labeled examples of the new $P(y\mid X)$ exist.
+
 $$\textbf{KL divergence of two distributions}\quad D_{\mathrm{KL}}(P\parallel Q)=\sum_{i}P_i\ln\frac{P_i}{Q_i}$$
+
+$$\textbf{Population Stability Index as symmetrized KL}\quad \mathrm{PSI}=D_{\mathrm{KL}}(P\parallel Q)+D_{\mathrm{KL}}(Q\parallel P)$$
+
+so PSI is just the symmetric sibling of KL: KL is directional and asymmetric ($D_{\mathrm{KL}}(P\parallel Q)\neq D_{\mathrm{KL}}(Q\parallel P)$), PSI adds both directions so the score does not depend on which window you call the reference.
 
 ```mermaid
 quadrantChart
@@ -1475,6 +2132,15 @@ quadrantChart
   "Shopify": [0.45, 0.40]
   "Lyft": [0.65, 0.75]
 ```
+
+**Interview watch-outs.**
+
+- Label delay is the whole game: if the truth arrives in seconds you monitor accuracy live, but for fraud or default (days to weeks) you must lead with input and prediction drift as proxies and confirm on labels later.
+- Premature labeling biases accuracy low: scoring a click-through label before the feedback window closes counts not-yet-clicks as negatives, so the metric lies until you wait the window out.
+- Decay without drift is real: concept drift can move $P(y\mid X)$ while $P(X)$ barely budges, so a green feature-drift dashboard is not proof of health; watch the feature-to-label relationship and segmented performance, not just marginals.
+- Drift without decay is also real: a feature can drift hard yet not matter if the model barely weights it; PSI and KS answer "did it move," not "does it matter," so gate on impact, not raw movement.
+- Alert fatigue kills a monitor: fire on sustained breaches (not single noisy points), set thresholds from historical variation, tier severity (page a fraud model, dashboard-note a feed model), and make every alert name the feature and segment that moved.
+- A pipeline bug looks exactly like drift: a null-returning feature or a schema change reads as a distribution shift; run data-health and online-offline parity checks first so you do not retrain to "fix drift" that is really a broken feature.
 
 **The systems**
 
