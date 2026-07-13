@@ -1,0 +1,164 @@
+# 4. Model development
+
+## The three-stage pipeline
+
+The latency budget forces a funnel. Each stage prunes by roughly a factor of a
+hundred; the ranker only ever scores the survivors of the previous stage.
+
+![Multi-stage funnel widths](assets/fig-funnel-widths.png)
+
+*Corpus to retrieval to ranking to shown: each stage prunes by roughly 100x.
+The final ranker scores only ~1,000 documents, making a heavy model feasible
+within the tens-of-millisecond budget. Illustrative.*
+
+```mermaid
+flowchart LR
+  C["corpus\n(100M docs)"] --> R["retrieval\n(~1,000)"]
+  R --> K["ranking\n(~100)"]
+  K --> S["shown\n(~10)"]
+```
+
+## Stage 1: lexical retrieval with BM25
+
+BM25 scores a document $D$ for query $Q$ by summing over query terms. Each term
+contributes its inverse document frequency (how rare the term is in the corpus)
+weighted by a saturating function of term frequency in the document, normalized by
+document length:
+
+$$\text{BM25}(Q, D) = \sum_{t \in Q} \text{IDF}(t) \cdot \frac{f(t,D) \cdot (k_1 + 1)}{f(t,D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{L_{\text{avg}}}\right)}$$
+
+where $k_1 \approx 1.2$ controls term-frequency saturation and $b \approx 0.75$
+controls length normalization. BM25 runs over an inverted index: at query time the
+index maps each query term to its posting list (the sorted list of documents
+containing it), and BM25 scores documents by merging those lists.
+
+BM25 is unbeatable on **exact-term and rare-term queries** (a product code, a
+specific brand name) and is extremely fast. Its weakness is the vocabulary gap: it
+cannot match "laptop" to "notebook computer" because the terms do not overlap.
+
+## Stage 2: semantic retrieval with a dual-encoder
+
+A dual-encoder (also called a bi-encoder or two-tower model) embeds the query and
+every document into a shared vector space, so that a query is retrieved by
+proximity rather than term overlap. This is identical in structure to the
+candidate-retrieval two-tower: the query takes the place of the user, and the
+document takes the place of the item.
+
+```mermaid
+flowchart TD
+  subgraph QueryTower["query tower (online)"]
+    QT["query text + intent"] --> QENC["encoder (BERT or MLP)"] --> QEMB["query embedding q"]
+  end
+  subgraph DocTower["document tower (offline)"]
+    DT["title + category + description"] --> DENC["encoder"] --> DEMB["doc embedding d"]
+  end
+  QEMB --> SIM["similarity = q . d"]
+  DEMB --> SIM
+```
+
+Document embeddings are precomputed offline and indexed with ANN (HNSW or IVF).
+At query time only the query tower runs; the rest is a nearest-neighbor lookup.
+The key difference from BM25: semantic retrieval closes the vocabulary gap but
+can drift on exact strings and rare proper nouns, which is exactly where BM25 is
+strong.
+
+![BM25 vs dense recall by query type](assets/fig-bm25-vs-dense.png)
+
+*BM25 leads on exact-term and rare-term queries; dense retrieval leads on
+paraphrases and natural-language queries. Neither arm is optional. Illustrative.*
+
+The dual-encoder trains with in-batch negatives and an InfoNCE-style loss. For a
+batch of $B$ (query, document) pairs, the loss asks the model to score each query
+most similar to its own document:
+
+$$L_{\text{tower}} = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{\exp\!\left(\text{sim}(q_i, d_i)/\tau\right)}{\sum_{j=1}^{B} \exp\!\left(\text{sim}(q_i, d_j)/\tau\right)}$$
+
+Temperature $\tau$ sharpens the contrast. The same false-negative and popularity
+risks as recommendation retrieval apply here; see the
+[candidate-retrieval chapter](../candidate-retrieval/04-model-development.md) for
+the correction strategies.
+
+## Fusing the two retrieval arms
+
+The arms produce candidate sets with incomparable score scales. Two fusion
+strategies:
+
+- **Union with re-scoring:** take the union, strip the retrieval scores, and let
+  the downstream ranker build its own score from combined features. Clean but
+  discards retrieval signal.
+- **Reciprocal rank fusion (RRF):** score each document in the merged set by its
+  rank in each arm, summing the reciprocal ranks with a damping constant $k$
+  (often 60):
+
+$$\text{RRF}(d) = \sum_{a \in \{\text{lex},\, \text{sem}\}} \frac{1}{k + r_a(d)}$$
+
+RRF works even when the two arms' raw scores are on different scales, because it
+only uses rank.
+
+## Stage 3: the learning-to-rank model
+
+The ranker sees the union of the retrieval candidates (roughly a thousand) and
+must produce a final ordering. The choice of loss is the heart of the interview
+answer.
+
+### Three objectives: pointwise, pairwise, listwise
+
+**Pointwise** regression predicts an absolute relevance score per document
+independently of the other candidates:
+
+$$L_{\text{point}} = \sum_{i} \left(f(x_i) - y_i\right)^{2}$$
+
+Simple, but it optimizes the wrong thing: the metric is about *order* and is
+position-weighted. Pointwise spends capacity getting absolute scores right deep in
+the list where it does not matter.
+
+**Pairwise** (RankNet) takes pairs of documents for the same query and learns
+which should rank higher. The loss on pair $(i, j)$ where document $i$ is more
+relevant than document $j$:
+
+$$L_{\text{pair}} = \sum_{(i,j):\, rel_i \gt rel_j} \log\!\left(1 + e^{-(s_i - s_j)}\right)$$
+
+This matches the task: ranking is fundamentally about relative order. Pairwise is
+the workhorse and the right default for most ranking problems.
+
+**Listwise** (LambdaRank / LambdaMART) defines the loss over the whole ranked
+list at once. LambdaMART weights each pairwise gradient by how much swapping the
+pair would change NDCG, so the model directly concentrates on moves that improve
+the metric:
+
+$$\lambda_{ij} = \frac{\partial L_{\text{pair}}}{\partial s_i} \cdot |\Delta \text{NDCG}_{ij}|$$
+
+The model is a gradient-boosted tree ensemble over hand-crafted ranking features.
+LambdaMART is the senior default when the metric is NDCG and you want the loss
+aligned with what you actually report.
+
+Deep rankers (DLRM, DCN V2, Wide and Deep) build on the same idea but use learned
+embedding tables for sparse features and deep MLPs instead of tree ensembles. They
+handle more features automatically but need more data and are harder to debug.
+
+> **Trace the models live.** A dual-encoder retrieval model and a DLRM ranker are
+> both available in the [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
+> Open the dual-encoder and trace the query and document towers down to the
+> similarity layer; note that they never share features until the final dot product.
+> Then open DLRM and find the embedding tables for sparse query-document features,
+> the pairwise-interaction layer, and the top MLP. Those two structural details
+> explain why one retrieves and the other ranks.
+
+## When to use which
+
+**Retrieval arm.**
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Lexical BM25 | exact-term and rare-term queries (product codes, names), fast and interpretable | a semantic-only stack that drifts on exact matches |
+| Dense dual-encoder (Spotify, Pinterest) | synonyms, paraphrases, multilingual queries with vocabulary gap | lexical alone, which misses non-literal matches |
+| Hybrid union with RRF | production default, failure modes are complementary | one arm alone; neither is optional |
+
+**Learning-to-rank objective.**
+
+| Reach for | When | Instead of |
+|---|---|---|
+| LambdaMART / listwise | metric is position-weighted NDCG and top-slot order dominates | pointwise regression, which optimizes scores list-deep |
+| Pairwise RankNet | workhorse when relative order matters and you want a simpler loss than listwise | pointwise, whenever the task is ordering many candidates |
+| Pointwise regression | task is essentially match-or-not per candidate (Yelp business matching) | LambdaMART when ordering many candidates is the real job |
+| Deep ranker (DLRM, DCN V2) | many sparse categorical features and you can afford the training and serving complexity | a tree ensemble, when feature engineering is affordable and latency is tight |
