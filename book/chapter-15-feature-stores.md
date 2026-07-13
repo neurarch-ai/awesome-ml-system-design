@@ -89,9 +89,9 @@ You do not strictly need a heavyweight platform to get this. A shared library th
 
 This is the subtle one, and interviewers love it. When you build a training row, you join a label (did the user click at time $T$) to features. You must use the feature values as they were just before $T$, not their current values. If you join "this user's lifetime purchase count" computed today onto an event from six months ago, you have leaked the future: the model learns from information it will never have at serving time, offline metrics look amazing, and production flops.
 
-A correct feature store does a point-in-time (as-of) join: for each labeled event, fetch the feature value valid at that event's timestamp. The failure mode has a name, the "as-of-now" join, where you join today's snapshot of a customer table onto a historical event and import state that did not exist back then. Enforcing correctness requires event-time versioned data (append-only logs, or slowly-changing dimensions with valid-from/valid-to ranges) and a join that picks the latest record strictly before the prediction time. Formally, for a label event at time $T$ and feature records with validity timestamps $\text{valid\_from}$, the as-of join selects
+A correct feature store does a point-in-time (as-of) join: for each labeled event, fetch the feature value valid at that event's timestamp. The failure mode has a name, the "as-of-now" join, where you join today's snapshot of a customer table onto a historical event and import state that did not exist back then. Enforcing correctness requires event-time versioned data (append-only logs, or slowly-changing dimensions with valid-from/valid-to ranges) and a join that picks the latest record strictly before the prediction time. Formally, for a label event at time $T$ and feature records with validity timestamps $\text{valid-from}$, the as-of join selects
 
-$$\hat f(T) = f\big(\arg\max_{\,i \,:\, \text{valid\_from}_i \,\le\, T} \text{valid\_from}_i\big),$$
+$\hat f(T) = f\big(\arg\max_{i  :  \text{valid-from}_i \le T} \text{valid-from}_i\big),$
 
 the newest feature record that already existed at prediction time. The diagram below walks one label event back to that record and shows why a record that became valid only after $T$ is excluded even though it sits in today's table.
 
