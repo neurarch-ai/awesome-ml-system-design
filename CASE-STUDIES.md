@@ -191,7 +191,7 @@ flowchart TD
 
 **The math that separates them.**
 
-$$z = \text{concat}\Big(x_{dense},\ \lbrace \ \langle e_i,\ e_j\rangle\ :\ i<j\ \rbrace \Big)$$
+$$z = \text{concat}\Big(x_{dense},\ \lbrace \ \langle e_i,\ e_j\rangle\ :\ i \lt j\ \rbrace \Big)$$
 
 $$x_{l+1} = x_0 \odot (W_l x_l + b_l) + x_l$$
 
@@ -1345,7 +1345,7 @@ $$\textbf{class-weighted cross-entropy (imbalance): } \mathcal{L}_w = -\frac{1}{
 
 $$\textbf{temperature-scaled calibration: } p_{\theta}(c \mid x) = \text{softmax}\!\left(\frac{z_c}{T}\right), \quad T > 0$$
 
-$$\textbf{seq2seq attention decode: } p(y_t \mid y_{<t}, x) = \text{softmax}\!\left(W \sum_{j} \alpha_{tj} h_j\right)$$
+$$\textbf{seq2seq attention decode: } p(y_t \mid y_{\lt t}, x) = \text{softmax}\!\left(W \sum_{j} \alpha_{tj} h_j\right)$$
 
 ```mermaid
 quadrantChart
@@ -1576,7 +1576,7 @@ $$\textbf{Fixed-window churn label}\qquad y_i=\mathbf{1}\left[\text{no activity 
 
 $$\textbf{Survival from hazard}\qquad S(t)=\Pr(T>t)=\exp\left(-\int_{0}^{t}\lambda(u)\ du\right)$$
 
-$$\textbf{Hazard rate}\qquad \lambda(t)=\lim_{\Delta\to 0}\frac{\Pr\left(t\le T<t+\Delta\ \middle|\ T\ge t\right)}{\Delta}=-\frac{d}{dt}\log S(t)$$
+$$\textbf{Hazard rate}\qquad \lambda(t)=\lim_{\Delta\to 0}\frac{\Pr\left(t\le T \lt t+\Delta\ \middle|\ T\ge t\right)}{\Delta}=-\frac{d}{dt}\log S(t)$$
 
 $$\textbf{CATE uplift (persuadables)}\qquad \tau(x)=\mathbb{E}\left[Y\ \middle|\ X{=}x,\ W{=}1\right]-\mathbb{E}\left[Y\ \middle|\ X{=}x,\ W{=}0\right]$$
 
