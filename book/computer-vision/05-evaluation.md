@@ -16,7 +16,7 @@ macro-average to expose the tail.
 For a binary gate (moderation), the operating point matters more than any single
 number. Fix a minimum precision and take the recall achievable there:
 
-$$R_{\text{op}} = \max\!\left\{ R \;:\; P(t) \geq P_{\min} \right\}$$
+$$R_{\text{op}} = \max \left\lbrace R : P(t) \geq P_{\min} \right\rbrace$$
 
 For example: "at 90% precision, what is our recall on the nudity class?" That
 question maps directly to the product tradeoff (how many violations do we catch

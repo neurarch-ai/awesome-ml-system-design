@@ -51,7 +51,7 @@ raw events requires replaying the full event history with the correct decay.
 Each feature should have a declared freshness SLA, and the platform should monitor
 it. The staleness of feature $i$ at time $T$ is:
 
-$$s_i(T) = T - \max\bigl\{t : \text{materialized}(e_i, t)\bigr\}$$
+$$s_i(T) = T - \max\bigl\lbrace t : \text{materialized}(e_i, t) \bigr\rbrace$$
 
 If $s_i(T)$ exceeds the declared SLA, the feature is stale and downstream models
 may be silently degraded. An alerting rule on this metric per feature is the

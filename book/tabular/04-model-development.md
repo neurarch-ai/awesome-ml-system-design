@@ -91,7 +91,7 @@ true one. Apply the analytic correction:
 
 $$\hat{p}_{\text{true}} = \frac{\hat{p}_{\text{sampled}}}{\hat{p}_{\text{sampled}} + \frac{1 - \hat{p}_{\text{sampled}}}{\rho}}$$
 
-where $\rho = \text{true\_positive\_rate} / \text{sampled\_positive\_rate}$.
+where $\rho = \text{true-positive-rate} / \text{sampled-positive-rate}$.
 
 Apply this **before** fitting Platt or isotonic, or you calibrate on the wrong
 base rate.

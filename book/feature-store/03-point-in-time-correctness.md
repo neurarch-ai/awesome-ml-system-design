@@ -29,7 +29,7 @@ The correct operation is an **as-of join**: for each labeled event $e_i$ with
 timestamp $T_i$, retrieve the feature value valid at the latest write time that
 does not exceed $T_i$:
 
-$$\hat{x}_i = x\!\left(e_i,\; \max\bigl\{t : t \leq T_i\bigr\}\right)$$
+$$\hat{x}_i = x \left(e_i, \max\bigl\lbrace t : t \leq T_i \bigr\rbrace \right)$$
 
 This requires the offline store to keep **timestamped history** for each entity,
 not just the latest value. A table holding only `(entity_id, feature_value)` cannot
