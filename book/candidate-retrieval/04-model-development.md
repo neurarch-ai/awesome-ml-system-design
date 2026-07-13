@@ -9,11 +9,11 @@ joined only at the end by a dot product.
 
 ```mermaid
 flowchart TD
-  subgraph UserTower
-    UF["user + context features"] --> UMLP["MLP"] --> UEMB["user embedding u"]
+  subgraph UserTower["user tower (online)"]
+    UF["user id + behavior + context"] --> UMLP["MLP"] --> UEMB["user embedding u"]
   end
-  subgraph ItemTower
-    IF["item features"] --> IMLP["MLP"] --> IEMB["item embedding v"]
+  subgraph ItemTower["item tower (offline)"]
+    IF["item id + content + metadata"] --> IMLP["MLP"] --> IEMB["item embedding v"]
   end
   UEMB --> S["score = u . v"]
   IEMB --> S
@@ -23,43 +23,88 @@ The two towers never see each other's inputs until the dot product, and that
 restriction is the whole point: it is what makes the item side precomputable. A
 model that mixed user and item features in early layers (a cross-network) would be
 more accurate but would force you to score every item online, which the latency
-budget forbids. Accuracy is traded for a factored, cacheable structure.
+budget forbids. **Accuracy is traded for a factored, cacheable structure**, and at
+100M items that trade is the only thing that makes retrieval possible.
+
+Two follow-ups an interviewer almost always asks here:
+
+- **Do the towers share weights?** Reflex answer: "yes, to save parameters."
+  Wrong. Users and items have different feature distributions, so the towers stay
+  separate; the only thing they share is the output embedding space, enforced by
+  the dot-product loss. Uber is the deliberate exception: it shares a UUID
+  embedding layer so one global model can replace thousands of per-city models.
+- **Dot product or cosine?** Dot product lets embedding **magnitude** carry
+  popularity or quality signal; cosine normalizes it away. Airbnb reasons about
+  this explicitly, since `u . v = |u| |v| cos(theta)`: if you want popular items to
+  score higher for free, keep the magnitude; if you want pure semantic match,
+  normalize.
 
 > **Open the validated graph.** Trace a two-tower retrieval model at real
 > dimensions (embedding tables, tower MLPs, the dot-product head) in the live
 > [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo). Seeing where
-> the two towers stay separate and where they join makes the precompute argument
+> the towers stay separate and where they join makes the precompute argument
 > concrete.
 
 ## Training with in-batch negatives
 
 We only logged positives, so where do negatives come from? From the batch itself.
-In a batch of N positive (user, item) pairs, for a given user we treat the **other
-N-1 items in the batch as negatives**. One matrix multiply gives all N-by-N
-similarity scores, and we ask the model to make each user most similar to its own
-positive item. This is cheap and scales with batch size.
+In a batch of B positive (user, item) pairs, one matrix multiply gives all B-by-B
+similarity scores. The diagonal holds the true positives; for each user, the
+**off-diagonal items are treated as negatives**. We ask the model to make each
+user most similar to its own item.
 
-The catch is **popularity bias**: popular items show up as in-batch negatives (and
-positives) far more often, so the model over-penalizes or over-rewards them. The
-**logQ correction** subtracts an estimate of each item's sampling probability from
-its score, de-biasing the objective. Stating this correction unprompted is a
-strong signal; it is the single most common thing candidates forget.
+![In-batch negatives similarity matrix](assets/fig-inbatch-negatives.png)
 
-## The loss
+*Every row is a user, every column an item in the same batch. Green cells (the
+diagonal) are the positives the model should rank first; the rest are free
+negatives. The red dashed cell is a false negative: item 4 is actually something
+user 1 also likes, but the batch labels it "negative."*
 
-We use a **sampled softmax / contrastive** loss: for each user, softmax over its
-positive item against the in-batch negatives, then maximize the log-probability of
-the positive.
+This is cheap and scales with batch size, but it has two well-known failure modes,
+and naming both is a strong signal.
 
-$$\mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \log \frac{\exp(u_i \cdot v_i - \log Q_i)}{\sum_{j=1}^{N} \exp(u_i \cdot v_j - \log Q_j)}$$
+**1. Popularity bias.** Because the catalog is power-law, popular items appear as
+in-batch negatives (and positives) far more often, so a plain softmax
+over-penalizes head items. The fix is the **logQ correction**: subtract an estimate
+of each item's sampling log-probability from its logit, so the embedding space
+itself comes out unbiased.
 
-Here `u_i . v_j` is the score, and `log Q_j` is the logQ correction for item j.
+![Power-law catalog and the logQ correction](assets/fig-popularity-logq.png)
+
+*Left: interactions follow a power law, so a handful of head items dominate.
+Right: without correction, head items soak up most of the negative signal (red);
+the logQ term flattens their contribution (green). Illustrative shares.*
+
+**2. False negatives from batch composition.** If a batch is request-sorted or
+user-concentrated, a user's own other engaged items land in the same batch and get
+scored as negatives. Pinterest measured this false-negative rate rising from near
+0% to about **30%**, and fixed it with **user-level masking** (exclude same-user
+items from the denominator), not by simply enlarging the batch.
+
+## The loss, and its production variants
+
+The base loss is a sampled softmax: for each user, softmax its positive against the
+in-batch items.
+
+$$L = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{e^{\, s(x_i, y_i)}}{\sum_{j=1}^{B} e^{\, s(x_i, y_j)}}, \qquad s(x_i, y_j) = u(x_i)^{\top} v(y_j)$$
+
+Real systems adjust this in three recurring ways:
+
+- **logQ-corrected logit** (YouTube, Expedia): subtract the sampling term,
+  turning the score into `u(x_i) . v(y_j) - log Q(y_j)`, which removes popularity
+  bias at training time.
+- **Temperature-scaled cosine InfoNCE** (Snap): normalize to cosine and divide by
+  a temperature `tau`, which sharpens the contrast between positives and negatives.
+- **User-level masked InfoNCE** (Pinterest): drop same-user items from the
+  denominator so a user's own items are never counted as negatives.
 
 **When to use which negative-sampling strategy.**
 
 | Reach for | When | Instead of |
 |---|---|---|
-| In-batch negatives | large batches give enough diverse negatives cheaply | explicit negative sampling, which costs extra lookups |
-| Hard-negative mining | the model confuses specific near-misses (same category, wrong item) | random negatives, which stop teaching once the model is decent |
-| logQ / popularity correction | always, whenever negatives are sampled from a skewed catalog | an uncorrected softmax, which bakes in popularity bias |
+| In-batch softmax with logQ correction (YouTube, Expedia) | catalog is popularity-skewed and you want the embedding space itself unbiased | raw in-batch negatives that penalize head items |
+| Temperature-scaled cosine InfoNCE (Snap) | magnitude should not carry signal and you want sharper contrast | plain dot-product softmax when scale drifts across items |
+| User-level masked InfoNCE (Pinterest) | request-sorted or user-concentrated batches push false negatives toward 30% | plain softmax that scores a user's own items as negatives |
+| Hard-negative mining (Etsy, Snap) | easy negatives stopped teaching and boundary cases decide quality | only in-batch negatives, which get too easy |
+| Journey seen-not-booked negatives (Airbnb) | an impression inside a search session is a more informative negative than a random item | random negatives that ignore intent context |
 | Full softmax over the catalog | never at 100M scale (it is the cost you are avoiding) | sampled softmax, which approximates it cheaply |
