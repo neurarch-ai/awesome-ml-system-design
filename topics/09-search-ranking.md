@@ -268,6 +268,26 @@ nobody states out loud: the deeper the ranker and the more candidates it scores,
 the better the relevance and the worse the latency, so you size the candidate set
 and the model backwards from the budget.
 
+### When to use which
+
+Two separate calls here: which retrieval arm carries the load, and which learning-to-rank objective you train.
+
+Retrieval arm:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Lexical (BM25) | Exact-term and rare-term matches (a product code, a specific name), fast and interpretable | Vocabulary gap: cannot match "car" to "automobile" |
+| Dense semantic (dual-encoder) | Synonyms and paraphrase, closing the vocabulary gap | Drifts on rare terms and exact strings; needs an ANN index and encoders |
+| Hybrid union | Production default, because lexical and semantic failure modes are complementary | Two indexes to run and dedupe; more serving surface |
+
+Learning-to-rank objective:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Pointwise | A simple baseline that reuses ordinary classification machinery | Optimizes absolute scores, not order, wasting capacity deep in the list |
+| Pairwise (RankNet) | The workhorse when relative order is what matters | Pair count grows; does not directly target the position-weighted metric |
+| Listwise (LambdaMART, ListNet) | You want the loss to track position-weighted NDCG directly | Heavier and more complex loss to train and tune |
+
 ## 5. Bottlenecks and scaling
 
 | Bottleneck | First sign | Fix | Tradeoff |

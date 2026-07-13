@@ -216,6 +216,29 @@ absolute time) is easier to learn and meets tight latency. Latency is what makes
 ETA distinct: it is inline in a quote, so the model is cheap and features are
 precomputed lookups, the same discipline as [ranking](02-ranking-model.md).
 
+### When to use which
+
+Two decisions dominate: which model family fits your series count and horizon, and how you produce the distribution and make levels reconcile. Baseline first, then move up the table only when scale or structure justifies it.
+
+Model family:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Classical (ARIMA, ETS, Prophet, Theta) | Few series, long clean history, stable seasonality; the baseline you benchmark against | Millions of related series (one model per series does not scale or borrow strength) |
+| Global GBT on lag / calendar features | Many related series, short horizons, cheap to operate; the workhorse | Very long horizons or rich covariates where a deep model pulls ahead |
+| Deep (DeepAR, N-BEATS, TFT, PatchTST) | Large scale, long horizons, rich covariates, or cold start via learned embeddings | Short-horizon tabular demand, where a tuned global GBT wins for less cost |
+
+Forecast output and reconciliation:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Quantile regression / pinball loss | You need specific operating points (P10, P50, P90) straight from the model | You need a full density to sample paths, not just fixed quantiles |
+| Parametric likelihood (DeepAR-style) | Counts or over-dispersed demand where a negative-binomial density and sampled paths help | The distributional assumption misfits; quantile regression is assumption-light |
+| Conformal prediction | You already have a good point model and want cheap, distribution-free calibrated intervals | You need per-quantile shape, not just nominal coverage around a point |
+| Bottom-up reconciliation | Leaf forecasts are trustworthy and you want coherence by construction | Leaf noise is high; it propagates straight up |
+| Top-down reconciliation | The aggregate is stable and leaf splits follow steady historical proportions | Leaf dynamics matter and shift over time |
+| Optimal reconciliation (MinT) | All levels are forecast and you want provably lower error using the full hierarchy | Extra compute and residual-covariance estimation; an end-to-end coherent model can skip it |
+
 ## 5. Bottlenecks and scaling
 
 | Bottleneck | First sign | Fix | Tradeoff |

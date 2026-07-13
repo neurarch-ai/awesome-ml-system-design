@@ -175,6 +175,18 @@ end to end. That rules out anything heavy per item and pushes you toward:
 
 State the budget out loud and design backwards from it. That is the senior move.
 
+### When to use which
+
+Retrieval already handed you the candidates; these are the ranker choices this topic weighs, plus whether to calibrate the scores.
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| GBDT / tree ranker (XGBoost, LambdaMART) | Tabular features, a tight latency budget early in the funnel, or a strong baseline before going neural | Weaker on raw sparse ids and embeddings; gives an order, not calibrated probabilities |
+| Wide-and-deep | Dense data where frequent crosses reward memorization while the deep side covers the tail | Wide side leans on hand-crafted cross features that go stale |
+| DLRM (explicit interactions) | Many sparse ids where second-order crosses dominate and you want them modeled structurally | Embedding tables blow up memory; interaction cost grows with feature count |
+| Multi-task heads (shared-bottom, MoE gating) | Several objectives (click, like, long dwell) to blend into one utility score | Negatively-correlated tasks interfere; each head adds serving and calibration cost |
+| Post-hoc calibration (Platt, isotonic) | Scores feed an auction, a threshold, or a cross-task blend | Extra pipeline step; skip when all you do is sort the list |
+
 ## 5. Bottlenecks and scaling
 
 | Bottleneck | First sign | Fix | Tradeoff |

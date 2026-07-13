@@ -245,6 +245,29 @@ factorization, LightGCN on ids) have no vector for an unseen entity at all and
 need a content-based fallback or a fresh-entity source until interactions
 accumulate.
 
+### When to use which
+
+Most of the design lives in two choices: how you train the space (loss plus negatives) and how you index it. Reach for the row that matches your signal, scale, and memory budget.
+
+Loss and negative sampling:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| InfoNCE / softmax contrastive | Default; many candidates per anchor and you want the same loss as two-tower retrieval | Very few negatives per step, where a margin loss is steadier |
+| Triplet / margin loss | You can mine informative triplets and want an explicit similarity margin | Triplet mining is hard to tune; InfoNCE with in-batch negatives is simpler |
+| In-batch negatives | You want negatives for free and can afford large batches for more of them | Small batches starve the loss; too-easy negatives leave the boundary fuzzy |
+| Hard negatives | Recall has plateaued and the boundary is fuzzy on look-alike items | Adds instability and false negatives; cap the mined fraction |
+| logQ / sampled-softmax correction | In-batch negatives skew toward popular items and the tail is mis-ranked | Extra tuning; skip only if popularity bias is provably absent |
+
+Encoder and index:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| GraphSAGE-style (inductive) | Rich node features and new entities arrive constantly, so cold start must be a non-event | Sparse graphs or thin features starve the aggregator; neighbor sampling adds train and serve cost |
+| LightGCN-style (transductive) | A fixed user-item interaction graph where a cheap, strong collaborative baseline is enough | No vector for an unseen entity; a genuinely new user or item needs a retrain or fallback |
+| HNSW index | Index fits in RAM and recall plus latency matter more than memory | Memory is the binding constraint at tens of millions of vectors |
+| IVF-PQ index | Memory is tight or scale is very large and you can trade some recall for compression | Recall is paramount and RAM is available; the quantization loss is not worth it |
+
 ## 5. Bottlenecks and scaling
 
 | Bottleneck | First sign | Fix | Tradeoff |

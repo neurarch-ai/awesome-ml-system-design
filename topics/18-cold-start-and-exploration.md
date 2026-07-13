@@ -116,6 +116,28 @@ Exploration's payoff is not this session, it is the *corpus*. By giving uncertai
 
 The cleanest deployment is not a bespoke bandit service bolted onto ranking but a bandit that lives inside the experimentation platform, as Stitch Fix describes. The platform already handles assignment, logging, and metric computation; adding a reward service and a Thompson-sampling allocator turns "which variant" A/B tests into adaptive experiments that shift traffic toward winners while they run. This reuses infrastructure, gives you propensity logging for free, and makes exploration a governed, auditable thing rather than a hidden knob in the ranker.
 
+### When to use which
+
+Two decisions stack here: which exploration policy sits on top of the ranker, and how you place a cold entity that has no interactions. Keep them separate.
+
+Exploration policy:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Epsilon-greedy | You want a quick baseline and a clean uniform propensity for off-policy eval | Pays a flat tax, wasting impressions on obviously-bad arms; skip once you can afford directed exploration |
+| UCB | Infra prefers a deterministic choice and you want directed, uncertainty-aware spend | Deterministic pick logs no propensity, so replay-style OPE gets harder |
+| Thompson sampling | Robust default; posterior draws yield clean propensities for logging and OPE | Needs a maintainable posterior per arm; skip for millions of raw arms without a linear head |
+| Contextual bandits (LinUCB, neural-linear) | Large or shifting catalog where a never-seen item still needs uncertainty from its features | Linear head can underfit; needs a two-stage funnel to bound the arm set |
+
+Cold-start representation:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Content and metadata tower | Day-zero retrievability for a brand-new item with rich structured metadata | Underperforms ID embeddings once warm, and only as good as the metadata |
+| Hybrid ID-plus-content | One model must span cold and warm entities on the same surface | Extra training complexity; skip if entities are almost always warm |
+| Context / geo-hierarchy priors | A new user or new region with no history but usable request context | Coarse until evidence accrues; blends toward the specific level slowly |
+| Popularity fallback | A zero-signal first request needs a safe default | Self-reinforcing (popular gets more popular); skip when discovery is the goal |
+
 ## 5. Bottlenecks and scaling
 
 - **Serving the content tower fresh.** New items must be embeddable without a training cycle, so the item tower has to be servable at upload time and the ANN index has to accept online inserts. Batch-only indexing kills item cold start.

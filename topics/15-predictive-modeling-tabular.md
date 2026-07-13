@@ -203,6 +203,29 @@ shift is expected here (macro cycles, new products, marketing changing the appli
 mix), so treat it as a signal to investigate and recalibrate, not an automatic rollback.
 See [monitoring and drift](11-ml-monitoring-and-drift.md).
 
+### When to use which
+
+Two decisions carry the design: which model family answers the actual question (rank, time-to-event, or intervene), and how you make the probability trustworthy and the labels usable. Let the decision the score feeds pick the row.
+
+Model and method:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Gradient-boosted trees (XGBoost, LightGBM, CatBoost) | Heterogeneous columns, missing values, non-linear thresholds; the default winner | Very high-cardinality ids or fusion with text / image signal |
+| Neural with embeddings (wide-and-deep, DeepFM, DLRM) | Millions of user, item, or merchant ids where learned embeddings beat encodings | Already-meaningful columns, where a tree wins with less tuning |
+| Monotonic GBDT | Regulated decisions needing defensible constraints and adverse-action reasons | No explainability requirement; unconstrained trees fit slightly better |
+| Survival models (Cox, survival forest) | Time-to-event targets (churn, time-to-default) with censored still-active accounts | A fixed-window binary label is genuinely enough |
+| Uplift / causal models | The action is an intervention (pricing, discount, retention) and you want persuadables | Pure ranking or approve/decline, where a predictive score suffices |
+
+Calibration and label handling:
+
+| Option | Reach for it when | Cost / skip it when |
+|---|---|---|
+| Platt scaling | Small held-out slice; you want a smooth monotone probability correction | Enough data for isotonic, which fits a flexible shape |
+| Isotonic regression | Ample calibration data and the miscalibration is non-linear | Data is thin; isotonic overfits and a parametric fit is safer |
+| Matured vintages or proxy label | The true label matures slowly and you must still train on recent behavior | The proxy correlates weakly with the true outcome |
+| Reject inference or randomized slice | You only observe outcomes for approved applicants and must score the whole population | Exploration losses are unacceptable and no unbiased slice is available |
+
 ## 5. Bottlenecks and scaling
 
 | Bottleneck | First sign | Fix | Tradeoff |
