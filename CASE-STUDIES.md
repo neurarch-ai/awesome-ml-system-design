@@ -112,6 +112,20 @@ quadrantChart
   "Snap HNSW": [0.78, 0.80]
 ```
 
+**When to use which.** Match the negative-sampling loss and the index to the catalog, not to a default:
+
+| Reach for | When | Instead of |
+|---|---|---|
+| In-batch softmax with logQ correction (YouTube, Expedia) | Catalog is popularity-skewed and you want the embedding space itself unbiased | Raw in-batch negatives that penalize head items |
+| Journey seen-not-booked positives (Airbnb) | The log has intent-rich sessions where a skip is a real signal | Random impressions treated as positives |
+| Hard-negative mining (Etsy, Snap) | Easy negatives stopped teaching and boundary cases decide quality | Only in-batch negatives |
+| User-level masked InfoNCE (Pinterest) | Request-sorted or user-concentrated batches push the false-negative rate toward 30% | Plain softmax that scores a user's own items as negatives |
+| Temperature-scaled cosine InfoNCE (Snap) | Embedding magnitudes vary and you want angle-only similarity | Raw dot product where the norm leaks into the score |
+| HNSW index (Snap, Spotify) | Catalog is stable, memory is available, and top recall per latency matters | IVF when you have no hard filters or heavy churn |
+| IVF centroids (Airbnb) | Items churn on price and availability and geo filters must run cheap (recall and latency both rise with nprobe) | HNSW whose rebuild cost cannot absorb the updates |
+| HNSW with 4-bit product quantization (Etsy) | The index must fit memory at large N (PQ bytes are a fraction of full-precision) | Full-precision vectors that blow the memory budget |
+| Daily batch freshness (Airbnb) | Item churn is slow and deploy safety beats minutes-old vectors | Few-hours or streaming refresh (Snap) you do not need |
+
 **Interview watch-outs.**
 
 - **Do the towers share weights?** The reflex answer is "yes, to save parameters." Wrong: users and items have different feature distributions, so the towers stay separate; the only thing they share is the output embedding space, enforced by the dot-product loss. Uber sharing a UUID embedding layer is the deliberate exception, not the rule.
@@ -232,6 +246,20 @@ quadrantChart
   "Snap MMoE DCN-v2": [0.82, 0.80]
   "Spotify CAMoE DCN-v2": [0.88, 0.82]
 ```
+
+**When to use which.** Pick the interaction model by signal shape, and add calibration only when a score leaves pure sorting:
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Explicit pairwise dot products, DLRM (Meta) | Sparse ids dominate and structured second-order crosses carry the signal | Concatenated embeddings into a top MLP hoping it learns the crosses |
+| DCN-v2 bounded cross blocks (Spotify, Snap) | You want cross structure without hand-crafting feature pairs | Wide and Deep, whose wide side needs manual crosses |
+| Self-attention transformer (Asos) | Session order and recency carry the signal | Order-blind FM or MLP |
+| GBDT LambdaMART (Yelp, Airbnb LTR) | Hybrid content plus interaction features and you optimize NDCG directly (lambda scales by NDCG change) | Per-item log loss that ignores the ranking-metric swap |
+| MMoE or PLE gating (Spotify, Snap) | Several negatively correlated objectives conflict under one shared body | A single shared-bottom head that lets one task drown another |
+| Single head (Google, Instacart, Yelp) | One clear objective drives the surface | Multi-task overhead you do not need |
+| Platt or isotonic calibration with ECE monitoring (Spotify, Snap, Wayfair) | The score feeds an auction, a bid (bid equals value times predicted probability), a price, or a cross-task blend | Shipping raw ranker scores as if they were probabilities |
+| Raw order, skip calibration (Airbnb, Walmart, Asos, Yelp) | The score only sorts a list | A calibration step that buys nothing when you just sort |
+| Utility weights kept outside the loss (Pinterest) | The business must retune what a like is worth versus a click | Baking objective weights into the loss and retraining to change them |
 
 **Interview watch-outs.** The traps that sink ranking answers, with the wrong reflex and the correction:
 
@@ -367,6 +395,20 @@ quadrantChart
   "Airbnb": [0.35, 0.50]
 ```
 
+**When to use which.** Choose the encoder by what the signal is (order, candidate-relevance, session, or shared foundation), then size history and freshness against the encode budget:
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Self-attention or BST (Alibaba, Pinterest) | Order carries intent and you can afford a per-request encode | Order-flattening lifetime count aggregates |
+| DIN activation pool (Alibaba) | Relevance depends on the candidate and you want interest intensity preserved (no softmax norm) | BST when order is not the signal |
+| RNN or CoSeRNN (Spotify) | Per-session context dominates and session-granularity reaction is enough | Attention you do not need if you only react per session |
+| BERT masked-LM (Instacart) | One bidirectional model must serve many surfaces | A separate per-surface encoder per team |
+| Lifelong two-stage TWIN (Kuaishou) | Signal lives in roughly a million deep-history actions | A short window that drops the deep past |
+| Short plus long split, TransAct with PinnerSAGE (Pinterest) | You need realtime reaction and stable long-term taste at once | One window that serves neither well |
+| Realtime streaming freshness (Pinterest, Spotify, Airbnb) | Same-session reaction is the product value | Batch vectors that miss the current session |
+| All-action loss batch embedding, PinnerFormer | A daily vector must recover most of the realtime gain cheaply | Streaming infrastructure you cannot staff |
+| Offline gate on recall at k and NDCG at k | Deciding whether the encoder ships before it reaches serving | Shipping on popularity memorization |
+
 **Interview watch-outs.**
 
 - **Aggregates lose the signal.** The classic wrong answer is a bag of lifetime category counts, which erases order and recency, the two things that carry intent. A user who just switched from cooking to travel looks identical to a steady cooking fan under counts. Instacart found that shuffling sequence order drops recall 10 to 45%, which is the direct evidence that order is the signal.
@@ -480,6 +522,19 @@ quadrantChart
   "Instacart transfer": [0.50, 0.78]
   "LinkedIn 3-tower": [0.82, 0.85]
 ```
+
+**When to use which.** Pick the interaction model, the calibration layer, and the loss from id-space size, how far the raw head drifts, and how late conversions land.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| GBDT plus LR (Facebook) | id space is modest and tree-discovered crosses carry the signal | DLRM, when the space runs to billions of sparse ids trees cannot hold |
+| DLRM (Meta) or DCN-v2 (Google) | billions of sparse ids and explicit crosses drive pCTR | GBDT, when the id space is small enough to enumerate |
+| Feature hashing plus sharding | id cardinality is open-ended and you are memory-bound | a row-per-id table, which is fine only for a small closed space |
+| Platt or isotonic recalibration (Pinterest, LinkedIn) | the raw head drifts under negative sampling and must track hourly | a full DNN retrain, which is too slow and costly to chase drift |
+| Log loss as the objective | you need honest probabilities the auction can price off | an AUC-only objective, which reads order but not absolute rate |
+| Sliced ECE monitoring | you must catch calibration rot per segment | one global calibration number, which hides local mis-pricing |
+| Delay-aware or fake-negative weighted loss (Twitter, Criteo) | conversions land days after the click inside the attribution window | labeling a not-yet-converted click a confirmed negative, biasing pCVR |
+| Second-price charge off calibrated pCTR | pricing the winning bid from a true-rate probability | an uncalibrated raw score, which mis-prices every slot at equal AUC |
 
 **Interview watch-outs.** The traps that separate a passing answer from a stalled one, each as trap, the wrong reflex, and the right move.
 
@@ -611,6 +666,19 @@ quadrantChart
   "Pinterest SearchSage": [0.70, 0.40]
   "Amazon bandit": [0.88, 0.68]
 ```
+
+**When to use which.** Choose the retrieval arm, the ranking loss, and the debias tool from query mix, label budget, and how much of your signal is logged clicks.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Lexical BM25 arm | queries hit product codes, rare exact strings, and precise terms | a semantic-only stack, which drifts on exact matches |
+| Add a semantic two-tower arm (Spotify, Pinterest) | synonyms, paraphrases, and multilingual intent open a vocabulary gap | lexical alone, which misses non-literal matches |
+| Reciprocal rank fusion (RRF) | you union two arms whose score scales are not comparable | feeding raw mixed scores straight into the ranker |
+| Listwise or pairwise LambdaMART | the metric is position-weighted NDCG and order at the top dominates | pointwise regression, which optimizes absolute scores list-deep |
+| Pointwise regression (Yelp) | the task is essentially match-or-not per candidate | LambdaMART, when ordering many candidates is the real job |
+| Inverse-propensity weighting (GetYourGuide, Amazon) | you train on logged clicks biased by where results were shown | trusting raw clicks, which teach the model to predict rank |
+| Human-judged labels (Wayfair WANDS, LinkedIn) | you have annotation budget and want to sidestep exposure bias | click labels, when volume and freshness outweigh cleanliness |
+| NDCG offline | a fast pre-gate on graded relevance before spending live traffic | NDCG as the ship gate; use interleaving or an A/B test for that |
 
 **Interview watch-outs.**
 
@@ -756,6 +824,19 @@ quadrantChart
   "Airbnb friction": [0.3, 0.65]
 ```
 
+**When to use which.** Pick the model, the loss, and the operating point from label maturity, fraud structure, and cost asymmetry.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Random forest (Capital One) | you need explainability and audit trails on per-transaction signal | a GNN, when fraud is coordinated rings rather than lone events |
+| GNN or RGCN (Uber, Grab) | fraud is a ring over shared cards, devices, and addresses | per-transaction models (Stripe, Feedzai), which miss collusion structure |
+| Graph-DB traversal features (PayPal, Booking) | you want ring signal without training and serving a GNN inline | a learned GNN, when the inline latency budget allows one |
+| Unsupervised GraphBEAN reconstruction (Grab) | novel adversarial fraud with no labels yet | a supervised classifier, which needs matured chargeback labels |
+| PR-AUC (average precision) | positives sit near a fraction of a percent and true negatives dominate | ROC-AUC or accuracy, which a never-fraud model games at 99.8 percent |
+| Focal loss or class weights | you want to fix skew inside the loss, on the true base rate | SMOTE resampling, which distorts calibration and the base rate |
+| Cost-optimal cutoff c_FP/(c_FP+c_FN) | the score is a calibrated probability and costs are asymmetric | a default 0.5 threshold, which ignores the miss-vs-false-alarm gap |
+| Targeted friction, Airbnb three-action loss | a hard block on a good user is too costly to accept | binary allow or block, when a step-up challenge can recover the user |
+
 **Interview watch-outs.** The traps that separate a leaderboard answer from a systems answer:
 
 - **Imbalance kills accuracy.** At a 0.2 percent base rate a "never fraud" model scores 99.8 percent and catches nothing. Lead with PR-AUC plus precision and recall at the operating point, handle the skew with class weights or focal loss before reaching for SMOTE, and always evaluate on the true base rate, never on a rebalanced set.
@@ -887,6 +968,20 @@ quadrantChart
     "Google CSAI match": [0.60, 0.20]
 ```
 
+**When to use which.** Let repeatability and legal cost pick hash vs classifier, let harm speed pick proactive vs reactive, and let the skewed base rate pick the metric.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Perceptual hash-match (PhotoDNA, Google CSAI) | material repeats exactly and a false positive is legally unacceptable (CSAM, terrorist media) | a learned classifier scoring a threshold |
+| Learned per-policy classifier | novel content the hash set has never seen (Slack, Roblox, Bumble, Pinterest, LinkedIn) | hashing alone, which is blind to anything new |
+| Image-plus-text fusion | neither modality is damning alone (Meta hateful memes) | a single-modality text or image classifier |
+| Proactive scoring at send or publish | you can score before harm reaches an audience (Slack, Nextdoor, Bumble, LinkedIn proactive) | reactive scoring that waits for spread |
+| Reactive on the engagement signal | harm needs a reach signal to surface (LinkedIn viral, Pinterest online-plus-batch) | pre-publish scoring with no spread evidence |
+| Auto-enforce | the precision floor is high and a wrong auto-action is cheap (Slack, Bumble, Nextdoor) | routing everything through a human queue |
+| Priority equals severity times reach | a finite reviewer queue must clear the uncertain middle (Google, Pinterest, Roblox) | FIFO or random review order |
+| Recall at a fixed precision floor, read off the PR curve | a skewed base rate (Bumble at 0.1 percent positives) | accuracy or blind F1, which a flag-nothing model games |
+| Cost-weighted threshold with miss cost far above false-flag cost | severe policies (CSAM, terrorism, imminent violence) | a symmetric cutoff that treats a miss like a false flag |
+
 **Interview watch-outs.**
 
 - **State the precision floor before any model.** The objective is recall at a fixed per-policy precision floor, not accuracy and not blind F1. A single accuracy or AUC number on skewed data (Bumble at 0.1 percent positives) is the fastest way to fail the signal check; report recall at precision P per policy instead.
@@ -990,6 +1085,20 @@ quadrantChart
   "Diarization (Spotify)": [0.60, 0.60]
   "Tacotron 2 TTS (Google)": [0.75, 0.80]
 ```
+
+**When to use which.** Let the latency budget pick streaming vs batch, let the power envelope pick on-device vs server, and let the task pick the metric that gates release.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Streaming RNN-T transducer | live dictation needs a first partial under roughly 300 ms (Google Gboard) | a batch encoder-decoder that must see the whole clip |
+| Batch Conformer or Whisper seq2seq | the full utterance is available and accuracy or zero-shot breadth beats latency (AssemblyAI, OpenAI) | a causal streaming model that cannot self-correct |
+| On-device int8-quantized model | always-on or privacy paths inside a memory and power envelope (Google 80MB, Apple, VoiceFilter-Lite) | a heavy cloud model for an always-on trigger |
+| Loose detector plus cloud verifier | wake-word: a loose first stage kills false rejects, a rare second stage kills false accepts (Amazon, Apple) | one heavy always-on model doing both jobs |
+| WER, sliced with entity and numeric error reported | grading transcription quality | a single aggregate WER that hides mangled names and numbers |
+| CER (character error rate) | fair cross-language comparison across scripts | WER, which penalizes morphologically rich languages unfairly |
+| FA per hour and FRR, tuned to equal error rate | setting a wake-word operating point (Apple EER) | precision and recall, which ignore the per-hour ambient rate |
+| Real-time factor below 1 | gating a streaming model on a single low-power core | offline accuracy alone with no throughput gate |
+| Diarization error rate | scoring who-spoke-when (Spotify) | WER, which says nothing about speaker turns |
 
 **Interview watch-outs.**
 
@@ -1118,6 +1227,20 @@ quadrantChart
   "best-arm ID": [0.60, 0.55]
 ```
 
+**When to use which.** Let traffic volume and per-arm uncertainty pick the exploration rule, let the action-space size pick the arm representation, and let the logged randomness pick the off-policy estimator.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| epsilon-greedy | a high-traffic surface where the explore rate must stay small and simple (Spotify homepage) | directed exploration you cannot afford to tune |
+| LinUCB | you can estimate per-arm feature uncertainty and want deterministic directed spend (Yahoo news) | a uniform epsilon tax that explores blindly |
+| Thompson sampling (Beta posterior) | directed but sampled exploration from a cheap Bayesian head (Stitch Fix) | hand-tuning a UCB alpha bonus |
+| Best-arm identification | the goal is finding good new items, not cumulative reward (Spotify podcasts) | a regret-minimizing bandit optimizing this session |
+| Content and metadata tower | day-zero retrieval of a cold entity from features alone | an untrained ID embedding that strands new items |
+| Feature-bandit with shared parameters | a never-seen item must get uncertainty from its features (Instacart, Google) | a per-arm posterior with no ID history to draw on |
+| Two-stage funnel plus strategy arms | millions of items where per-arm posteriors blow up (Instacart, Google) | enumerating raw items as arms |
+| Replay off-policy eval | the log carries uniformly-random traffic (Yahoo) | IPS on a deterministic argmax log with no randomness |
+| IPS or doubly-robust | the log carries known nonzero propensities (Instacart); DR hedges a bad reward model or bad propensities | replay that burns most of the log |
+
 **Interview watch-outs.**
 
 - **Explore-exploit is a long-horizon bet.** Exploration lowers this session's reward by construction, so it is only rational under a value-of-information objective. If you cannot name the long-term metric it buys (corpus growth, retention), the interviewer reads it as lost revenue with no return.
@@ -1241,6 +1364,20 @@ quadrantChart
   "Pinterest embeddings": [0.80, 0.22]
   "Google buildings UNet": [0.70, 0.12]
 ```
+
+**When to use which.** Match the task head, the backbone weight, and the headline metric to the output shape, the latency budget, and what the product gates on.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Classification head | the product needs one label per whole image | a detection head, when position inside the frame matters |
+| Detection head (Airbnb amenity, Uber-OCR) | you need boxes and position, not just a tag | classification for a localization job, the classic junior mistake |
+| Segmentation head (Mask R-CNN, Google buildings) | a per-pixel boundary drives the decision | detection, when a bounding box is precise enough |
+| Embedding head (Pinterest, Netflix) | the catalog is open and growing with no fixed class list | classification, which needs a closed taxonomy |
+| Light backbone (Cars24 DCT, MobileNet) | inference is inline or on-device with a tight latency budget | a heavy trunk, viable only on offline batch capacity |
+| Heavy backbone (ResNet, U-Net, BERT) | offline batch lets you spend for the accuracy ceiling | a light backbone, when it starves the accuracy target |
+| Recall at a fixed precision floor (Bumble, Cars24) | a harm gate must hold a precision guarantee before shipping | F1, when the product does not imply a precision floor |
+| mIoU for segmentation, mAP at IoU for detection | you need a shape-appropriate quality number | plain accuracy, which lets a dominant class hide a weak one |
+| Recall at k (Pinterest, Netflix, Zalando) | quality is whether the right item lands in the top-k ANN pull | classification metrics, which do not read retrieval order |
 
 **Interview watch-outs.**
 
@@ -1369,6 +1506,20 @@ quadrantChart
   "Meta NMT LSTM+attn": [0.82, 0.90]
 ```
 
+**When to use which.** Match the head to the output shape, the model era to your label budget and latency, and the metric to the error that actually hurts.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Fine-tuned BERT-family encoder head | fixed-label decision at firehose scale with a few thousand labels, single-digit ms (Meta, Uber, Airbnb) | a zero-shot decoder LLM on the inline path |
+| Seq2seq encoder-decoder | the output is generated text: translation (Google GNMT, Meta NMT) or correction (Grammarly) | a classification head |
+| Bi-encoder plus ANN match | resolving messy strings to a canonical taxonomy entity (LinkedIn KG) | a classifier with one label per entity |
+| Token-tagging NER head | you need spans or fields inside the text (Airbnb Listings) | one label for the whole document |
+| Class-weighted cross-entropy | the positive class sits well under 1 percent (abuse, spam) | plain cross-entropy that just predicts "not spam" |
+| F-beta at beta 0.5 | false edits annoy users more than misses (Grammarly correction) | plain F1 that weights precision and recall equally |
+| Macro-F1 with per-class PR curves, sliced per language | multilingual or imbalanced eval where one broken language hides in the average | a single aggregate accuracy number |
+| Temperature or isotonic calibration | a raw score must become a real probability before you threshold | acting directly on uncalibrated logits |
+| BLEU or COMET plus human adequacy | grading translation quality | WER-style token overlap that misses meaning |
+
 **Interview watch-outs.**
 
 - **Fine-tuned encoder vs a big LLM.** The prompt is testing whether you default to "call an LLM." State the tradeoff: a distilled BERT-family encoder classifies in single-digit milliseconds and emits a calibratable score, while a large decoder is orders of magnitude slower and costlier and returns text you must parse. With a few thousand labels the encoder matches or beats a zero-shot LLM on a fixed label set. Use the LLM offline as a label factory and for the long tail, never on the inline firehose.
@@ -1495,6 +1646,20 @@ quadrantChart
   "Amazon hierarchy": [0.85, 0.85]
 ```
 
+**When to use which.** Let iteration cost and exogenous richness pick the model family, let the downstream decision pick point vs distribution, and let the zero-demand leaves pick the metric.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| GBT / LightGBM | fast iteration and cheap serving on tabular features (Zalando, Oda, Instacart) | a deep net when the exogenous signal is thin |
+| GNN with message passing | demand or congestion diffuses across neighbors (Google Maps Supersegments) | a per-series independent model |
+| Residual on a physical baseline | a routing engine already gives a close ETA (Uber DeepETA), and you want a cheap inline layer | predicting absolute travel time from scratch |
+| Global model plus attribute embeddings and shrinkage | cold-start items with no lag history (Wayfair, Ocado) | per-item lag features that break on day zero |
+| MAE (point) | zero-heavy intermittent series where the decision needs only a central number (Oda, Grab) | a full distribution you will never consume |
+| Pinball / quantile loss | the decision sizes safety stock off the spread (Uber, Zalando) | MAE that only fits the mean |
+| WQL or CRPS | grading the whole predictive distribution (Zalando, Amazon) | a single-quantile pinball number |
+| MASE | proving scale-free skill over a naive baseline | MAPE, undefined at zero demand and exploding on small denominators |
+| Critical-fractile newsvendor quantile | turning a distribution into an order quantity under over vs under costs (Zalando, Amazon) | stocking to the mean forecast |
+
 **Interview watch-outs.**
 
 - **Backtesting leakage.** A random train/test split leaks the future; any lag or rolling feature must use only data available at forecast time, and a 7-day-ahead forecast cannot lean on the t-1 lag. Use rolling-origin (walk-forward) evaluation at the production horizon, or your offline numbers are fantasy and collapse live.
@@ -1608,6 +1773,20 @@ quadrantChart
   "Uber causal + convex": [0.92, 0.88]
   "Gojek uplift + knapsack": [0.88, 0.84]
 ```
+
+**When to use which.** Let the question the score must answer pick the model, and let "does the absolute probability set money" pick whether calibration and an optimizer earn their cost.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Gradient-boosted trees (XGBoost, LightGBM, CatBoost) | already-meaningful tabular columns (Airbnb home value, Expedia CLV) | a neural net that adds no lift on clean columns |
+| Deep net with learned embeddings | very high-cardinality IDs or fusing text, image, or event sequences | trees that one-hot or target-encode huge ID spaces |
+| Survival curve | WHEN the event lands matters and rows are censored not-yet-resolved (Nubank, Block) | a fixed-window binary that throws away censored rows |
+| Fixed-window binary label | a clean horizon and no censoring (Pinterest 14d, Gousto 4w, PayPal) | survival machinery you do not need |
+| Uplift / CATE model | the question is WHETHER an intervention changes behavior (Wayfair, Uber, Gojek) | a churn or propensity score that flags sure things |
+| Platt or isotonic calibration | the absolute probability multiplies into money (Nubank limit, Asos price) | raw ranking scores where 0.05 does not mean 5 percent |
+| Expected-value threshold | the cutoff is free with no budget cap | an optimizer for a problem that has no constraint |
+| Knapsack or convex optimizer, rank by uplift-per-dollar | a fixed budget to allocate (Uber, Gojek, Asos) | a global EV cutoff that ignores the budget cap |
+| Monotone-constrained GBDT with SHAP reason codes | regulated credit owing an adverse-action reason per decline | an unconstrained model that cannot explain a decline |
 
 **Interview watch-outs.**
 
@@ -1731,6 +1910,19 @@ quadrantChart
   "PinSage": [0.90, 0.88]
 ```
 
+**When to use which.** Match the encoder, the negatives, and the score function to the signal you actually have.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Graph encoder (GraphSAGE, PinSage) | relatedness is an edge and each node carries neighbor or content features | two-tower, when the signal is a query-vs-item pair with no graph |
+| Two-tower dot product (Spotify, Instacart) | you need cheap ANN serving over query-item pairs | graph aggregation, when there is no rich interaction graph to walk |
+| Sequence co-occurrence (Airbnb, Wayfair) | session order defines related and ids repeat enough to learn | text SimCSE, when all you have is raw item text and no behavior |
+| In-batch negatives plus logQ correction | batches are large and the corpus is popularity-skewed, and you want free negatives | a bigger tower, when the boundary is actually just too easy |
+| Hard or curriculum negatives (PinSage, Instacart) | easy negatives are exhausted and the decision boundary stays fuzzy | more model capacity, and accept the false-negative risk they add |
+| Inductive encoder | new entities arrive constantly and need a vector with zero history | transductive id-bound vectors (LightGCN, Airbnb ids), fixed catalog only |
+| IVF-PQ index | the catalog is huge and you are memory-bound | HNSW or FAISS flat, when the set fits memory and recall is the priority |
+| Alignment and uniformity diagnostics | you suspect collapse and a cosine probe still looks healthy | downstream accuracy alone, which hides a quietly collapsing space |
+
 **Interview watch-outs.**
 
 - Name the negatives before the encoder. When asked to make embeddings "better," the honest lever is almost always better negatives (hard mining plus logQ correction), not a bigger model. Reaching for architecture first is the common tell.
@@ -1841,6 +2033,20 @@ quadrantChart
   "Tecton": [0.25, 0.45]
   "Google Rules of ML": [0.1, 0.2]
 ```
+
+**When to use which.** Pick build-vs-buy by reuse and staffing, then let the join and the skew metrics defend correctness:
+
+| Reach for | When | Instead of |
+|---|---|---|
+| In-house platform (Uber Michelangelo) | Many teams reuse features and you can staff and operate the infra | An open framework you would outgrow |
+| Open-source Feast or Feathr | You want one shared definition without building a platform | A managed bill you do not need yet |
+| Managed Tecton | You want turnkey point-in-time correctness at low ops burden | Staffing an in-house platform |
+| Pluggable online store (Feast: Redis, DynamoDB, Bigtable, Postgres) | Latency budget and existing infra vary across use cases | A fixed Cassandra or Redis lock-in (Uber, Feathr) |
+| As-of point-in-time join | Building training rows so each label sees the value valid just before its timestamp | Joining today's aggregate onto an old label and leaking the future |
+| PSI train-versus-serve score | Watching whether the served and training distributions have drifted | Trusting offline accuracy alone to prove health |
+| Served-versus-computed parity rate | Catching a silent materialization stall that leaves no offline signal | Assuming the pipeline ran because metrics look fine |
+| Time-decayed streaming window aggregate | Recent events should weigh more and freshness has an SLA | A flat batch window that ignores recency |
+| Out-of-fold target-encoding smoothing | A high-cardinality category needs a leak-safe encoding | Raw per-category means that overfit rare values |
 
 **Interview watch-outs.**
 
@@ -1954,6 +2160,20 @@ quadrantChart
   "Kayenta gate": [0.42, 0.25]
 ```
 
+**When to use which.** Size batching from the p99 budget and the hardware curve, and match the deploy gate to the risk you must retire:
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Central platform (Uber Michelangelo, Grab Catwalk) | Many teams and models share one stack and ops amortizes | Per-service fleets that duplicate infra and cold-start |
+| Remote RPC fleet | You want decoupled redeploys, standardized metrics, and tag-swap | An embedded library, unless latency is tight or the path is batch |
+| GPU large-batch (Pinterest) | The cost curve is sub-linear in batch, so bigger batches fill the accelerator | CPU adaptive windows whose cost grows linearly with batch |
+| CPU adaptive window (Clipper, Michelangelo) | Cost grows with batch, so you size the window backward from the SLO | GPU large-batch on hardware you do not have |
+| Shadow mirror (Booking.com, Lyft) | You need zero-risk proof of no breakage, held to p999 | Canary when you cannot expose any user yet |
+| Canary with gradual ramp (Netflix Kayenta) | You need real user impact measured on a bounded blast radius | Shadow, which cannot measure user impact |
+| Serve-while-loading (Grab Catwalk) | You need a gapless hot-swap where the new version warms before the old stops | A swap that takes traffic before it warms |
+| Little's law for replica count | Sizing the fleet so utilization stays under 1 | Eyeballing replicas from peak QPS |
+| Autoscale on queue depth or GPU utilization with cold-start headroom | The bottleneck is GPU bandwidth or queue depth, not CPU | Scaling on CPU, which lets a spike hit half-loaded replicas |
+
 **Interview watch-outs.**
 
 - Quote p99 and p999, never the average. A healthy mean hides the fat tail that breaches the SLA, and search-time fan-out systems (Booking.com) hold to p999 precisely because tail requests dominate at scale.
@@ -2066,6 +2286,20 @@ quadrantChart
   "Geo / time switchback": [0.83, 0.27]
 ```
 
+**When to use which.** Match the variance trick to the metric, the unit to the interference, and the stopping rule to how you look:
+
+| Reach for | When | Instead of |
+|---|---|---|
+| CUPED (Uber, LinkedIn) | A pre-period covariate correlates with the outcome (correlation near 0.7 removes about half the variance) | Interleaving when the change is not ranked-list only |
+| Interleaving (Netflix) | The change is ranked-list only and traffic is scarce (about 100x cheaper, but rank preference only) | CUPED when you need absolute metric effects, not rank preference |
+| Per-user randomization | Treatment does not leak across users and you want the highest power | Cluster or switchback that pays power you do not need |
+| Cluster or geo and time switchback (LinkedIn, Lyft) | Treatment leaks across a social graph or shared marketplace inventory | A per-user split that is biased by interference |
+| Sequential or mSPRT (Uber) | You need continuous early looks without peeking inflation | Fixed-horizon plus daily peeking that inflates the false-positive rate |
+| Fixed-horizon (Booking) | You can pre-register a planned duration and remove the temptation to peek | Ad-hoc stopping the moment a metric crosses the threshold |
+| Guardrail non-inferiority gates (Airbnb, Spotify) | Guardrails must be proven safe, and when many must all pass, power each at the tighter joint level | Reading a flat guardrail as safe when it is only underpowered |
+| Sample-size-versus-MDE power calc up front | Sample size scales as 1 over MDE squared, so fix duration before launch | Discovering the needed traffic by peeking mid-flight |
+| SRM chi-squared on every readout | A 50/50 ask that reads 50.8/49.2 signals broken randomization or logging | Reading a result whose split is already invalid |
+
 **Interview watch-outs.**
 
 - **Peeking.** Checking a fixed-horizon test daily and stopping the moment it crosses $\alpha = 0.05$ inflates the real false-positive rate far above the stated level. Fix the sample size and look once, or switch to a method built for continuous looks (sequential testing, mSPRT, always-valid p-values, group-sequential boundaries).
@@ -2168,6 +2402,19 @@ quadrantChart
   "Shopify": [0.45, 0.40]
   "Lyft": [0.65, 0.75]
 ```
+
+**When to use which.** Pick the detector, the alerting band, and the divergence metric from label latency, seasonality, and how much you are willing to automate.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Feature or prediction drift, PSI (Evidently, Uber D3) | labels are days to weeks late and you need a signal now | performance monitoring, which stalls until labels land |
+| Performance decay by segment (Uber MES, Lyft) | labels arrive in seconds (clicks) so you can watch accuracy live | drift proxies, which only approximate when truth is already available |
+| Concept-drift watch (Shopify fraud) | the input-to-label mapping can move while marginals stay flat | a feature-drift dashboard, which stays green while decay is real |
+| Dynamic bands, Prophet (Uber D3) | the data is seasonal and static cuts false-alarm on daily swings | a static threshold, fine only on a stationary signal |
+| Health score (Uber MES) | many models or datasets must share one quality bar | per-metric static thresholds that do not compose across models |
+| PSI thresholds (0.1 to 0.25 field rule) | you want a symmetric, window-agnostic univariate drift check | directional KL, when you specifically need one-way divergence |
+| Shadow plus one-step rollback (Uber deploy-safety) | promotion is high-stakes and a bad model must self-heal | detect-only handoff (Evidently), enough for low-stakes models |
+| Data-health and parity checks first | a shift might be a null-returning feature or a schema break | retraining to fix drift that is really a broken pipeline |
 
 **Interview watch-outs.**
 
