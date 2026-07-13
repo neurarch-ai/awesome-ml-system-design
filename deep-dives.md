@@ -845,9 +845,9 @@ Correlation measures that two variables move together, but that co-movement can 
 
 Pearson measures the strength of a linear relationship and is the covariance normalized by the two standard deviations,
 
-$$r = \frac{\operatorname{cov}(X,Y)}{\sigma_X \sigma_Y} = \frac{\sum_i (x_i - \bar x)(y_i - \bar y)}{\sqrt{\sum_i (x_i - \bar x)^2} \sqrt{\sum_i (y_i - \bar y)^2}},$$
+$$r = \frac{\text{cov}(X,Y)}{\sigma_X \sigma_Y} = \frac{\sum_i (x_i - \bar x)(y_i - \bar y)}{\sqrt{\sum_i (x_i - \bar x)^2} \sqrt{\sum_i (y_i - \bar y)^2}},$$
 
-so it is maximized ($|r| = 1$) only when the points fall on a straight line. Spearman $\rho$ is Pearson computed on the ranks $\operatorname{rank}(x_i), \operatorname{rank}(y_i)$, so it detects any monotonic relationship and is invariant to any monotone transform of either variable. Prefer Spearman when the relationship is monotone but curved (for example saturating), when you have ordinal data, or when heavy tails and outliers are present, because a single extreme point can swing Pearson dramatically while barely moving ranks. The pitfall is reading a low Pearson as "no relationship": a perfect U-shape has $r \approx 0$ yet is fully deterministic, so always plot the data. Conversely a high Spearman with low Pearson signals nonlinearity worth modeling.
+so it is maximized ($|r| = 1$) only when the points fall on a straight line. Spearman $\rho$ is Pearson computed on the ranks $\text{rank}(x_i), \text{rank}(y_i)$, so it detects any monotonic relationship and is invariant to any monotone transform of either variable. Prefer Spearman when the relationship is monotone but curved (for example saturating), when you have ordinal data, or when heavy tails and outliers are present, because a single extreme point can swing Pearson dramatically while barely moving ranks. The pitfall is reading a low Pearson as "no relationship": a perfect U-shape has $r \approx 0$ yet is fully deterministic, so always plot the data. Conversely a high Spearman with low Pearson signals nonlinearity worth modeling.
 
 | Aspect | Pearson $r$ | Spearman $\rho$ |
 | --- | --- | --- |
@@ -868,9 +868,9 @@ This is what lets us attach normal-based standard errors ($\text{SE} = \sigma / 
 
 **Q: Distinguish bias, variance, and consistency of an estimator, and why does an unbiased estimator not always win?**
 
-Bias is the difference between an estimator's expected value and the true parameter, $\operatorname{Bias}(\hat\theta) = \mathbb{E}[\hat\theta] - \theta$; variance is how much the estimator fluctuates across samples, $\operatorname{Var}(\hat\theta)$; and mean squared error decomposes into squared bias plus variance,
+Bias is the difference between an estimator's expected value and the true parameter, $\text{Bias}(\hat\theta) = \mathbb{E}[\hat\theta] - \theta$; variance is how much the estimator fluctuates across samples, $\text{Var}(\hat\theta)$; and mean squared error decomposes into squared bias plus variance,
 
-$$\text{MSE}(\hat\theta) = \mathbb{E}\big[(\hat\theta - \theta)^2\big] = \operatorname{Bias}(\hat\theta)^2 + \operatorname{Var}(\hat\theta).$$
+$$\text{MSE}(\hat\theta) = \mathbb{E}\big[(\hat\theta - \theta)^2\big] = \text{Bias}(\hat\theta)^2 + \text{Var}(\hat\theta).$$
 
 Consistency means the estimator converges in probability to the true value as the sample grows, $\hat\theta \xrightarrow{p} \theta$, so bias and variance both vanish in the limit; an estimator can be biased in finite samples yet still consistent. An unbiased estimator does not always win because a slightly biased estimator with much lower variance can have smaller MSE, which is exactly the logic behind regularization and shrinkage estimators like ridge or James-Stein. The practical implication is that chasing unbiasedness can leave real predictive accuracy on the table, and that consistency is a weak guarantee that says nothing about how good you are at the sample size you actually have.
 
@@ -961,7 +961,7 @@ Near-zero Pearson ($r \approx 0$) can mean genuine independence, but it can equa
 
 For squared-error loss, the expected test error at a point decomposes into three additive pieces:
 
-$$\mathbb{E}\big[(y - \hat f(x))^2\big] = \underbrace{\big(\mathbb{E}[\hat f(x)] - f(x)\big)^2}_{\text{Bias}^2} + \underbrace{\operatorname{Var}(\hat f(x))}_{\text{Variance}} + \underbrace{\sigma^2}_{\text{Irreducible noise}}.$$
+$$\mathbb{E}\big[(y - \hat f(x))^2\big] = \underbrace{\big(\mathbb{E}[\hat f(x)] - f(x)\big)^2}_{\text{Bias}^2} + \underbrace{\text{Var}(\hat f(x))}_{\text{Variance}} + \underbrace{\sigma^2}_{\text{Irreducible noise}}.$$
 
 Bias is systematic error from a model too simple to capture $f$, variance is sensitivity to the particular training sample, and $\sigma^2$ is the variance of the label noise $y = f(x) + \varepsilon$, which no model can remove because it is not a function of $x$. Increasing model complexity typically lowers bias but raises variance, so the total is U-shaped and the sweet spot minimizes their sum; regularization, bagging, and more data all attack the variance term. The practical takeaway is that a nonzero test-error floor is expected: if your error is already near $\sigma^2$, chasing it with a bigger model only adds variance, and the real gains come from better features or cleaner labels that shrink the noise itself.
 

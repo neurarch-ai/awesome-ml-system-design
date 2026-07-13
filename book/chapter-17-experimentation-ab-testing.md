@@ -137,11 +137,11 @@ Sample size scales with variance, so anything that removes variance without chan
 
 Let $Y$ be the metric and $X$ a pre-experiment covariate correlated with it (very often the same metric measured on the same user in the weeks before the experiment). The CUPED-adjusted metric is
 
-$$Y_{\text{cuped}} = Y - \theta\,\bigl(X - \mathbb{E}[X]\bigr), \qquad \theta = \frac{\operatorname{cov}(Y, X)}{\operatorname{Var}(X)}.$$
+$$Y_{\text{cuped}} = Y - \theta\,\bigl(X - \mathbb{E}[X]\bigr), \qquad \theta = \frac{\text{cov}(Y, X)}{\text{Var}(X)}.$$
 
 Because $X$ is measured before assignment, it has the same distribution in both arms, so subtracting it does not bias the treatment effect: $\mathbb{E}[Y_{\text{cuped}}]$ shifts by the same amount in control and treatment and the difference is unchanged. What it does change is the variance,
 
-$$\operatorname{Var}(Y_{\text{cuped}}) = \operatorname{Var}(Y)\,\bigl(1 - \rho^2\bigr),$$
+$$\text{Var}(Y_{\text{cuped}}) = \text{Var}(Y)\,\bigl(1 - \rho^2\bigr),$$
 
 where $\rho$ is the correlation between $Y$ and $X$. A pre-period covariate correlated at $\rho = 0.7$ removes about half the variance, which roughly halves the sample size (or the duration) needed for the same power. This is why Uber, Netflix, and LinkedIn all wire CUPED into their platforms: pre-experiment behavior is a strong predictor of in-experiment behavior, so the free variance reduction is large. The catch is that the covariate must be genuinely pre-treatment. Use anything measured after assignment and you can bias the effect you are trying to estimate.
 

@@ -849,23 +849,23 @@ flowchart TD
 
 **The math that separates them.** Each team fixes a precision floor and maximizes recall under it, since false positives block real users. Writing the operating point as a constrained argmax over the decision threshold makes the per-policy floor explicit:
 
-$$\tau^{\star} \;=\; \operatorname*{arg\,max}_{\tau}\ \operatorname{Recall}(\tau) \qquad \text{subject to}\qquad \operatorname{Precision}(\tau)\ \ge\ P_{\min}^{(\text{policy})}$$
+$$\tau^{\star} \;=\; \text{arg max}_{\tau}\ \text{Recall}(\tau) \qquad \text{subject to}\qquad \text{Precision}(\tau)\ \ge\ P_{\min}^{(\text{policy})}$$
 
 where precision and recall come from the confusion counts at that threshold:
 
-$$\operatorname{Precision}(\tau) \;=\; \frac{tp(\tau)}{tp(\tau)+fp(\tau)}, \qquad \operatorname{Recall}(\tau) \;=\; \frac{tp(\tau)}{tp(\tau)+fn(\tau)}$$
+$$\text{Precision}(\tau) \;=\; \frac{tp(\tau)}{tp(\tau)+fp(\tau)}, \qquad \text{Recall}(\tau) \;=\; \frac{tp(\tau)}{tp(\tau)+fn(\tau)}$$
 
 The floor itself is not arbitrary. It falls out of a cost-weighted objective in which a missed harm and a false flag carry very different weights, and severe policies set the miss cost orders of magnitude above the false-flag cost:
 
-$$\tau^{\star} \;=\; \operatorname*{arg\,min}_{\tau}\ \Big[\, c_{fn}\cdot fn(\tau) \;+\; c_{fp}\cdot fp(\tau) \,\Big], \qquad \frac{c_{fn}}{c_{fp}} \;\gg\; 1 \ \text{ for CSAM, terrorism, imminent violence}$$
+$$\tau^{\star} \;=\; \text{arg min}_{\tau}\ \Big[\, c_{fn}\cdot fn(\tau) \;+\; c_{fp}\cdot fp(\tau) \,\Big], \qquad \frac{c_{fn}}{c_{fp}} \;\gg\; 1 \ \text{ for CSAM, terrorism, imminent violence}$$
 
 A finite human queue turns routing into a second constrained problem: rank the uncertain middle by expected damage so scarce reviewer-minutes land on the worst items first:
 
-$$\operatorname{Priority}(x) \;=\; \operatorname{Severity}(\text{policy})\ \times\ \operatorname{Reach}(x), \qquad \text{review in order of decreasing } \operatorname{Priority}$$
+$$\text{Priority}(x) \;=\; \text{Severity}(\text{policy})\ \times\ \text{Reach}(x), \qquad \text{review in order of decreasing } \text{Priority}$$
 
 Slack judges the blocker by the acceptance rate of blocked invites, a proxy for how much of what it blocked was actually legitimate:
 
-$$\operatorname{FalseBlockProxy} \;=\; \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} \;=\; 0.03 \quad \text{versus}\quad 0.70 \ \text{ under manual rules}$$
+$$\text{FalseBlockProxy} \;=\; \frac{\lvert \text{accepted}\cap\text{blocked}\rvert}{\lvert \text{blocked}\rvert} \;=\; 0.03 \quad \text{versus}\quad 0.70 \ \text{ under manual rules}$$
 
 Under a skewed base rate (Bumble at 0.1 percent positives) accuracy is useless: a model that flags nothing scores 99.9 percent, so the operating point is set on the precision-recall curve, never on accuracy.
 
@@ -1083,7 +1083,7 @@ flowchart TD
 
 **UCB optimistic score.** Pick the arm with the highest optimistic value: the estimated mean reward plus a bonus that grows with feature-space uncertainty, where `A` is the feature-covariance matrix accumulated for the chosen arm and `alpha` scales exploration.
 
-$$a_t = \operatorname*{arg\,max}_a \left( \hat{\theta}^{\top} x_a + \alpha \sqrt{ x_a^{\top} A^{-1} x_a } \right)$$
+$$a_t = \text{arg max}_a \left( \hat{\theta}^{\top} x_a + \alpha \sqrt{ x_a^{\top} A^{-1} x_a } \right)$$
 
 **UCB bonus (count form).** For the non-contextual case the bonus reduces to a term that shrinks as an arm is pulled more, where `N_t` is total pulls and `n_{a}` is pulls of arm `a`, so a rarely-tried arm stays optimistic:
 
@@ -1091,7 +1091,7 @@ $$b_t(a) = \alpha \sqrt{ \dfrac{ \ln N_t }{ n_{a} } }$$
 
 **Thompson Beta posterior draw.** Maintain a Beta posterior per arm from successes `s_a` and failures `f_a`, draw one sample per arm, and serve the argmax of the samples so wide-posterior arms win often enough to get explored:
 
-$$\tilde{\mu}_a \sim \operatorname{Beta}\!\left( \alpha_a + s_a,\ \beta_a + f_a \right), \qquad a_t = \operatorname*{arg\,max}_a \tilde{\mu}_a$$
+$$\tilde{\mu}_a \sim \text{Beta}\!\left( \alpha_a + s_a,\ \beta_a + f_a \right), \qquad a_t = \text{arg max}_a \tilde{\mu}_a$$
 
 **IPS off-policy estimate.** Reweight each logged reward by the ratio of the new policy probability to the logging policy propensity, giving an unbiased value estimate when every action had nonzero logging probability:
 
@@ -1918,7 +1918,7 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\textbf{Batching latency and rate:}\quad L_{\text{batch}} \ = \ W \ + \ \frac{B}{\operatorname{tput}(B)}, \qquad \operatorname{QPS} \ = \ \frac{B}{W}$$
+$$\textbf{Batching latency and rate:}\quad L_{\text{batch}} \ = \ W \ + \ \frac{B}{\text{tput}(B)}, \qquad \text{QPS} \ = \ \frac{B}{W}$$
 
 $$\textbf{p99 budget must cover:}\quad T_{p99} \ \geq \ L_{\text{net}} \ + \ L_{\text{feat}} \ + \ W \ + \ L_{\text{model}}(B)$$
 
@@ -1930,7 +1930,7 @@ $$\textbf{Little's law, queue form:}\quad \bar{Q} \ = \ \lambda \cdot \bar{W}_{\
 
 $$\textbf{Batch fill efficiency:}\quad \eta \ = \ \frac{\mathbb{E}[B]}{B_{\max}} \ = \ \frac{\min(\lambda W, \ B_{\max})}{B_{\max}}$$
 
-$$\textbf{Shadow and blue-green cost:}\quad \operatorname{Cost}_{\text{deploy}} \ = \ \operatorname{Cost}_{\text{prod}} \cdot (1 \ + \ f_{\text{mirror}}), \qquad f_{\text{mirror}} \in [0, 1]$$
+$$\textbf{Shadow and blue-green cost:}\quad \text{Cost}_{\text{deploy}} \ = \ \text{Cost}_{\text{prod}} \cdot (1 \ + \ f_{\text{mirror}}), \qquad f_{\text{mirror}} \in [0, 1]$$
 
 $$\textbf{Autoscale headroom for cold start:}\quad N_{\text{provisioned}} \ = \ \left\lceil (1 \ + \ h) \cdot \frac{\lambda_{\text{peak}}}{\mu} \right\rceil, \qquad h \ \gtrsim \ \frac{T_{\text{coldstart}}}{T_{\text{scale-interval}}}$$
 
