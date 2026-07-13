@@ -29,8 +29,7 @@ genuinely different problems.
 **Q: What is an as-of join and why does training require it?**
 
 A: For each labeled event with timestamp $T_i$, the as-of join retrieves the feature
-value valid at $\max\{t : t \leq T_i\}$: the most recent write strictly before the
-event. It prevents time leakage by ensuring the model is trained only on information
+value valid at $\max\{t : t \leq T_i\}$: the most recent write no later than $T_i$. It prevents time leakage by ensuring the model is trained only on information
 that would have been available at scoring time. "Join on latest" is not the same
 thing; it picks up feature writes that happened after the event.
 
@@ -82,7 +81,7 @@ option; it is simpler and avoids versioned backfill complexity. The key constrai
 is: do not mix training data from before and after a definition change without
 explicitly flagging the discontinuity.
 
-**Q: Uber logged 10,000 features and the store became unmanageable. What would
+**Q: Uber logged 10,000 features and governance became the critical challenge. What would
 you do differently?**
 
 A: Governance from the start: every feature must have a declared owner, a description,

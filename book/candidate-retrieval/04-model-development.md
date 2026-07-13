@@ -56,7 +56,7 @@ user most similar to its own item.
 ![In-batch negatives similarity matrix](assets/fig-inbatch-negatives.png)
 
 *Every row is a user, every column an item in the same batch. Green cells (the
-diagonal) are the positives the model should rank first; the rest are free
+diagonal) are the positives the model should score highest; the rest are free
 negatives. The red dashed cell is a false negative: item 4 is actually something
 user 1 also likes, but the batch labels it "negative."*
 

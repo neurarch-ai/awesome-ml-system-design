@@ -35,10 +35,10 @@ flowchart LR
 The 50 ms p99 end-to-end target is not the model's budget. It is the total
 budget, shared across every step on the critical path:
 
-$$T_{p99} \;\geq\; L_{\text{net}} + L_{\text{feat}} + L_{\text{wait}} + L_{\text{model}}(B)$$
+$$T_{p99} \;\geq\; L_{\text{net}} + L_{\text{feat}} + W + L_{\text{model}}(B)$$
 
 where $L_{\text{net}}$ is round-trip network, $L_{\text{feat}}$ is the feature
-store lookup, $L_{\text{wait}}$ is the dynamic-batching wait window, and
+store lookup, $W$ is the dynamic-batching wait window, and
 $L_{\text{model}}(B)$ is inference time at batch size $B$. If feature fetch
 costs 10 ms and the network adds 5 ms, the model and its batching overhead have
 at most 35 ms.
@@ -51,7 +51,7 @@ repeat. This ordering, budget first and hardware second, is the senior move.
 ## Why p99, not average
 
 The mean hides the tail. If 93 percent of requests take 8 ms and 7 percent take
-80 ms, the average is about 13 ms while the p99 is around 70 ms. The user whose
+80 ms, the average is about 13 ms while the p99 is 80 ms. The user whose
 request lands in the tail always waits; p99 is the latency that the SLA actually
 measures. For fan-out systems (a search page that fans out across shards)
 individual tail requests multiply, so teams like Booking.com hold to p999

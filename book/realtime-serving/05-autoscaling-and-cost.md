@@ -78,7 +78,7 @@ means each GPU handles far more requests per dollar. The crossover point depends
 on the model size, hardware pricing, and batch fill efficiency. Illustrative.*
 
 Pinterest's motivation for moving to GPU was exactly this: they needed to serve
-a 100x larger model at neutral cost, which required the GPU's batch economics.
+a much larger model at neutral cost, which required the GPU's batch economics.
 
 ## Offline vs online: push work off the critical path
 

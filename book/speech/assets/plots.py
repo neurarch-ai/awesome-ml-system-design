@@ -111,7 +111,7 @@ ax_wave.grid(False)
 hop = 160  # 10 ms
 win = 400  # 25 ms
 n_fft = 512
-n_mels = 40
+n_mels = 80
 frames = []
 for i in range(0, len(wave) - win, hop):
     frame = wave[i:i + win] * np.hanning(win)
@@ -138,7 +138,7 @@ img = ax_spec.imshow(mel_S, aspect='auto', origin='lower', cmap='viridis',
                      extent=[0, t_total, 0, n_mels])
 ax_spec.set_ylabel('Mel bin')
 ax_spec.set_xlabel('Time (s)')
-ax_spec.set_title('Log-mel spectrogram (40 mel bins)')
+ax_spec.set_title('Log-mel spectrogram (80 mel bins)')
 fig.colorbar(img, ax=ax_spec, fraction=0.03, label='log energy')
 
 fig.tight_layout()

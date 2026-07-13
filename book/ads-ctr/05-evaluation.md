@@ -99,9 +99,7 @@ online A/B test. What to measure:
 - **Calibration stability over time.** Does the model stay calibrated as
   campaigns change, or does ECE drift up within days of launch?
 
-The Twitter paper reports a 55% RPM gain from a delay-aware loss, while the
-offline cross-entropy gain was only 3%. Offline and online metrics can diverge
-significantly; the online gate is mandatory.
+Offline and online metrics can diverge significantly; the online gate is mandatory.
 
 ## When to use which metric
 

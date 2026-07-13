@@ -14,10 +14,10 @@ leverage is in those three choices.
 |---|---|---|---|---|
 | Google Wide and Deep | Wide linear plus deep MLP | Single (install) | Implicit | Memorization for frequent rules, generalization for the long tail; shipped in TensorFlow for Google Play |
 | Meta DLRM | Explicit pairwise dot products after embedding tables | Single or multi | Not central | Many sparse ids; second-order crosses modeled structurally; embedding tables sharded for memory |
-| Instacart pCTR | Wide-and-deep with FM wide side | Single (pCTR) | Explicit per-surface | Consolidating five surface-specific XGBoost models into one; 64-77% calibration improvement |
+| Instacart pCTR | Wide-and-deep with FM wide side | Single (pCTR) | Explicit per-surface | Consolidating five surface-specific XGBoost models into one; explicit calibration per surface |
 | Pinterest home feed | Shared-bottom DNN with per-action heads | Multi (click, long-click, close-up, repin) | Logistic regression per head, 80+ features | Several engagement actions to calibrate independently and combine; utility weights tunable without retraining |
 | Pinterest related products | Shared body, four engagement heads | Multi | Downsampling correction | Collapsing distinct actions into one binary label lost signal; four heads beat the binary classifier |
-| LinkedIn home feed | Passive and active towers over XGBoost leaf features | Multi (click, dwell, comment, reshare) | Not central | Tree leaf indices bridged into DNN; dense-tensor encoding cut gRPC overhead by about two-thirds |
+| LinkedIn home feed | Passive and active towers over XGBoost leaf features | Multi (click, dwell, comment, reshare) | Not central | Tree leaf indices bridged into DNN; dense-tensor encoding reduced gRPC overhead |
 | Airbnb search | GBDT then neural net (pairwise LambdaRank) | Single (booking) | Not central | GBDT baseline first, then neural; listing-id embeddings overfit (365 bookings/year limit) |
 | DoorDash ads | Shared DNN body, click and conversion heads | Multi (pCTR, pCVR) | Calibrated for auction | Conversion labels arrive delayed; multi-task DNN captures user behavior tree models cannot |
 | Spotify ads (CAMoE) | MMoE with DCN-v2 inside each expert; modality-specific gates | Multi (audio CTR, video CTR) | ECE-monitored, drives auction pricing | Modality imbalance suppressed video without adaptive loss masking; ECE drift means over-bid |
@@ -50,4 +50,4 @@ cross-task utility blend.
 - **Walmart** [Improving Walmart Search](https://medium.com/walmartglobaltech/improving-walmart-search-to-help-our-customers-save-time-e9fcd1f03e94): two-round ranker balancing relevance and engagement; 4.5% relevance lift validated by editorial evaluation.
 - **Snap** [Machine Learning for Snapchat Ad Ranking](https://eng.snap.com/machine-learning-snap-ad-ranking): four-stage funnel; user tower computed once per request; MMoE/PLE; Platt or isotonic calibration drives auction.
 - **Asos** [Transforming Recommendations at Asos](https://medium.com/asos-techblog/transforming-recommendations-at-asos-254b95c6a07a): transformer sequence ranker over interaction history; over 20% offline lift versus matrix factorization.
-- **Yelp** [Beyond Matrix Factorization](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html): XGBoost LambdaMART with hybrid content and interaction features; user-business cosine similarity the strongest single feature; doubled user coverage.
+- **Yelp** [Beyond Matrix Factorization](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html): XGBoost LambdaMART with hybrid content and interaction features; doubled user coverage.

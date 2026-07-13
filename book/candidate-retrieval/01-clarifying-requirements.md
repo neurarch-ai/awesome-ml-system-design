@@ -11,7 +11,7 @@ user and their context.
 
 **Candidate:** How large is the catalog, and how many candidates should
 retrieval return?
-**Interviewer:** About 100 million items. Retrieval should hand roughly a few
+**Interviewer:** About 100 million items (illustrative scale). Retrieval should hand roughly a few
 hundred candidates to the ranking stage.
 
 **Candidate:** What is the latency budget for retrieval?

@@ -20,7 +20,7 @@ The four practical tiers, from cheapest to most expensive:
 
 ![Freshness tiers: staleness tolerance vs. infrastructure cost](assets/fig-freshness-tiers.png)
 
-*Moving left on the x-axis (fresher) costs roughly an order of magnitude more in
+*Moving right on the x-axis (fresher) costs roughly an order of magnitude more in
 infrastructure per tier. Daily batch features cost 1x; streaming costs roughly 7x.
 Request-time computation (rightmost) can cost more than all stores combined if the
 computation is non-trivial. Assign each feature to the least-strict tier it can

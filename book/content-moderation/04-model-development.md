@@ -44,9 +44,11 @@ is too expensive at scale.
 Self-supervised speech models (wav2vec2, WavLM) either classify audio directly or
 transcribe-then-classify. For live voice chat (Roblox's problem), you need a distilled
 student model running on a 10-to-15-second rolling window at sub-100ms latency. The
-Roblox distillation chain: fine-tune WavLM, use Whisper as a teacher to distill
-into a 48M-parameter student, then quantize. The result serves over 2,000 requests
-per second.
+Roblox bootstrap-and-distill chain: use Whisper to transcribe audio at scale, apply
+the existing text-filter ensemble to those transcriptions to generate machine labels,
+then use those labels to train a small audio student (fine-tuned WavLM, approximately
+48M parameters) that infers directly from audio without a transcription step at serve
+time, then quantize. The result serves over 2,000 requests per second.
 
 ### Joint image-text models
 
@@ -99,9 +101,11 @@ $$\tau^{\star}_k = \arg\min_{\tau}\ \bigl[c_{\text{fn}}^{(k)} \cdot \text{fn}(\t
 
 ![Asymmetric costs per harm type](assets/fig-cost-asymmetry.png)
 
-*CSAM: the miss cost is roughly 200 times the false-block cost, forcing a very high
-precision floor before auto-action. Spam: costs are closer to balanced, allowing a
-lower precision floor and higher recall. Illustrative log scale.*
+*Hypothetical severe-harm example: in a case where the miss cost vastly exceeds the
+false-block cost (as with CSAM, where even a single miss has catastrophic
+consequences), the precision floor before auto-action is forced extremely high. Spam:
+costs are closer to balanced, allowing a lower precision floor and higher recall.
+Illustrative log scale; the precise cost ratio varies by platform and policy.*
 
 ## Calibration
 

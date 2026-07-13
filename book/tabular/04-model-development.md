@@ -87,11 +87,11 @@ to avoid overfitting the steps.
 
 **Prior correction for sampling.** If you subsampled negatives to address class
 imbalance, the model's learned probability is in the sampled distribution, not the
-true one. Apply the analytic correction:
+true one. Apply the King-Zeng analytic correction:
 
 $$\hat{p}_{\text{true}} = \frac{\hat{p}_{\text{sampled}}}{\hat{p}_{\text{sampled}} + \frac{1 - \hat{p}_{\text{sampled}}}{\rho}}$$
 
-where $\rho = \text{true-positive-rate} / \text{sampled-positive-rate}$.
+where $\rho = \dfrac{q\,(1 - q')}{q'\,(1 - q)}$, with $q$ the true population positive rate and $q'$ the positive rate in the sampled training set.
 
 Apply this **before** fitting Platt or isotonic, or you calibrate on the wrong
 base rate.

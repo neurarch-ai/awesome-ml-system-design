@@ -81,11 +81,12 @@ not slot position.
 
 **Q: You said feature hashing accepts collisions. Doesn't that hurt quality?**
 A: Controlled collision is the accepted tradeoff for bounded memory and graceful
-handling of unseen ids. The collision probability follows a birthday-paradox curve:
-for $n$ ids hashed into $H$ buckets, the expected collision rate is roughly
-$1 - e^{-n(n-1)/(2H)}$. Increase $H$ to reduce collisions; shrink it to save
-memory. In practice, collision rates below roughly 5% introduce negligible quality
-loss, and for rare ids (which collide most) the embedding was undertrained anyway.
+handling of unseen ids. The per-pair collision probability is $1/H$; the expected
+fraction of items landing in an already-occupied bucket is approximately
+$1 - e^{-n/H}$. When $n/H$ is small (the common case for a well-sized table)
+this fraction is roughly $n/H$, keeping quality loss negligible. Increase $H$
+to reduce collisions; shrink it to save memory. For rare ids the embedding was
+undertrained anyway, so a collision costs little additional quality.
 Name the tradeoff explicitly; it is the senior detail.
 
 ## Commonly answered wrong (the traps)

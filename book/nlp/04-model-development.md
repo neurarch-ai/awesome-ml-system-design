@@ -111,7 +111,7 @@ use $\beta \gt 1$.
 **For seq2seq translation,** the loss is token-level cross-entropy over the target
 sequence, conditioned on the source and all previously decoded target tokens:
 
-$$\mathcal{L}_{\text{seq2seq}} = -\sum_{t=1}^{T} \log p_{\theta}(y_t \mid y_{\lt t}, x)$$
+$$\mathcal{L}_{\text{seq2seq}} = -\frac{1}{T}\sum_{t=1}^{T} \log p_{\theta}(y_t \mid y_{\lt t}, x)$$
 
 ## The LLM as label factory, not as the model
 

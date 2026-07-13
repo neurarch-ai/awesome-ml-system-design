@@ -13,11 +13,10 @@ the top count more than hits further down.
 $$\text{NDCG@k} = \frac{\text{DCG@k}}{\text{IDCG@k}}, \qquad \text{DCG@k} = \sum_{i=1}^{k} \frac{2^{r_i} - 1}{\log_2(i + 1)}$$
 
 where $r_i$ is the relevance label of the item at position $i$ and IDCG@k is
-the DCG of the ideal (perfect) ranking. NDCG is the right offline metric when
-you care about both recall (were the good items retrieved?) and order (are they
-near the top?). Yelp and Airbnb use NDCG as the offline signal for their
-learning-to-rank models because NDCG directly rewards putting the most relevant
-item at rank 1.
+the DCG of the ideal (perfect) ranking. NDCG rewards relevant items appearing
+near the top of the ranked list and discounts lower positions. Yelp and Airbnb
+use NDCG as the offline signal for their learning-to-rank models because NDCG
+directly rewards putting the most relevant item at rank 1.
 
 ![NDCG@k curves for different optimization approaches](assets/fig-ndcg-k.png)
 
@@ -31,7 +30,7 @@ treats items independently and lags behind. Illustrative values.*
 examples above negative examples across all thresholds. It is the standard
 offline metric for binary classification objectives (click vs. no-click) at
 scale, because it is threshold-free and easy to compute over billions of rows.
-AUC is insensitive to the number of positives, which matters when the click rate
+AUC does not require balanced classes, which matters when the click rate
 is 1-2%. The typical failure mode: AUC can improve while calibration worsens, so
 never use AUC alone when scores feed an auction.
 

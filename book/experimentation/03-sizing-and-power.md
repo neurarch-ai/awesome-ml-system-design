@@ -21,7 +21,7 @@ error (false alarm rate, alpha): the probability of rejecting the null when the
 truth is no effect. The red area is the Type II error (miss rate, beta): the
 probability of failing to detect a real effect of size MDE. Power = 1 minus the
 red area. A larger MDE or a larger sample pushes the treatment curve further
-right, shrinking the red area.*
+right (in standardized effect-size space), shrinking the red area.*
 
 ## The sample-size formula
 
@@ -79,7 +79,7 @@ effective sample size without collecting a single extra user. Use the week befor
 the experiment as the pre-period covariate; it is almost always available and
 typically achieves $\rho$ around 0.6 to 0.8 for engagement metrics.
 
-CUPED is a post-hoc adjustment: compute $\theta$ on the combined data after the
+CUPED is a post-hoc adjustment: estimate $\theta$ from both arms pooled after the
 experiment, then analyze the adjusted outcomes.
 
 ## When to use which approach

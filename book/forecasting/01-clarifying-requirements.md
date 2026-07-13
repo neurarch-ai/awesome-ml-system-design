@@ -30,7 +30,7 @@ Before designing anything, pin down what the system must do. Every question belo
 
 **Interviewer:** Understock is lost sale plus churn: call it 3x the holding cost. The target service level is 90 percent.
 
-**Candidate:** That gives us the critical fractile: the optimizer should stock to the P90 of demand, not the mean. We need to emit and evaluate the P90 quantile explicitly, with coverage checks.
+**Candidate:** That gives us two things to pin down. First, the cost ratio sets the critical fractile directly: c_u / (c_u + c_o) = 3 / (3 + 1) = 0.75, so the newsvendor optimizer stocks to the P75 of demand, not the mean. Second, the business has separately named a 90 percent service-level target. Those are two different numbers: the 3:1 cost ratio implies a P75 stocking quantile, while the P90 service-level target is an independent business specification. We should emit at minimum P10, P50, P75, and P90 quantiles and verify empirical coverage on each.
 
 ---
 
@@ -38,6 +38,6 @@ Let us summarize the problem statement. **We are asked to design a demand foreca
 
 Three consequences fall out of this immediately:
 
-- **The output must be a distribution.** The optimizer needs the P90 to set safety stock against a 3:1 cost ratio. A single point estimate is a broken input to the optimizer and is not acceptable.
+- **The output must be a distribution.** The 3:1 underage-to-overage cost ratio sets the critical-fractile stocking quantile at P75 (c_u / (c_u + c_o) = 3/4); the business also named a 90 percent service-level target as a separate specification. Either way, a single point estimate is a broken input to the optimizer and is not acceptable.
 - **The scale rules out one model per series.** At millions of series, a global model that shares weights across all series is the only tractable path. Classical per-series methods (ARIMA, ETS) are a fast baseline for small-scale validation, not the production path.
 - **Evaluation must be a rolling-origin backtest, scored on proper metrics.** Random train/test splits leak future demand. MAPE is undefined on zero-demand SKUs, which are common. The correct gate is MASE and pinball/WQL on a walk-forward backtest at the 12-week horizon, plus coverage checks to confirm the P90 is actually exceeded about 10 percent of the time.

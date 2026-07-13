@@ -26,8 +26,8 @@
   inverse-propensity weighting, and a position feature at train time.
 - **Evaluate with log loss and calibration (reliability curve, ECE, sliced), not
   AUC alone.** Gate the launch on an online A/B test on RPM and advertiser ROI.
-  The Twitter paper reports a 55% online RPM gain from a delay-aware loss on a
-  3% offline cross-entropy improvement; offline metrics can mislead badly.
+  Offline metrics can mislead badly; a delay-aware loss can produce large online
+  RPM gains from a modest offline improvement.
 
 ## The full system on one page
 

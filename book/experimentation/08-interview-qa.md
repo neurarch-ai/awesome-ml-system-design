@@ -107,11 +107,13 @@ interval width, not just the binary outcome.
 
 **Q: Can you test multiple variants in one experiment?**
 
-A: Yes, but you must correct for multiple comparisons. A two-variant (A/B/C)
-test at alpha = 0.05 each does not give you a 5% false-positive rate overall;
-it gives you roughly 1 - (0.95)^2 = 9.75%. Pre-declare which comparison is the
-primary, apply Bonferroni or FDR correction for the rest, and power each variant
-arm to detect the MDE against control independently.
+A: Yes, but you must correct for multiple comparisons. A two-treatment (A/B/C)
+test at alpha = 0.05 each, comparing each treatment against control only,
+does not give you a 5% false-positive rate overall; it gives you roughly
+1 - (0.95)^2 = 9.75%. If all pairwise comparisons (A vs B, A vs C, B vs C)
+were made, the FWER would rise to 1 - (0.95)^3 ~ 14.3%. Pre-declare which
+comparison is the primary, apply Bonferroni or FDR correction for the rest,
+and power each variant arm to detect the MDE against control independently.
 
 **Q: A guardrail is flat (not significant). Is it safe to ship?**
 

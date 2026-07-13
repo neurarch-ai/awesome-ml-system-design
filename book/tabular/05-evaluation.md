@@ -56,8 +56,7 @@ Rewards both discrimination and calibration simultaneously:
 
 $$\text{Brier} = \frac{1}{n}\sum_i (\hat{p}_i - y_i)^2$$
 
-Block Square reports both C-index (ranking) and Integrated Brier Score (0.13,
-calibration) for exactly this reason: C-index alone hides calibration failures.
+Block Square reports both C-index 0.83 (ranking) and Integrated Brier Score (calibration) for exactly this reason: C-index alone hides calibration failures.
 
 **Sliced calibration.** Always report calibration by segment (product type, vintage,
 region, protected group). A global ECE of 0.02 can mask a 0.10 ECE on a new
@@ -72,11 +71,7 @@ objective still fails the business.
 the expected profit and expected loss at the operating threshold. This is the number
 the business decision maker cares about.
 
-**Uplift metrics.** For intervention models, use the **Qini coefficient** or the
-**area under the uplift curve** (AUUC). These measure cumulative incremental
-conversions as you target a growing fraction of the population, sorted by predicted
-uplift. A churn model evaluated on the Qini will look worse than an uplift model
-because it wastes budget on sure things.
+**Uplift metrics.** For intervention models, use the **area under the uplift curve** (AUUC) or the **Qini coefficient**. These are related but distinct: the AUUC is the raw area under the uplift curve (cumulative incremental conversions vs population fraction targeted), while the Qini coefficient is the area between the Qini curve and the random-targeting diagonal baseline. Both measure how much better than random the model concentrates incremental conversions in the top fraction. A churn model evaluated on either will look worse than an uplift model because it wastes budget on sure things.
 
 ![Uplift and Qini curve](assets/fig-uplift-qini.png)
 
@@ -96,7 +91,7 @@ treatment). Budget should flow only to persuadables.*
 | C-index | survival models; you want to know if predicted hazards rank correctly | AUC-ROC applied to the event indicator, which ignores censoring |
 | Reliability curve + ECE | any model whose probability feeds a threshold, limit, or price | AUC alone, which says nothing about calibration |
 | Brier Score | combined discrimination and calibration in one number | two separate metrics when a scalar summary is enough |
-| Qini coefficient / AUUC | uplift and intervention models where budget efficiency matters | accuracy or AUC on the treatment-response label, which does not measure incremental value |
+| AUUC / Qini coefficient | uplift and intervention models where budget efficiency matters (AUUC = raw area; Qini = area above random baseline) | accuracy or AUC on the treatment-response label, which does not measure incremental value |
 | Sliced metrics (by segment, vintage, protected group) | always, especially for regulated decisions | global aggregates that mask slice-level failures |
 
 ## The evaluation discipline

@@ -114,8 +114,9 @@ table_sizes = np.array([2**17, 2**18, 2**19, 2**20, 2**21, 2**22, 2**23, 2**24, 
 
 for n_ids_m, c in zip([1, 10, 100, 1000], [GREEN, BLUE, ORANGE, RED]):
     n_ids = n_ids_m * 1_000_000
-    # Approximate collision probability: 1 - exp(-n*(n-1)/(2*B)) for n balls, B bins
-    collision = 1 - np.exp(-n_ids * (n_ids - 1) / (2.0 * table_sizes))
+    # Expected fraction of items landing in an already-occupied bucket: 1 - exp(-n/H)
+    # Per-pair collision probability is 1/H; this fraction stays ~n/H when n/H is small.
+    collision = 1 - np.exp(-n_ids / table_sizes)
     collision = np.clip(collision, 0, 1)
     ax.semilogx(table_sizes, collision, 'o-', color=c, lw=2, markersize=5,
                 label=f'{n_ids_m}M distinct ids')
@@ -123,8 +124,8 @@ for n_ids_m, c in zip([1, 10, 100, 1000], [GREEN, BLUE, ORANGE, RED]):
 ax.axhline(0.05, color=GRAY, ls='--', lw=1.2)
 ax.text(table_sizes[1] * 1.1, 0.07, '5% collision threshold', color=GRAY, fontsize=9)
 ax.set_xlabel('Hash table size (number of buckets, log scale)')
-ax.set_ylabel('Expected collision probability')
-ax.set_title('Feature hashing: collision rate vs table size\n(controlled quality cost for bounded memory)')
+ax.set_ylabel('Expected fraction of items sharing a bucket')
+ax.set_title('Feature hashing: collision fraction vs table size\n(quality loss stays negligible while n/H is small)')
 ax.legend(fontsize=9, frameon=False)
 ax.set_ylim(0, 1.05)
 

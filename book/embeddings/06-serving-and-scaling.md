@@ -51,8 +51,8 @@ traversal.
 **IVF-PQ (inverted file plus product quantization).** Compresses each vector into
 a short byte code by quantizing subspaces independently. Memory shrinks by an
 order of magnitude with some recall loss. The pragmatic choice at very large scale
-or tight memory; Etsy pairs HNSW with 4-bit PQ to fit the index in memory while
-keeping HNSW's recall-per-latency profile.
+or tight memory; for example, pairing HNSW with PQ keeps HNSW's recall-per-latency
+profile while compressing the index to fit in constrained memory.
 
 **When to use which index.**
 

@@ -7,11 +7,11 @@ boosted trees (XGBoost, LightGBM) are the first model to reach for. They handle
 mixed feature types naturally, give feature importance for free, produce
 well-calibrated probability estimates with isotonic regression or Platt scaling
 applied post-training, and train fast enough for daily or even hourly retraining
-cycles. Capital One's AML triage showed that a well-tuned random forest matched
-the ROC curves of XGBoost and RNNs while being twice as fast to train and far
-more explainable under regulatory scrutiny. The message: trees are not a fallback;
-they are the right starting point for tabular fraud signals and a strong baseline
-to beat before reaching for a DNN.
+cycles. Capital One's AML program uses a random forest to triage suspicious-activity
+alerts, prioritizing cases for investigation across hundreds of features under
+regulatory scrutiny where explainability is a hard requirement. The message: trees
+are not a fallback; they are the right starting point for tabular fraud signals
+and a strong baseline to beat before reaching for a DNN.
 
 ## Wide-and-Deep DNN
 
@@ -36,10 +36,9 @@ flowchart TD
 The wide side memorizes specific co-occurrences (device X plus merchant Y plus
 time-of-day Z was always fraud last month). The deep side generalizes to unseen
 combinations. They are trained jointly: the wide branch uses FTRL, the deep
-branch uses Adam, and neither is trained in isolation. Stripe evolved from a
-wide-and-deep ensemble to a pure DNN with a ResNeXt-style multi-branch design,
-cutting training time by over 85 percent while sustaining a 0.1 percent false-
-positive rate across billions of payments.
+branch uses Adam, and neither is trained in isolation. Stripe's Radar system uses
+a supervised model over tabular features and entity embeddings that is
+continuously retrained and must score each transaction in sub-100 ms.
 
 Two points to state in an interview: (1) embedding tables dominate parameter
 count, not the MLP layers, so the engineering cost of growing the embedding

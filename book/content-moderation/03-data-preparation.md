@@ -28,10 +28,10 @@ recall on easy cases.
 
 Borderline content is genuinely ambiguous. A single reviewer label is often wrong.
 The industry standard is to route difficult items to multiple graders and require
-consensus or majority vote. Roblox's rule is 80 percent inter-rater agreement across
-at least three reviewers before an item becomes training data. Below that threshold,
-send to adjudication (a senior reviewer or policy owner resolves the disagreement),
-not to the training set.
+consensus or majority vote. A common convention is to require agreement across at
+least three reviewers before an item becomes training data; items that fall below
+the agreement threshold are sent to adjudication (a senior reviewer or policy owner
+resolves the disagreement) rather than to the training set.
 
 Track reviewer agreement rates over time. Falling agreement is a signal either that
 the policy boundary has become unclear (needs a policy update) or that new attack

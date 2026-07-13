@@ -61,8 +61,9 @@ A: Not without checking batch composition. If batches are user-concentrated (man
 rows from the same user in the same batch), a user's own other engaged items appear
 as negatives and the model learns to push them down. This is the false-negative
 problem at scale. The fix is user-level masking (drop same-user items from the
-softmax denominator), not a larger batch. Pinterest measured the in-batch
-false-negative rate rising to roughly 30% without masking.
+softmax denominator), not a larger batch. Without masking, user-concentrated
+batches can push false negatives to a substantial fraction of the denominator,
+degrading the loss signal.
 
 **Q: Your embedding space looks healthy on cosine probes but production engagement
 dropped. What could explain it?**
@@ -89,10 +90,9 @@ the opposite direction.
 A: No, in the general case. Users and items have different feature distributions
 and different feature types; sharing weights would force the same transformation
 on inputs that are not comparable. The two towers share only the output embedding
-space, enforced by the contrastive loss. (Uber deliberately shares a UUID
-embedding layer to collapse many per-city models into one global model, but that
-is a domain-specific trick enabled by the fact that drivers and riders share the
-same ID namespace, not a general principle.)
+space, enforced by the contrastive loss. Weight sharing across towers can be a
+deliberate choice when both sides share the same input namespace, but that is a
+domain-specific exception, not a general principle.
 
 **Q: What happens to the index when you retrain the encoder?**
 A: The axes of the embedding space move. A vector produced by the new encoder is

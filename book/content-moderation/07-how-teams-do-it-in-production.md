@@ -28,7 +28,7 @@ choices.
 
 - **Roblox** [Deploying ML for Voice Safety](https://about.roblox.com/newsroom/2024/07/deploying-ml-for-voice-safety): distilled WavLM audio classifier on rolling 15-second windows; machine-labeled training data bootstrapped from an existing text-filter ensemble; 50ms latency at 2,000-plus requests per second; 15.3 percent reduction in severe voice-abuse reports.
 
-- **Roblox** [How Roblox Uses AI to Moderate Content on a Massive Scale](https://about.roblox.com/newsroom/2025/07/roblox-ai-moderation-massive-scale): 6.1 billion chat messages per day at 750,000-plus requests per second; distilled per-policy text models plus GPU-based PII detection; deploy AI only where it beats humans on both precision and recall; thousands of human experts handle complex cases and appeals.
+- **Roblox** [How Roblox Uses AI to Moderate Content on a Massive Scale](https://about.roblox.com/newsroom/2025/07/roblox-ai-moderation-massive-scale): 6.1 billion chat messages per day; 750,000-plus requests per second across all moderation surfaces (text, image, and voice combined, not chat messages alone); distilled per-policy text models plus GPU-based PII detection; deploy AI only where it beats humans on both precision and recall; thousands of human experts handle complex cases and appeals.
 
 - **Pinterest** [Fighting misinformation, hate speech, and self-harm content with ML](https://medium.com/pinterest-engineering/how-pinterest-fights-misinformation-hate-speech-and-self-harm-content-with-machine-learning-1806b73b40ef): hybrid batch-online scoring for six violation classes; PinSage graph embeddings in the batch model; image-signature grouping for uniform enforcement; policy-violating reports per impression fell 52 percent.
 

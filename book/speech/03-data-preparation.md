@@ -28,7 +28,7 @@ The waveform and its derived spectrogram look like this on a short utterance:
 ![Log-mel spectrogram and waveform](assets/fig-waveform-spectrogram.png)
 
 *Top: raw 16 kHz waveform showing two voiced regions separated by a brief pause.
-Bottom: the corresponding 40-bin log-mel spectrogram; voiced regions show
+Bottom: the corresponding 80-bin log-mel spectrogram; voiced regions show
 harmonic structure (bright horizontal bands) that the model learns to decode.
 The silence gap is faint. Illustrative.*
 

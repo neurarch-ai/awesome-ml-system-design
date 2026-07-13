@@ -16,19 +16,23 @@ Mean absolute scaled error normalizes by the in-sample naive seasonal forecast e
 
 $$\text{MASE} = \frac{\frac{1}{n}\sum_{t=1}^{n}\left|y_t - \hat{y}_t\right|}{\frac{1}{T - m}\sum_{t=m+1}^{T}\left|y_t - y_{t-m}\right|}$$
 
-where $m$ is the seasonal period (52 for weekly annual seasonality). A MASE $\lt 1$ means the model beats the seasonal naive baseline; a MASE $\gt 1$ means it is worse. Use MASE as the headline point-accuracy metric.
+where $m$ is the seasonal period (52 for weekly annual seasonality, giving the seasonal naive baseline). When there is no meaningful seasonal period, set $m = 1$, which reduces to the non-seasonal MASE normalized by the one-step naive error. A MASE $\lt 1$ means the model beats the naive baseline; a MASE $\gt 1$ means it is worse. Use MASE as the headline point-accuracy metric.
 
 ## Pinball loss and WQL: scoring the distribution
 
-Pinball loss (defined in section 4) scores a single quantile. To score the **whole predictive distribution**, sum or integrate pinball loss across all target quantile levels. The weighted quantile loss (WQL) is the practical approximation:
+Pinball loss (defined in section 4) scores a single quantile. To score the **whole predictive distribution**, sum or integrate pinball loss across all target quantile levels.
+
+The **volume-normalized discrete form** (used by most production forecasting tools) is:
 
 $$\text{WQL} = \frac{2}{|\mathcal{T}|} \sum_{\tau \in \mathcal{T}} \frac{\sum_{t=1}^{n} L_\tau\!\bigl(y_t, \hat{q}_t(\tau)\bigr)}{\sum_{t=1}^{n} |y_t|}$$
 
-where $\mathcal{T}$ is the set of target quantile levels and the denominator normalizes by total volume so high-volume series receive proportionally more weight. In the continuous limit, WQL approximates the **continuous ranked probability score (CRPS)**:
+where $\mathcal{T}$ is the set of target quantile levels and the denominator normalizes by total volume so high-volume series receive proportionally more weight. An alternative in the literature is the **unnormalized continuous integral form**: $\text{WQL} = 2 \int_0^1 L_\tau(y, \hat{q}(\tau))\,d\tau$; the two are consistent in purpose but differ in normalization.
+
+In the continuous limit, the **unnormalized integral form** approximates the **continuous ranked probability score (CRPS)**:
 
 $$\text{CRPS}(F, y) = \int_{-\infty}^{\infty}\!\bigl(F(z) - \mathbf{1}[z \ge y]\bigr)^2\,dz$$
 
-CRPS is a proper scoring rule: the forecaster minimizes it by reporting the true predictive distribution, not a strategically sharpened or widened one. Use WQL for practical evaluation; CRPS as the theoretical ideal.
+CRPS is a proper scoring rule: the forecaster minimizes it by reporting the true predictive distribution, not a strategically sharpened or widened one. The volume-normalized WQL above does not share the same limiting relationship because the per-series volume scaling changes the integrand. Use volume-normalized WQL for practical evaluation across heterogeneous series; CRPS as the theoretical ideal.
 
 ## Calibration: the check that intervals mean what they say
 

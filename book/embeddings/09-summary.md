@@ -57,8 +57,10 @@ flowchart LR
    online A/B. What most likely happened in the embedding space, and what is the
    diagnostic and fix?
 5. When you retrain the encoder, what must happen to the ANN index and why?
-6. Alignment is low and uniformity is also low (near-zero): is this a well-formed
-   space? What if alignment is low but uniformity is near zero on a linear scale?
+6. The log-uniformity metric $\ell_{\text{unif}}$ is near zero when embeddings are
+   tightly clustered and becomes very negative as embeddings spread evenly over the
+   hypersphere. Alignment is low (good) but log-uniformity is near zero: what does
+   this reveal about the space, and why is it a problem despite good alignment?
 
 ## Further reading
 

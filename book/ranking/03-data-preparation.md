@@ -64,8 +64,9 @@ probability. Apply a correction at inference:
 
 $$\hat{p}_{\text{corrected}} = \frac{\hat{p}}{(\hat{p} + (1 - \hat{p}) / w)}$$
 
-where $w$ is the downsampling rate for negatives. Pinterest applies this
-correction as a standard step before combining head outputs into a utility score.
+where $w$ is the downsampling rate for negatives. Apply this correction as a
+standard step so that head outputs remain calibrated probabilities that can be
+combined into a utility score.
 
 **When to use which data treatment.**
 

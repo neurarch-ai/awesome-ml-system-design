@@ -2124,7 +2124,7 @@ flowchart TD
 
 **The math that separates them.**
 
-$$\textbf{Batching latency and rate:}\quad L_{\text{batch}} \ = \ W \ + \ \frac{B}{\text{tput}(B)}, \qquad \text{QPS} \ = \ \frac{B}{W}$$
+$$\textbf{Batching latency and rate:}\quad L_{\text{batch}} \ = \ W \ + \ \frac{B}{\text{tput}(B)}, \qquad \text{QPS} \ \approx \ \frac{B}{W + L_{\text{model}}(B)}$$
 
 $$\textbf{p99 budget must cover:}\quad T_{p99} \ \geq \ L_{\text{net}} \ + \ L_{\text{feat}} \ + \ W \ + \ L_{\text{model}}(B)$$
 

@@ -62,10 +62,10 @@ it within the feed-ranking latency budget:
   by (user, sequence-hash). If no new action has arrived between two requests, the
   same encoding is returned directly. When a new event arrives, invalidate the
   cache and re-encode.
-- **Serve on GPU for heavy encoders.** Pinterest TransAct found that a
-  multi-layer Transformer added 20x+ CPU latency over the previous model;
-  migrating the sequence encode to GPU made it feasible. For shallow encoders
-  (one or two attention layers), CPU can work.
+- **Serve on GPU for heavy encoders.** A multi-layer Transformer can add
+  substantial CPU latency; Pinterest TransAct migrated the sequence encode to
+  GPU to absorb that cost. For shallow encoders (one or two attention layers),
+  CPU can work.
 
 ## Short-term and long-term interest
 
@@ -82,7 +82,7 @@ carries durable preference that a short window would discard. Lifetime aggregate
 underperform for all segments when recency matters. Illustrative.*
 
 Pinterest's architecture makes this split explicit: TransAct handles the
-real-time last-100 actions, and PinnerSAGE handles the long-term user embedding.
+real-time last-100 actions, and PinnerFormer handles the long-term user embedding.
 They are fused inside the ranker via DCN feature crossing.
 
 ## Bottlenecks

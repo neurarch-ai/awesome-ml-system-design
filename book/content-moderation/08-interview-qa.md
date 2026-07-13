@@ -48,8 +48,10 @@ A: Rolling-window streaming inference. You score a rolling 10-to-15-second windo
 of audio at sub-100ms latency using a distilled, quantized audio model. There is no
 pre-publish gate for live voice, so you act during the conversation rather than before.
 A consequence model (warning, muting, session termination) fires on a flagged window.
-The Roblox approach: distill WavLM against a Whisper teacher to get a 48M-parameter
-student model that serves over 2,000 requests per second at 50ms latency.
+The Roblox approach: bootstrap machine labels by running Whisper transcriptions through
+the existing text-filter ensemble, then distill a small WavLM-based audio student
+(approximately 48M parameters) that infers directly from audio at serve time, serving
+over 2,000 requests per second at 50ms latency.
 
 ## Tricky
 

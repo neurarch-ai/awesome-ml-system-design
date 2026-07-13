@@ -35,15 +35,17 @@ $\mathbf{E}[h(x) \bmod H]$ where $h$ is a stable hash function. This gives:
 - **Graceful handling of unseen ids.** A brand-new ad id hashes to an existing
   bucket; it gets a noisy but non-zero embedding immediately.
 - **Controlled collisions.** Two distinct ids that hash to the same bucket share
-  an embedding. The collision rate is roughly $1 - e^{-n(n-1)/(2H)}$ for $n$
-  ids and $H$ buckets (birthday paradox). Increasing $H$ reduces collisions but
-  grows memory.
+  an embedding. The per-pair collision probability is $1/H$; the expected
+  fraction of items landing in an already-occupied bucket is approximately
+  $1 - e^{-n/H}$. When $n/H$ is small this fraction is roughly $n/H$, so
+  quality loss stays negligible. Increasing $H$ reduces collisions but grows
+  memory.
 
 ![Feature hashing collision rate vs table size](assets/fig-feature-hashing-collisions.png)
 
-*Collision probability as a function of table size for id spaces of 1M to 1B
-distinct values. The 5% threshold line shows where quality loss becomes
-significant. Illustrative rates.*
+*Expected fraction of items sharing a bucket, as a function of table size for id
+spaces of 1M to 1B distinct values. Quality loss stays negligible while n/H is
+small; the 5% line marks the practical threshold. Illustrative rates.*
 
 The tradeoff is explicit: feature hashing trades a controlled quality loss
 (collisions) for a bounded, shardable table and no out-of-vocabulary penalty.

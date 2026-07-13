@@ -44,16 +44,22 @@ taxonomy confusion vs boundary errors. Token accuracy on a BIO-tagged sequence
 can look high simply because O tags dominate.
 
 **Translation:** BLEU or COMET for automatic tracking, plus human adequacy and
-fluency ratings. BLEU measures n-gram overlap between hypothesis and reference and
-is fast and cheap to compute, but it misses meaning: a correct paraphrase with
-different word choice scores poorly. COMET (a learned metric trained on human
+fluency ratings. BLEU is the brevity penalty times the geometric mean of clipped
+n-gram precisions:
+
+$$\text{BLEU} = \text{BP} \cdot \left(\prod_{n=1}^{N} p_n\right)^{1/N}$$
+
+where $\text{BP}$ penalizes translations shorter than the reference and $p_n$ is
+the fraction of hypothesis n-grams that appear in the reference (clipped to the
+reference count). BLEU is fast and cheap to compute, but it misses meaning: a
+correct paraphrase with different word choice scores poorly. COMET (a learned metric trained on human
 judgments) correlates better with human quality ratings. The release gate for
 production translation systems is human ratings, not BLEU alone. Google GNMT used
 a 0-6 human rater scale as the final quality bar.
 
 **Grammatical error correction:** $F_{0.5}$ rather than $F_1$. False corrections
 (editing good text) annoy users more than misses (leaving an error in), so
-precision counts twice as much as recall in the harmonic mean. Grammarly's GECToR
+precision counts four times as much as recall in the harmonic mean. Grammarly's GECToR
 reports $F_{0.5}$ on CoNLL-2014 and BEA-2019 benchmarks for this reason.
 
 **Entity resolution:** pairwise precision and recall on matched pairs, measured

@@ -9,10 +9,10 @@ each product requirement to the output shape the head must emit.
 ![Task taxonomy: labeling and serving cost by task type](assets/fig-task-cost.png)
 
 *Each task type carries a different label cost (orange) and GPU serving cost
-(blue), both relative to whole-image classification. Detection boxes cost six times
-more to label than image-level tags. Pixel masks (segmentation) cost about
-twenty-five times more. This is why task-head choice is a labeling-budget decision,
-not just a modeling decision. Illustrative.*
+(blue), both relative to whole-image classification. Detection boxes cost
+approximately 5 to 10 times more to label than image-level tags. Pixel masks
+(segmentation) cost about twenty-five times more. This is why task-head choice
+is a labeling-budget decision, not just a modeling decision. Illustrative.*
 
 ### Classification (whole-image)
 
