@@ -66,3 +66,22 @@ The choice is driven by the decision downstream, not by what is easiest to label
 Framing churn as classification when you need survival, or framing an intervention
 question as propensity when you need uplift, is the most expensive early mistake
 in a tabular design. Pin the decision first, then pick the row.
+
+**Tools for each framing.** Classification and regression on tabular data are
+dominated by the gradient-boosting libraries XGBoost, LightGBM, and CatBoost.
+Survival analysis: lifelines and scikit-survival, or XGBoost's AFT objective for a
+boosted survival model. Uplift/CATE: EconML (Microsoft) and CausalML (Uber), or the
+generalized random forest in grf. Calibration: scikit-learn's
+CalibratedClassifierCV (Platt scaling or isotonic regression).
+
+**Worked example.** A subscription business wants to reduce churn. If the question
+is "who cancels in the next 30 days" and every account resolves inside that window,
+frame it as calibrated binary classification (LightGBM followed by isotonic
+calibration) because the probability feeds a save-offer threshold, so the absolute
+number has to be trustworthy, not just the ranking. But if leadership actually means
+"who would a discount change the mind of," that is an uplift/CATE question (EconML or
+CausalML): a plain churn model would spend the retention budget on customers who
+were going to stay anyway and on those who will leave regardless. And if many
+accounts are still active at analysis time (censored), survival analysis
+(scikit-survival) keeps that timing information a fixed 30-day binary would throw
+away.

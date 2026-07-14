@@ -57,3 +57,21 @@ Forecasting each level independently (item, store, region, national) produces in
 | Bottom-up | leaf-level forecasts are trustworthy and coherence by construction is the priority | leaf noise is high and propagates upward to degrade aggregates |
 | Top-down | the aggregate is stable and historical split proportions are reliable | leaf dynamics shift over time and the top-down splits miss them |
 | Optimal (MinT) or end-to-end coherent | all levels are forecast and you want provably lower total error using the full covariance | extra compute and covariance estimation overhead are prohibitive; an end-to-end coherent model can replace it |
+
+**Tools for each family.** Classical: statsmodels and the fast statsforecast
+(ARIMA, ETS, Theta), plus Prophet (Meta). Global GBT: LightGBM or XGBoost on
+lag-and-calendar features, wired up with mlforecast or skforecast. Deep: GluonTS and
+PyTorch-Forecasting (DeepAR, TFT, N-BEATS) and neuralforecast (PatchTST).
+Reconciliation: hierarchicalforecast implements bottom-up, top-down, and MinT.
+
+**Worked example.** A retailer forecasts daily demand for 500k SKU-store pairs over
+an 8-week horizon, with promotions and holidays as covariates. Per-series ARIMA does
+not scale to 500k fits and cannot borrow strength across related SKUs, so the
+production choice is a single global GBT (mlforecast + LightGBM) on
+lag/calendar/promotion features, emitting P10/P50/P90 through quantile (pinball) loss
+so the safety-stock decision gets the operating points it needs directly. A deep
+model such as TFT only earns its extra training and serving cost if the horizon
+grows long or the covariate structure gets rich enough that the GBT plateaus. For
+coherence across the SKU to category to region hierarchy, reconcile the leaf
+forecasts with MinT (hierarchicalforecast) rather than trusting bottom-up sums when
+leaf noise is high.
