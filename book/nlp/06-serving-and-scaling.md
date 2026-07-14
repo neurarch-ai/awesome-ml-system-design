@@ -32,6 +32,8 @@ flowchart LR
   end
 ```
 
+**How it works.** The diagram splits into two subgraphs by latency budget. In the inline path, an incoming message is normalized and language-identified, passed through a distilled encoder and its task head to produce a raw score, then calibrated and thresholded. That calibration step is the fork: confident predictions are auto-routed or auto-blocked immediately, while uncertain or high-risk ones are diverted to a review queue instead of being acted on. In the offline path, the queue drains at any latency into an LLM fallback for hard cases and into human review, and both sources emit new labels. Those labels retrain the encoder on a nightly or weekly cadence, and the refreshed encoder feeds back into the inline path, so the fast synchronous path stays cheap while the slow asynchronous path supplies the training signal that keeps it accurate.
+
 The loop closes on the right: every human review decision and every LLM fallback
 verdict returns as a labeled training example. The encoder retrains periodically
 (nightly or weekly depending on drift rate), and the calibration step reruns each

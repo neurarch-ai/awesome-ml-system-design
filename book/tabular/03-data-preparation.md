@@ -85,6 +85,19 @@ Target encoding is the trap: encoding a category by its mean label leaks the lab
 into the feature when done naively on the full dataset. Always fit the encoding on
 a separate fold (cross-fitting) or on a strict time-based split.
 
+Hashing avoids a growing lookup table by folding any category into a fixed number
+of buckets with a stable hash; a sign bit lets colliding categories partly cancel:
+
+```python
+import hashlib
+def hash_encode(value, n_buckets=1024):      # value: any categorical (a string id, token, etc.)
+    h = int(hashlib.md5(value.encode()).hexdigest(), 16)   # stable hash of the raw category
+    idx = h % n_buckets                       # fold into a fixed range, no table that grows with cardinality
+    sign = 1 if (h // n_buckets) % 2 == 0 else -1   # signed hashing cancels some collisions in expectation
+    return idx, sign
+# hash_encode('device_42', n_buckets=8) -> (6, -1)  (same string always maps to the same bucket and sign)
+```
+
 ## Feature pipeline: what to build
 
 A clean tabular feature pipeline has three layers.

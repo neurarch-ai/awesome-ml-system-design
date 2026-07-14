@@ -57,7 +57,26 @@ because a photo can simultaneously trigger multiple harm classes.
 Built on a Feature Pyramid Network (FPN) that produces multi-scale feature maps
 from the backbone, then two parallel branches per scale: one predicts class
 probabilities per anchor, one regresses the (dx, dy, dw, dh) offsets. After
-training, non-maximum suppression (NMS) removes duplicate boxes.
+training, non-maximum suppression (NMS) removes duplicate boxes. NMS is a greedy
+loop: keep the highest-scoring box, drop every remaining box that overlaps it by
+more than an IoU threshold, and repeat on what survives.
+
+```python
+import numpy as np
+def nms(boxes, scores, iou_thr=0.5):       # boxes: Nx4 as [x1, y1, x2, y2]
+    area = (boxes[:,2]-boxes[:,0]) * (boxes[:,3]-boxes[:,1])
+    idx = scores.argsort()[::-1]           # process highest score first
+    keep = []
+    while len(idx):
+        i = idx[0]; keep.append(i)         # keep top box, suppress its overlaps
+        xx1 = np.maximum(boxes[i,0], boxes[idx[1:],0]); yy1 = np.maximum(boxes[i,1], boxes[idx[1:],1])
+        xx2 = np.minimum(boxes[i,2], boxes[idx[1:],2]); yy2 = np.minimum(boxes[i,3], boxes[idx[1:],3])
+        inter = np.clip(xx2-xx1, 0, None) * np.clip(yy2-yy1, 0, None)
+        iou = inter / (area[i] + area[idx[1:]] - inter)
+        idx = idx[1:][iou <= iou_thr]      # drop boxes overlapping the kept one
+    return keep
+# boxes=[[0,0,10,10],[1,1,11,11],[20,20,30,30]], scores=[.9,.8,.7] -> keep [0, 2]
+```
 
 Quality is measured with mean average precision (mAP). The average precision
 (AP) for one class is the area under its precision-recall curve. Mean AP averages

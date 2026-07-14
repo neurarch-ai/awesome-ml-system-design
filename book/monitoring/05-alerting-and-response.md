@@ -87,6 +87,8 @@ flowchart TD
   BACKFILL --> RETRAIN
 ```
 
+**How it works.** An alert (PSI above 0.25 or an AUC drop) enters a triage gate that asks whether the cause is a pipeline bug or real drift. If the data-health check fails, the flow routes to fixing the pipeline and backfilling the broken feature window before any retrain runs. If the data-health check passes, the drift is confirmed real and triggers a retrain on recent data. That retrain must clear an evaluation gate (offline metrics, shadow traffic, staged rollout): passing promotes the new model, failing rolls back to the previous version. The backfill branch rejoins the retrain path, so a repaired pipeline still produces a validated model rather than shipping on corrupt data.
+
 The most common mistake is to skip the triage step and retrain immediately.
 A null-returning feature looks exactly like distribution drift; retraining on
 corrupted data bakes the bug into the next model.

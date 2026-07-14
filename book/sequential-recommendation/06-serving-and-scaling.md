@@ -24,6 +24,17 @@ flowchart LR
   end
 ```
 
+**How it works.** The offline branch turns raw interaction logs into per-user
+sequences (deduped, filtered, capped at N events), slides over each to build causal
+(sequence, next-item) pairs, trains the sequence encoder on them, and deploys that
+encoder alongside the item embeddings. The online branch is fed by streaming
+ingest: each user action lands in a fast KV store that holds the user's recent
+events. On a request the encoder reads that fresh sequence and produces a user
+intent vector, which feeds the ranking feature or retrieval tower. The two branches
+share the same encoder weights, but the online side re-encodes on every request
+because the sequence changes mid-session and cannot be cached like a static user
+embedding.
+
 ## Real-time sequence updates: the systems work
 
 Reacting within a session requires that each new action reaches the encoder

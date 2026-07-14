@@ -16,6 +16,8 @@ flowchart TD
   ECPM --> SERVE["winning ad"]
 ```
 
+**How it works.** An ad request carrying the user and context enters at the top, and eligibility and targeting narrow the full inventory down to the tens or hundreds of candidate ads worth scoring. Feature assembly reads a point-in-time snapshot from the feature store so training and serving see the same values, then the candidate ids (user, ad, advertiser, creative) drive embedding lookups that supply the vectors the model consumes. Those vectors flow into the forward pass, where the interaction layer and top MLP produce a raw score per candidate, which the calibration layer maps to a trustworthy probability. Finally eCPM is computed as bid times pCTR, the candidates are ranked and the reserve applied, and the single winning ad is returned. The whole chain must complete in low tens of milliseconds, which is why the two optimizations below (fetch shared features once, batch the forward pass) matter.
+
 Two optimizations that every production system applies:
 
 **Fetch shared features once.** User and context features are the same for all

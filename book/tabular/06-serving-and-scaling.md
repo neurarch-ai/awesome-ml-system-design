@@ -37,6 +37,16 @@ flowchart LR
   STORE --> DEC
 ```
 
+**How it works.** The diagram shows two ways the same model reaches a decision. The
+batch path runs on a schedule: it takes a history snapshot, builds point-in-time
+features, runs inference, and writes scores into a store keyed by entity id, so a
+later lookup is instant. The realtime path runs on request: a new application pulls
+live features from the feature store, runs inference within a seconds-scale budget,
+and returns a decision with reasons. The two paths converge at the decision node,
+where a precomputed batch score can be joined in alongside the fresh realtime score.
+Splitting this way lets slow-moving entities be scored in bulk offline while genuinely
+new requests still get a fresh, on-demand score.
+
 ## Monotonic constraints and adverse-action reasons
 
 For regulated decisions, the model must be explainable per decision. Two tools.

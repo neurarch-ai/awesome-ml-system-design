@@ -32,6 +32,18 @@ flowchart TD
   end
 ```
 
+**How it works.** The streaming path handles live dictation frame by frame: 10 ms
+mic frames accumulate in a buffer that feeds a causal, stateful RNN-T encoder and
+joint network, which emits a partial hypothesis on every step. An endpointer
+watches the decoder; while the user is still speaking it loops back for more frames,
+and once it detects end of speech it releases the final transcript. The batch path
+handles uploaded recordings: the audio is chunked with a one-to-two-second overlap,
+each chunk runs through a Conformer encoder-decoder in parallel, and the chunk
+outputs are stitched back together, then diarized and punctuated into a
+speaker-labeled transcript. The overlap exists so the stitch step can resolve words
+that straddle a chunk boundary. The two paths never share state; they optimize for
+opposite bottlenecks, latency per session versus total throughput.
+
 ![Streaming vs batch ASR latency](assets/fig-streaming-vs-batch-latency.png)
 
 *Streaming returns a first partial nearly instantly (green dots, roughly constant

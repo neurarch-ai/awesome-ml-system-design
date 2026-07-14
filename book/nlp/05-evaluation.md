@@ -18,6 +18,18 @@ $$P^{(c)} = \frac{TP^{(c)}}{TP^{(c)} + FP^{(c)}}, \qquad R^{(c)} = \frac{TP^{(c)
 
 $$F_1^{(c)} = \frac{2 \cdot P^{(c)} \cdot R^{(c)}}{P^{(c)} + R^{(c)}}$$
 
+```python
+def f1_score(y_true, y_pred, c):
+    tp = sum(1 for t, p in zip(y_true, y_pred) if p == c and t == c)   # predicted c, and truly c
+    fp = sum(1 for t, p in zip(y_true, y_pred) if p == c and t != c)   # predicted c, but not c
+    fn = sum(1 for t, p in zip(y_true, y_pred) if p != c and t == c)   # missed a real c
+    prec = tp / (tp + fp) if tp + fp else 0.0                          # P = TP / (TP + FP)
+    rec = tp / (tp + fn) if tp + fn else 0.0                           # R = TP / (TP + FN)
+    if prec + rec == 0: return 0.0
+    return 2 * prec * rec / (prec + rec)                               # F1 = harmonic mean of P and R
+# f1_score([1,0,1,1,0], [1,0,0,1,1], 1) -> 0.6666666666666666
+```
+
 ![Confusion matrix showing how precision, recall, and F1 are computed](assets/fig-confusion-matrix-prf1.png)
 
 *Left: a 2x2 confusion matrix with illustrative counts; precision uses the predicted-positive column (TP divided by TP plus FP), recall uses the actual-positive row (TP divided by TP plus FN). Right: the three formulas with numbers substituted, yielding F1 as their harmonic mean. Illustrative.*

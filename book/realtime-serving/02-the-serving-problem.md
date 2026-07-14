@@ -30,6 +30,16 @@ flowchart LR
   SRV -->|"inference result"| APP
 ```
 
+**How it works.** A request enters at the application, which owns the user-facing
+logic and stays out of the inference business. In parallel it fetches the model's
+inputs from the online feature store and issues a `predict(features)` call to the
+dedicated model server over gRPC or HTTP. The server resolves which version to run
+by loading it from the model registry by pointer, so a redeploy is a registry
+change rather than an application change. It runs the forward pass and hands the
+inference result back to the caller. Because the server is a separate process, the
+same model can be versioned, scaled, and monitored independently of the app that
+consumes it.
+
 ## Online, async, or batch: pick the deployment type first
 
 Before tuning latency, confirm you even need real-time serving. The *LLM

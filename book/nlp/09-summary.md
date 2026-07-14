@@ -65,6 +65,8 @@ flowchart TD
   LLM_OFF["LLM offline<br/>(label factory, hard-tail fallback)"] -.-> LBL
 ```
 
+**How it works.** Free text enters at the top, gets a language tag from a sub-millisecond fastText classifier, then is normalized and subword-tokenized so downstream models see clean, consistent input. From that shared normalized text the pipeline fans out to three model families depending on the task: a shared fine-tuned encoder (feeding a classification head for routing or spam and a token-tagging head for NER), a seq2seq encoder-decoder for translation or correction, and a bi-encoder plus ANN lookup for entity resolution. The classification, tagging, and match outputs converge on a temperature-scaling step that turns raw scores into calibrated probabilities, which a confidence gate then splits: confident predictions are auto-acted on, while uncertain or high-risk ones go to a human review queue. Reviewer decisions (augmented offline by an LLM acting as a label factory and hard-tail fallback) become fresh labels that retrain the encoder and trigger recalibration on promotion, closing the loop so the system improves from its own hard cases.
+
 ## Test yourself
 
 1. The prompt says "design an NLP system to handle support tickets." What is the

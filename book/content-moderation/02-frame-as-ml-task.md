@@ -73,6 +73,8 @@ flowchart LR
   HEADS --> SCORES["calibrated per-policy<br/>risk scores"]
 ```
 
+**How it works.** Raw content enters on the left in three modalities: text (a post or caption), an image or video frame, and audio or voice. Each modality flows into its own encoder (a text transformer, an image backbone, an audio model) that turns it into an embedding. The text and image embeddings can additionally feed an optional joint fusion block, which reasons over both together to catch cross-modal harm that neither modality reveals alone (the hateful-memes case). All encoder outputs, plus the fusion output when present, hand off to a bank of per-policy classification heads, which emit one calibrated risk score per harm class on the right for the downstream policy engine to threshold.
+
 The joint fusion layer is expensive, so you gate it behind cheaper unimodal pre-filters
 and only invoke it when the unimodal signals are ambiguous or conflicting.
 

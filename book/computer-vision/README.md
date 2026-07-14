@@ -56,5 +56,16 @@ flowchart LR
   HUMAN -.retrain.-> BB
 ```
 
+**How it works.** An image enters at the left through ingest, which decodes,
+orientation-fixes, resizes, and normalizes it into one consistent tensor. That
+tensor runs once through the shared pretrained backbone, whose features branch to
+four task heads: classification, detection, segmentation, and embedding. Each head
+has a matching post-processing step: classification applies per-class thresholds to
+gate or tag, detection runs NMS to pick a clean operating point, segmentation emits
+a mask evaluated by IoU, and the embedding is written to an ANN index for visual
+search. All four output paths converge on a human review loop, whose fresh labels
+retrain the backbone, so a single feature extractor amortizes across every task
+while each head keeps its own output contract.
+
 Read the sections in order the first time; each opens with the question an
 interviewer actually asks, then answers it.

@@ -67,7 +67,22 @@ and naming both is a strong signal.
 in-batch negatives (and positives) far more often, so a plain softmax
 over-penalizes head items. The fix is the **logQ correction**: subtract an estimate
 of each item's sampling log-probability from its logit, so the embedding space
-itself comes out unbiased.
+itself comes out unbiased. The estimate itself is a streaming one: track the average
+number of steps between two hits of an item, and its sampling probability is the
+reciprocal of that gap.
+
+```python
+import math
+def estimate_logq(stream, alpha=0.01):      # stream: item ids in the order the trainer samples them
+    A, last = {}, {}                         # A[y]: moving-average gap between hits of y; last[y]: last step
+    for t, y in enumerate(stream):
+        gap = t - last.get(y, 0)
+        A[y] = (1 - alpha) * A.get(y, 0.0) + alpha * gap   # EMA of steps between consecutive hits
+        last[y] = t
+    # sampling prob q(y) = 1 / average-gap, so log q(y) = -log A[y]; frequent items get a larger value
+    return {y: -math.log(A[y]) for y in A if A[y] > 0}
+# estimate_logq(['a', 'a', 'a'], alpha=0.5) -> {'a': 0.288}  (average gap 0.75, -log(0.75) ~ 0.288)
+```
 
 ![Power-law catalog and the logQ correction](assets/fig-popularity-logq.png)
 

@@ -55,6 +55,8 @@ flowchart TD
   MONITOR --> TRAIN
 ```
 
+**How it works.** An incoming transaction first passes through feature assembly, which joins velocity aggregates and graph/entity lookups to the raw transaction fields, then fans out to a supervised classifier and an anomaly detector whose outputs are combined into one score. That score is compared against the cost-optimal threshold tau_star, routing the transaction to allow, block/step-up, or the human review queue depending on expected cost. Two label streams then flow back at different speeds: analyst verdicts from the review queue arrive in minutes, while settled chargeback and dispute outcomes on allowed and blocked transactions arrive in weeks, and both land in a shared label store. The retrain pipeline consumes those labels with a time-based split that respects the maturation window, producing a recalibrated model that replaces the supervised scorer. In parallel, monitoring watches input and score-distribution drift and raises alarms that trigger retraining, so the whole system is a closed loop rather than a one-shot deployment.
+
 ## Test yourself
 
 1. A model achieves 99.7 percent accuracy on a fraud test set. Should you ship

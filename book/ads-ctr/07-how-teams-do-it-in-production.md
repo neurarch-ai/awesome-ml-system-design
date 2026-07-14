@@ -20,6 +20,8 @@ flowchart LR
   TRAIN -.-> MODEL
 ```
 
+**How it works.** An ad request enters and targeting filters the inventory to the eligible ads, which are the only candidates the system pays to score. The pCTR or pCVR model turns each candidate into a calibrated probability, and eCPM combines that probability with the advertiser's bid so ads with different bids and click likelihoods become comparable on one revenue axis. A second-price auction ranks by eCPM and picks the winner, and the served ad is the output that reaches the user. The dashed return path closes the loop: impressions and their delayed conversions, run through a correction step, become training labels that refresh the model so its probabilities stay calibrated as campaigns and click rates shift. Every team in the table below implements this same skeleton and differs mainly in the model box (how interactions are carried) and the correction step (how delayed labels and calibration drift are handled).
+
 ## Where the real designs diverge
 
 | System | Interaction model | Calibration approach | Delayed feedback | Task shape | When it wins | Watch out |

@@ -57,6 +57,16 @@ where $\hat{\mu}_a$ is the estimated mean reward for arm $a$, $N_t$ is the
 total number of pulls so far, $n_a$ is the number of pulls of arm $a$, and
 $\alpha$ scales the exploration bonus.
 
+```python
+import numpy as np
+def ucb_select(mu, n, alpha=1.0):
+    mu, n = np.asarray(mu, float), np.asarray(n, float)  # per-arm mean reward and pull count
+    N = n.sum()                                           # total pulls across all arms
+    bonus = alpha * np.sqrt(np.log(N) / n)               # wide when n_a is small, shrinks as arm is pulled
+    return int(np.argmax(mu + bonus))                    # optimistic score: mean plus uncertainty
+# ucb_select([0.5, 0.6, 0.55], [100, 10, 50]) -> 1  (arm 1 wins on its exploration bonus)
+```
+
 For the contextual case (LinUCB), the reward is linear in a feature vector
 $x_a$ and the uncertainty bonus is a closed form over the feature-covariance
 matrix $A$:

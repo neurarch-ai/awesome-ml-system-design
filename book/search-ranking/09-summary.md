@@ -54,6 +54,19 @@ flowchart TD
   RANK --> OUT["top-K results"]
 ```
 
+**How it works.** The diagram has two halves that meet at the ranking service. The
+training half starts from click and impression logs, which are IPW-debiased to
+undo position bias, merged with human-judged pairs into graded relevance labels,
+joined to point-in-time query-document features, and used to train the LTR model
+that is loaded into the ranking service. The serving half starts from a user query
+that goes through query understanding (intent, spelling, expansion), then fans out
+to two retrieval arms in parallel: BM25 over an inverted index and ANN over
+dual-encoder embeddings. Their results are unioned and deduplicated into roughly a
+thousand candidates, which the ranking service scores with the trained model to
+produce the top-K results. The offline training loop and the online query loop
+share exactly one component, the ranking service, which is why the model contract
+is the seam that has to stay stable.
+
 ## Test yourself
 
 1. Why does running the two retrieval arms in parallel matter, and what happens

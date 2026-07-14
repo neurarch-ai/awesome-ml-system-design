@@ -55,6 +55,18 @@ flowchart LR
   EVAL -.->|"gate on A/B"| OUT
 ```
 
+**How it works.** Billions of impression-log rows first pass through a point-in-time
+feature join so each label sees only features that existed at request time, then
+train the ranker (a DLRM, DCN, Wide-and-Deep, or LambdaMART model). Training
+produces two outputs: the shipped model plus embedding tables, and an offline
+evaluation (AUC, NDCG, ECE) used only as a pre-launch gate. In serving, a request
+carrying a user and its candidates fetches user context once and item plus cross
+features per candidate, then batch-scores them all in one forward pass using the
+shipped model. The raw scores are calibrated if needed and folded into a utility
+that is a weighted per-objective sum, giving the ordered list. The offline
+evaluation does not feed serving directly; it gates the model on an A/B test before
+that ordered list is trusted in production.
+
 ## Test yourself
 
 1. Why do cross features between user and item improve ranking more than separate

@@ -44,6 +44,19 @@ flowchart LR
   PRECOMP --> IF
 ```
 
+**How it works.** The offline path turns raw impression logs into training data with
+a point-in-time join, trains the ranker, and ships the model plus its embedding
+tables to the serving cluster; in parallel it precomputes item features into the
+feature store so they are ready at request time. The online path starts when a
+request arrives with a user and a set of candidates: it fetches user and context
+features once, fetches item and cross features per candidate in a batch, and feeds
+both into a single model forward pass that scores every candidate at once. The two
+paths connect where the shipped model and the precomputed item features flow into
+that scoring step. Raw scores are then calibrated and combined into a utility that
+is a weighted per-objective sum, which produces the final ordered list. Doing the
+heavy joins and training offline is what keeps the online path inside a low tens of
+milliseconds budget.
+
 ## Feature stores
 
 A feature store is the infrastructure layer that makes online feature assembly

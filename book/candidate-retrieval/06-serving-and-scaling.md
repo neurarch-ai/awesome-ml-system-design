@@ -21,6 +21,16 @@ flowchart LR
   end
 ```
 
+**How it works.** The offline path runs on a batch cadence: every catalog item
+passes through the item tower to produce an embedding, and those embeddings are
+written into an ANN index that is built or upserted in place. The online path runs
+per request: the user plus context features go through the user tower to produce a
+single query embedding. The two paths meet at the ANN search node, where the
+freshly computed user vector queries the prebuilt item index. The nearest neighbors
+are then unioned and deduplicated with popularity and freshness sources, yielding a
+few hundred candidates. Splitting the work this way is what lets item embeddings be
+computed once and reused across every request.
+
 ## Approximate nearest neighbor: the index is the design
 
 We cannot compare the user embedding to 100 million item embeddings exactly in

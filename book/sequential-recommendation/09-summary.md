@@ -46,6 +46,17 @@ flowchart LR
   RK --> NEXT
 ```
 
+**How it works.** The left-to-right flow shows training feeding serving. Offline,
+interaction logs become per-user sequences, then causal (sequence, next-item)
+pairs, which train a sequence encoder such as SASRec, GRU4Rec, or BERT4Rec; the
+trained encoder and item embeddings are then deployed. At request time a streaming
+user action updates a fast per-user KV store, and the deployed encoder reads that
+sequence to emit a user intent vector. That single vector fans out to two
+consumers: a retrieval path (an ANN user tower) and a ranking path (a sequence
+feature inside a larger ranker), each contributing to the next recommendation.
+Reusing one intent vector for both retrieval and ranking is what lets a single
+encoder power the whole stack.
+
 ## Test yourself
 
 1. Why does shuffling the sequence order drop recall significantly, and what does

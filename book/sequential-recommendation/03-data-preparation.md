@@ -18,7 +18,16 @@ pairs by sliding a window forward one step at a time:
 Each pair is **causal**: the context contains only events that happened before the
 target. This is the key constraint that prevents leakage. A sequence model trained
 on non-causal pairs learns to "see the future" during training and performs
-randomly at serving time where the future is genuinely unknown.
+randomly at serving time where the future is genuinely unknown. The pair
+construction is just a forward-sliding window over the session:
+
+```python
+def causal_pairs(session):              # session: item ids in chronological order
+    # every prefix predicts the next item, so the context always precedes the target
+    return [(session[:i], session[i]) for i in range(1, len(session))]
+# causal_pairs(['a', 'b', 'c', 'd']) ->
+#   [(['a'], 'b'), (['a', 'b'], 'c'), (['a', 'b', 'c'], 'd')]   # length L=4 gives L-1=3 pairs
+```
 
 ## Two leakage traps
 

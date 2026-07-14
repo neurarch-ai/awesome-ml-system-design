@@ -19,6 +19,8 @@ flowchart TD
   POLICY -->|between thresholds| QUEUE["human review queue"]
 ```
 
+**How it works.** Every incoming item (text, image, video, or voice) first hits a perceptual-hash lookup, a near-zero-cost, near-zero-false-positive gate that auto-actions and reports known-bad re-uploads before any model runs. Novel items pass to cheap unimodal classifiers (a fine-tuned text encoder, EfficientNet for images); confident scores go straight to the policy engine, while ambiguous cross-modal cases escalate to the expensive joint image-text model first. The policy engine applies each policy's tuned thresholds and splits the outcome three ways: above the auto-action threshold removes or blocks, below the auto-allow threshold allows, and anything in the borderline band between them routes to the human review queue. Cost rises left to right, so the funnel spends heavy compute only on the small fraction of items that survive the cheaper gates.
+
 ### Text classifiers
 
 Fine-tuned transformer encoders (BERT-family, ModernBERT) are the workhorse. Each

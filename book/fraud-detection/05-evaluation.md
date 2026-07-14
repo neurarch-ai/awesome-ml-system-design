@@ -51,6 +51,21 @@ Average precision is the recall-weighted mean of precision values, summarizing
 the entire curve into one number. It is the primary offline metric for fraud
 scoring.
 
+```python
+import numpy as np
+def average_precision(scores, labels):
+    scores, labels = np.asarray(scores, float), np.asarray(labels, float)
+    order = np.argsort(-scores)                 # rank transactions by fraud score, high to low
+    labels = labels[order]
+    tp = np.cumsum(labels)                      # true positives accumulated down the ranking
+    fp = np.cumsum(1 - labels)                  # false positives accumulated down the ranking
+    precision = tp / (tp + fp)                  # P_k at each threshold
+    recall = tp / labels.sum()                  # R_k at each threshold
+    dr = np.diff(recall, prepend=0.0)           # R_k - R_{k-1}
+    return float(np.sum(dr * precision))        # recall-weighted sum of precision
+# average_precision([0.9, 0.8, 0.3, 0.2], [1, 0, 1, 0]) -> 0.8333333333333333
+```
+
 ## Precision at fixed recall
 
 For a given operating constraint, report precision at a fixed recall floor

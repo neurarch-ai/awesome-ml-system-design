@@ -34,6 +34,8 @@ flowchart LR
   RANK --> OUT["People You May Know"]
 ```
 
+**How it works.** The connection log is the raw material: it is assembled into a member graph of nodes, edges, and node features. An inductive GNN samples and aggregates each node's neighbors to produce node embeddings in a batch pass offline, and those embeddings are loaded into an ANN index. Online, a request for member u looks up z_u and queries the ANN index, unioned with cheap two-hop graph-structure candidates, to assemble a candidate pool. A heavier pairwise link-prediction ranker then scores that pool, and the top results are returned as People You May Know. The split between the offline embedding path and the online lookup-and-rank path is what keeps request latency low while still using a full GNN.
+
 ## Test yourself
 
 1. Why must the train/test split be by time, not random?

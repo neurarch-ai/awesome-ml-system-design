@@ -65,6 +65,22 @@ flowchart TD
   VOC --> WAV["24 kHz waveform"]
 ```
 
+**How it works.** Everything on the recognition side starts from one shared front
+end: 16 kHz mic audio becomes 80-bin log-mel features at a 10 ms hop, and those
+features feed several branches. The wake-word branch runs an always-on, loose
+on-device detector whose firings are re-checked by a stricter cloud verifier before
+the assistant activates, trading a few false accepts on-device for cheap
+verification. A workload switch then routes the same features either to a streaming
+RNN-T that emits partials within a few hundred milliseconds and a final transcript
+at the endpoint, or to a full-context Conformer or seq2seq model whose output is
+diarized, punctuated, and cased into a speaker-labeled transcript; an optional
+VoiceFilter-Lite mask can clean the features before the streaming path. The
+text-to-speech side is a separate chain: input text goes to an acoustic model that
+predicts a mel-spectrogram, which a neural vocoder turns into a waveform. Sharing
+the log-mel front end across wake word, streaming, batch, and separation is what
+keeps the recognition stack coherent even though each branch has its own latency
+and accuracy trade-off.
+
 ## Test yourself
 
 1. Why must streaming ASR be causal, and what does that concretely forbid the

@@ -48,6 +48,18 @@ flowchart TD
   RETRAIN -.new backbone.-> BB
 ```
 
+**How it works.** An uploaded image enters the ingest stage, which decodes it,
+fixes EXIF orientation, resizes, and normalizes so every downstream task sees a
+consistent tensor. That tensor passes once through the shared pretrained backbone,
+whose features fan out to three task heads: a multi-label classification head for
+room-type tags (run asynchronously), a binary moderation head (run in real time),
+and an embedding head (indexed offline). Each head has its own post-processing:
+classification applies per-class calibrated thresholds, moderation compares its
+score against a threshold to publish, block, or route ambiguous cases to a human
+review queue, and the embedding is written to an ANN index that serves the visual
+search API. The human review queue produces gold labels that feed the retraining
+pipeline, which periodically ships a new backbone, closing the loop.
+
 ## Test yourself
 
 1. A seller uploads a photo. The room-type classifier says "kitchen" with 0.6

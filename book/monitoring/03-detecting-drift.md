@@ -11,6 +11,18 @@ $p_i$ from the reference window and $q_i$ from the current window:
 
 $$\text{PSI} = \sum_{i} (p_i - q_i) \ln \frac{p_i}{q_i}$$
 
+```python
+import numpy as np
+def psi(p, q):
+    # p: reference bin fractions, q: current bin fractions (each vector sums to 1)
+    p, q = np.asarray(p, float), np.asarray(q, float)
+    total = 0.0
+    for pi, qi in zip(p, q):                 # walk the aligned reference/current bins
+        total += (pi - qi) * np.log(pi / qi)  # (p_i - q_i) ln(p_i / q_i)
+    return total
+# psi([0.4, 0.3, 0.3], [0.2, 0.3, 0.5]) -> 0.2408 (moderate shift, in the 0.10-0.25 band)
+```
+
 The field rule for reading PSI:
 
 | PSI range | Interpretation |

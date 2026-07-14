@@ -38,6 +38,8 @@ flowchart TD
   CB --> WIN
 ```
 
+**How it works.** A single user request flows into both candidate rankers, A and B, each producing its own top-k list. The team-draft interleaving stage consumes those two lists and assembles one blended list by alternating picks, tracking which ranker contributed each item so credit can be assigned later. That blended list is shown to the user, and when the user clicks an item, the attribution branch looks up the contributing ranker and credits A or B accordingly. Accumulating those per-click credits across all users produces the output: the winner is the ranker with more attributed clicks. Because every user sees both rankers in one list, the comparison is within-user, which is why it needs far less traffic than a per-arm A/B test.
+
 ### What interleaving measures and what it does not
 
 Interleaving measures **within-list ranking preference**: which ranker's items

@@ -50,5 +50,15 @@ flowchart TD
   LBL -.retrain.-> LTR
 ```
 
+**How it works.** A query enters at the top and passes through query understanding,
+which resolves intent, spelling, and expansion before retrieval. Retrieval runs two
+arms in parallel: BM25 over an inverted index for lexical matches and ANN over
+dual-encoder embeddings for semantic matches. Their outputs are unioned and
+deduplicated into roughly a thousand candidates, for which query-document features
+are assembled and scored by the learning-to-rank model, leaving about ten results
+shown. The dotted feedback path closes the loop: clicks and human judgments on those
+shown results become debiased relevance labels that retrain the ranker, so tomorrow's
+model learns from today's impressions.
+
 Read the sections in order the first time; they build on each other. Each opens
 with the question an interviewer actually asks, then answers it.

@@ -20,6 +20,17 @@ $$L_\tau(y, \hat{q}) = \max\!\bigl(\tau\,(y - \hat{q}),\;(\tau - 1)\,(y - \hat{q
 
 When $y \gt \hat{q}$ (under-prediction), the penalty is $\tau \cdot (y - \hat{q})$. When $y \lt \hat{q}$ (over-prediction), the penalty is $(\tau - 1) \cdot (y - \hat{q})$. For $\tau = 0.9$, under-predictions are penalized 9x more than over-predictions, which correctly encodes the cost of stocking below the service-level target.
 
+```python
+import numpy as np
+def pinball_loss(y, q_hat, tau):
+    y, q_hat = np.asarray(y, float), np.asarray(q_hat, float)
+    diff = y - q_hat                        # positive when we under-predict
+    # penalize under-prediction by tau, over-prediction by (1 - tau)
+    loss = np.maximum(tau * diff, (tau - 1) * diff)
+    return loss.mean()                      # mean pinball loss over all points
+# pinball_loss([10, 8], [7, 9], 0.9) -> 1.4
+```
+
 ![Pinball loss shape](assets/fig-pinball-loss.png)
 
 *Pinball loss for three quantile levels. At P10 (red, left), over-prediction is punished heavily; the model is incentivized to forecast a low value that is only undercut 10 percent of the time. At P90 (blue, right), under-prediction is punished heavily. P50 (gray, center) is symmetric and recovers MAE.*

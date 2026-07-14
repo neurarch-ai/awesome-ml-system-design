@@ -29,6 +29,8 @@ flowchart TD
   LOGW --> LOG
 ```
 
+**How it works.** Two paths meet at a shared ANN index. On the offline path, a newly uploaded item is embedded by the content tower from its metadata and upserted into the index right away, while the impression log periodically retrains the reward model and the towers so the deployed scorer stays fresh. On the online path, a user request is embedded by the user tower, an ANN lookup pulls hundreds of candidates, and the reward model scores each with a point estimate and an uncertainty. The exploration layer then adds a UCB bonus or draws a Thompson sample on top of those scores, the candidates are reranked by the exploration-adjusted value, and the feed is served. Every served impression writes back context, action, propensity, and reward into the log, which feeds the next retrain and closes the loop between the two paths.
+
 The key constraint: the ANN index must accept online inserts. A new item
 gets a vector from the content tower the moment it is uploaded and is
 upserted into the index immediately. Batch-only indexing with multi-hour

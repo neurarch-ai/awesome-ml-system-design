@@ -39,6 +39,8 @@ flowchart TD
   LABELS --> SUP
 ```
 
+**How it works.** A single transaction feature vector fans out to two scorers that run in parallel: a supervised classifier trained on labeled fraud and an unsupervised anomaly detector that needs no labels. The supervised branch emits a calibrated fraud probability while the anomaly branch emits a reconstruction or isolation score, and a combine step reconciles the two (a max, a weighted blend, or separate thresholds) into one decision input. That combined signal hits a cost-based threshold that routes each transaction three ways: high-confidence fraud is blocked or sent to step-up auth, low risk is allowed, and borderline or novel cases go to the human review queue. The queue closes the loop: an analyst verdict becomes a fresh label that feeds the next retraining of the supervised model, so novelty caught by anomaly detection gradually becomes known patterns the classifier can score directly.
+
 ## When to use which
 
 | Reach for | When | Instead of |

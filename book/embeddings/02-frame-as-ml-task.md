@@ -25,6 +25,8 @@ flowchart LR
   SPACE --> RK["ranking feature"]
 ```
 
+**How it works.** Behavioral interaction and co-occurrence logs flow in on the left and are joined into positive pairs of entities that were engaged together. Those pairs feed the encoder $f$ alongside two other inputs: sampled negatives (entities assumed unrelated) and content features that describe each entity. The encoder maps every entity into one shared embedding space where the dot product between two vectors reads as relatedness, and the contrastive objective is what pulls positives together and pushes negatives apart in that space. The trained vectors then hand off two ways: loaded into an ANN index for nearest-neighbor retrieval, and reused directly as a ranking feature. The output is that single reusable geometry rather than a score or a class label.
+
 ## Input and output
 
 The **input** is an entity and its features (user ID, behavioral history, content

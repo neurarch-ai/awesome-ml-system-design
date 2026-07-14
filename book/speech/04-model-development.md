@@ -32,6 +32,20 @@ alignment (finding per-word timestamps given the correct transcript) is a natura
 byproduct: build a CTC trellis constrained to the known transcript and run Viterbi
 backtracking.
 
+Greedy decoding just takes the per-frame argmax and applies the same collapse
+$\mathcal{B}$: merge runs of the same label, then drop the blank.
+
+```python
+def ctc_collapse(ids, blank=0):         # ids: per-frame argmax token ids from the acoustic model
+    out, prev = [], None
+    for i in ids:
+        if i != prev and i != blank:    # merge repeated labels, then remove the blank symbol
+            out.append(i)
+        prev = i                        # a blank between two equal labels resets prev, keeping both
+    return out
+# ctc_collapse([1, 1, 0, 1, 2, 2]) -> [1, 1, 2]  (run of 1s merged; blank 0 keeps the second 1; 2s merged)
+```
+
 ### RNN-T: the RNN Transducer
 
 RNN-T adds a **prediction network** (an RNN over previously emitted tokens) and a

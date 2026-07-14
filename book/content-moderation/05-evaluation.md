@@ -21,6 +21,24 @@ percent on typical moderation tasks.
 
 $$R_{\text{at}\ P_{\min}} = R(\tau^{\star}) \quad \text{where} \quad \tau^{\star} = \arg\max_{\tau}\, R(\tau) \quad \text{s.t.}\ P(\tau) \geq P_{\min}^{(k)}$$
 
+```python
+import numpy as np
+def recall_at_precision(scores, labels, p_min):
+    scores, labels = np.asarray(scores, float), np.asarray(labels, float)
+    best = 0.0
+    for tau in np.unique(scores):            # every candidate threshold
+        pred = scores >= tau                 # flag items scoring at or above tau
+        tp = np.sum(pred & (labels == 1))
+        fp = np.sum(pred & (labels == 0))
+        fn = np.sum(~pred & (labels == 1))
+        if tp + fp == 0: continue            # nothing flagged, precision undefined
+        prec, rec = tp / (tp + fp), tp / (tp + fn)
+        if prec >= p_min and rec > best:     # keep highest recall above the floor
+            best = rec
+    return best
+# recall_at_precision([.9,.8,.4,.3], [1,1,0,0], 0.8) -> 1.0
+```
+
 ![Precision-recall curve with per-policy precision floors](assets/fig-precision-recall-floor.png)
 
 *The PR curve trades recall against precision as the score threshold moves; fix a precision floor per policy (horizontal dashed lines) and read off the highest achievable recall at that floor (dotted vertical lines, filled dots at each operating point). Higher-severity policies demand higher precision floors and therefore accept lower recall. Illustrative.*

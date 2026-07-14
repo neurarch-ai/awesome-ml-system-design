@@ -32,6 +32,8 @@ flowchart TB
   ON --> SVCREQ
 ```
 
+**How it works.** Raw events and upstream tables flow in on the left, and a single shared feature definition fans out to two compute paths that apply identical logic. The batch pipeline (Spark or a warehouse job) writes timestamped rows to the offline store for full history and materializes the latest value per entity into the online store, while the streaming pipeline (Kafka plus Flink or Samza) pushes fresh values into the online store within seconds. On the read side, the offline store feeds the point-in-time as-of join that produces the training dataset, and the online store answers single-entity feature lookups for ranking requests. Because both stores derive from the same definition, the offline history used for training and the online latest value used for serving cannot drift apart into code skew.
+
 ## The FTI pattern: the store is the seam between three pipelines
 
 Zoom out and the feature store is one node in a pattern worth naming explicitly,

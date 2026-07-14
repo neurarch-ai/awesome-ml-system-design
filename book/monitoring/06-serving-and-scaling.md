@@ -87,6 +87,8 @@ flowchart LR
   end
 ```
 
+**How it works.** A user request enters the online path, the model runs inference, and the prediction returns to the caller while an async log writer records the request off the critical path. Those log records flow into the offline prediction and feature store, where outcomes and labels join them as they arrive. The store then feeds two windowed jobs: drift checks (PSI, KS, chi-square) over the feature and score distributions, and performance metrics computed by segment and by model version once labels are present. Both jobs push their results into a single tiered alerting stage. Splitting online serving from offline analytics keeps the heavier batch computation off the latency-sensitive request path, so monitoring cost never lands on the user-facing prediction.
+
 The async log writer is the key structural choice. Logging must not be on the
 critical path of the serving request; a slow log write must not add latency to
 the user-facing prediction. Write to a queue (Kafka, Pub/Sub) and let a

@@ -56,6 +56,16 @@ If cold start takes 60 seconds and the autoscaler polls every 30 seconds, $h$
 needs to be at least 2. Headroom carries an idle cost; balance it against the
 cost of latency spikes during scale-out lag.
 
+```python
+import math
+def provisioned_replicas(lam_peak, mu, t_coldstart, t_scale_interval):
+    # headroom must cover how many scale intervals a cold start spans
+    h = t_coldstart / t_scale_interval          # minimum headroom fraction
+    base = lam_peak / mu                         # replicas to serve peak load
+    return math.ceil((1 + h) * base)             # inflate by headroom, round up
+# provisioned_replicas(600, 100, 60, 30) -> h=2, ceil(3 * 6) == 18
+```
+
 ## CPU vs GPU cost curves
 
 The economics of serving differ sharply between CPU and GPU:

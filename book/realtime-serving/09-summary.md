@@ -65,6 +65,18 @@ flowchart TD
   MON --> AS
 ```
 
+**How it works.** Two paths meet at the server fleet. On the deploy path a trained
+artifact passes offline eval, lands in the registry as a versioned entry, and the
+safe-rollout controller stages it: mirror to a shadow replica to prove no breakage,
+then a 5 percent canary, then a gradual ramp to full traffic once each gate clears.
+On the serving path an online request fetches its inputs from the feature store,
+hits the model server fleet, is grouped by dynamic batching for inference, and
+returns a prediction. Every prediction and its latency are logged to monitoring and
+drift detection, which both feeds autoscaling on queue depth or GPU utilization and
+trips a rollback (a registry pointer move) when it sees a regression. A timeout or
+error on the server short-circuits to a fallback, a static score or cheaper model,
+so the caller always gets an answer.
+
 ## Test yourself
 
 1. Why must the server and the model be separate artifacts, and what breaks when

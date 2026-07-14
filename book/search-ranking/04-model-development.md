@@ -93,7 +93,18 @@ strategies:
 $$\text{RRF}(d) = \sum_{a \in \{\text{lex},\, \text{sem}\}} \frac{1}{k + r_a(d)}$$
 
 RRF works even when the two arms' raw scores are on different scales, because it
-only uses rank.
+only uses rank. In code it is one pass per arm, accumulating reciprocal ranks into
+a shared score table:
+
+```python
+def rrf(rankings, k=60):                 # rankings: one ranked id list per retrieval arm
+    scores = {}
+    for ranked in rankings:
+        for rank, doc in enumerate(ranked):   # rank is 0-based, so the position is rank + 1
+            scores[doc] = scores.get(doc, 0.0) + 1.0 / (k + rank + 1)   # add this arm's reciprocal rank
+    return sorted(scores, key=scores.get, reverse=True)   # highest summed score first
+# rrf([['a', 'b', 'c'], ['a', 'c', 'b']]) -> ['a', 'b', 'c']  (a ranks first in both arms, so it wins)
+```
 
 ## Stage 3: the learning-to-rank model
 

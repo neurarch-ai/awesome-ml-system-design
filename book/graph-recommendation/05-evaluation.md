@@ -16,6 +16,18 @@ is acceptance, not clicks.
 
 $$\text{Hits@k} = \frac{1}{|U|}\sum_{u \in U} \mathbf{1}\!\left[\text{a true future edge of } u \in \text{top-}k(u)\right]$$
 
+```python
+import numpy as np
+def hits_at_k(ranked_labels, k):
+    # ranked_labels: per member, a 0/1 list of candidates sorted by score, best first
+    hits = []
+    for labels in ranked_labels:                # one member at a time
+        topk = labels[:k]                       # the member's top-k suggestions
+        hits.append(1.0 if any(topk) else 0.0)  # 1 if a true future edge landed in top-k
+    return float(np.mean(hits))                 # average over members = Hits@k
+# hits_at_k([[0,1,0],[0,0,1]], 2) -> 0.5  (member 1 hits at rank 2, member 2's positive is at rank 3)
+```
+
 ## Online metrics
 
 - **Invitation acceptance rate**, not invitations sent. The product wins on

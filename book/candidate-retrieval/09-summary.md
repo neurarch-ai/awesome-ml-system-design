@@ -36,6 +36,16 @@ flowchart LR
   UNION --> RANK["ranking stage"]
 ```
 
+**How it works.** Interaction logs are turned into (user, positive item) pairs,
+which train the two-tower model with in-batch negatives and the logQ correction.
+Training yields two separate encoders: the item tower is applied offline to embed
+the whole catalog into an ANN index (HNSW, IVF, or PQ), while the user tower is
+applied online to embed each incoming request. At serving time the per-request user
+embedding and the prebuilt item index meet at the nearest-neighbor lookup, which
+returns the closest items. Those are unioned and deduplicated with popularity and
+fresh-content sources, and the merged set is handed to the ranking stage that
+produces the final order.
+
 ## Test yourself
 
 1. Why does the two-tower structure make item embeddings cacheable, and a

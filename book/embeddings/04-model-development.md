@@ -32,6 +32,20 @@ concentrating the loss on the hardest negatives; large $\tau$ spreads the gradie
 over all negatives. This is the workhorse loss for dual-encoder retrieval, and it
 is exactly the loss two-tower models train under.
 
+```python
+import numpy as np
+def info_nce(z, zpos, tau=0.1):
+    z, zpos = np.asarray(z, float), np.asarray(zpos, float)
+    pos = np.sum(z * zpos, axis=1) / tau          # sim(z_i, z_i+), the positive logit
+    neg = (z @ z.T) / tau                          # sim(z_i, z_j) for in-batch negatives
+    np.fill_diagonal(neg, -np.inf)                 # exclude the anchor's own row (j == i)
+    logits = np.concatenate([pos[:, None], neg], axis=1)  # positive sits at column 0
+    m = logits.max(axis=1, keepdims=True)
+    lse = m[:, 0] + np.log(np.exp(logits - m).sum(axis=1))  # log-sum-exp per anchor
+    return float(np.mean(lse - logits[:, 0]))      # cross-entropy: -log softmax at positive
+# info_nce(np.eye(3), np.eye(3), tau=1.0) -> 0.551
+```
+
 ### Triplet / margin loss
 
 For an anchor $a$, a positive $p$, and a negative $n$, require the anchor to be

@@ -56,6 +56,18 @@ flowchart TD
   ACT -.->|"logged; label matures months later"| LABEL
 ```
 
+**How it works.** Training data is assembled by a point-in-time join of history and
+events against matured outcome labels, so no future information leaks in. That data
+goes through reject inference to correct selection bias, trains a model (typically a
+GBDT, with survival or uplift variants where needed), and then a calibrator is fit
+on a holdout. Evaluation covers calibration, ranking, business value, and fairness
+slices, and a champion-challenger gate decides whether the model, its calibrator,
+and the decision policy are promoted to serving. At request time the feature store
+supplies as-of-now features to the promoted bundle, which emits a decision plus
+adverse-action reasons. The dotted return edge is the slow loop: each logged
+decision becomes a label only months later when the outcome matures, which is why
+the point-in-time join at the top is non-negotiable.
+
 ## Test yourself
 
 1. A feature's offline AUC contribution is very high, but the feature is the

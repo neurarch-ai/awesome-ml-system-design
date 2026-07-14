@@ -53,6 +53,8 @@ flowchart TD
   IDX --> DOWN["retrieval / ranking / fraud"]
 ```
 
+**How it works.** Interaction logs enter at the top and are joined into positive pairs, where the exact join is the first thing that distinguishes these systems. The pipeline then passes through three decision points in sequence. The first branch picks an encoder family (graph aggregation, two-tower dot product, sequence co-occurrence, or text contrastive), which sorts the named systems into buckets. The second branch picks a negative strategy (in-batch, hard or curriculum, or market-aware), and the third asks whether the encoder is inductive (content features embed a new entity at once) or transductive (id-bound, so new entities wait for a retrain). Every path converges on the same tail: batch-embed the whole entity set, load the vectors into an ANN index, and serve that one index to retrieval, ranking, and fraud. The output is a shared embedding table whose branches differ only in how "related" is defined and whether new entities can be embedded without retraining.
+
 ## The systems (first-party write-ups)
 
 - **Stanford / Hamilton et al.** [GraphSAGE: Inductive Representation Learning on Large Graphs](https://arxiv.org/abs/1706.02216): inductive node embeddings by aggregating neighbor features; the source of the inductive-vs-transductive framing.

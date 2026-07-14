@@ -36,6 +36,16 @@ not just the latest value. A table holding only `(entity_id, feature_value)` can
 support an as-of join. The table must hold `(entity_id, event_time, feature_value)`,
 with all historical rows preserved.
 
+```python
+def asof(feature_events, query_time):
+    # keep only writes at or before query_time (t <= T_i), never future writes
+    past = [(t, v) for t, v in feature_events if t <= query_time]
+    if not past:
+        return None                              # no feature value existed yet
+    return max(past, key=lambda tv: tv[0])[1]    # value at the latest such write time
+# asof([(0, 'v1'), (2, 'v2'), (5, 'v3')], 3) -> 'v2'  (t=5 write is in the future, excluded)
+```
+
 Both Feast and LinkedIn Feathr expose as-of join APIs directly (`get_historical_features`
 in Feast). Uber Michelangelo runs the same DSL logic at both training and serving
 time, logging the streaming feature values back to HDFS so point-in-time

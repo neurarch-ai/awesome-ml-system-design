@@ -14,6 +14,8 @@ flowchart LR
   DIST --> OPT["downstream optimizer<br/>(stocks to P90 = critical fractile)"]
 ```
 
+**How it works.** Two inputs flow in: the demand history per SKU per store and the known-future covariates (calendar, promotions, price). The forecasting model consumes both and, instead of collapsing them to a single number, emits a predictive distribution summarized as a few quantiles (P10, P50, P90) for each horizon step. That distribution hands off to the downstream optimizer, which reads the operating point its decision needs rather than the mean. For replenishment, the optimizer stocks to the P90 (the critical fractile) so it does not stock out roughly half the time. The load-bearing idea is that the distribution, not a point estimate, is what crosses the boundary into the decision layer.
+
 ![Forecast with prediction intervals](assets/fig-forecast-intervals.png)
 
 *A demand series (blue) with a 12-week probabilistic forecast: P50 median (orange dashed) and P10-P90 interval (shaded). The interval widens with horizon distance. A replenishment optimizer stocks to the P90, not the mean, because stocking to the mean stocks out roughly half the time.*

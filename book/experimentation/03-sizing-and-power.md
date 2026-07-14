@@ -41,6 +41,17 @@ where:
 At alpha = 0.05 two-tailed and 80% power, $(z_{0.975} + z_{0.80})^{2} \approx
 (1.96 + 0.84)^{2} \approx 7.85$.
 
+```python
+import math
+def sample_size_per_arm(sigma, mde, z_alpha=1.96, z_beta=0.84):
+    # z_alpha = 1.96 is the 0.975 standard-normal quantile (alpha=0.05, two-tailed)
+    # z_beta  = 0.84 is the 0.80  standard-normal quantile (power=0.80)
+    z_sum = (z_alpha + z_beta) ** 2         # ~7.84 at the standard settings
+    n = 2 * sigma ** 2 * z_sum / mde ** 2   # per-arm users, diff-of-means test
+    return math.ceil(n)                     # round up to whole users
+# sample_size_per_arm(0.15, 0.01) -> 3528
+```
+
 ### Why sample size scales as $1 / \text{MDE}^{2}$
 
 Because $\text{MDE}$ appears squared in the denominator, halving the effect you

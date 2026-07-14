@@ -73,6 +73,8 @@ flowchart LR
   REWARD --> RM
 ```
 
+**How it works.** The context (user, item, and session features) flows into the reward model, which emits two numbers per candidate: a point estimate mu of the reward and an uncertainty estimate sigma. The exploration policy reads both and hands off a chosen action plus the propensity, the probability the policy assigned to that action. The action is served as an impression, and the observed reward r is fed back into the reward model to update its beliefs. The propensity logged alongside the action is what later makes off-policy evaluation possible: without it, no new policy can be scored offline. The loop is closed, so each decision both earns reward now and sharpens the model for future decisions.
+
 ## Choosing the right ML framing
 
 | Reach for | When | Instead of |

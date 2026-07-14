@@ -33,6 +33,16 @@ Log loss (cross-entropy) rewards the model for predicting the correct
 
 $$\mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \big[ y_i \log \hat{p}_i + (1 - y_i) \log(1 - \hat{p}_i) \big]$$
 
+```python
+import numpy as np
+def log_loss(probs, labels, eps=1e-15):
+    probs = np.clip(np.asarray(probs, float), eps, 1 - eps)  # keep log() finite at 0 and 1
+    labels = np.asarray(labels, float)
+    terms = labels * np.log(probs) + (1 - labels) * np.log(1 - probs)  # per-example cross-entropy
+    return -terms.mean()                                               # average; lower is better
+# log_loss([0.9, 0.1, 0.8], [1, 0, 1]) -> 0.14462152754328741
+```
+
 Log loss is a **proper scoring rule**: it is minimized by the true probability,
 so it simultaneously rewards calibration and ranking quality. AUC rewards only
 the latter.
