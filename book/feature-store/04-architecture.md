@@ -32,6 +32,41 @@ flowchart TB
   ON --> SVCREQ
 ```
 
+## The FTI pattern: the store is the seam between three pipelines
+
+Zoom out and the feature store is one node in a pattern worth naming explicitly,
+the **FTI decomposition** (feature / training / inference), popularized by the
+*LLM Engineer's Handbook*. Almost every production ML system, classical or LLM, is
+three long-lived pipelines that communicate only through two artifacts, the
+**feature store** and the **model registry**:
+
+```mermaid
+flowchart LR
+  RAW["raw data<br/>(events, tables, logs)"] --> FP["feature pipeline<br/>(compute + materialize)"]
+  FP --> STORE["feature store<br/>(offline history + online latest)"]
+  STORE -->|"point-in-time reads"| TP["training pipeline<br/>(fit, evaluate, register)"]
+  TP --> REG["model registry<br/>(versioned artifacts)"]
+  STORE -->|"latest reads"| IP["inference pipeline<br/>(load model, predict)"]
+  REG --> IP
+  IP --> PRED["predictions"]
+```
+
+The value of naming it in an interview is that it explains *why* the dual store
+exists. The three pipelines run on **different cadences, hardware, and owners**: the
+feature pipeline is a scheduled or streaming data job, the training pipeline is a
+bursty GPU job on a trigger, the inference pipeline is an always-on low-latency
+service. They must not be coupled into one process, or you cannot scale, deploy, or
+reason about them independently. The store and registry are the *only* interfaces.
+This is also the structural reason train/serve skew is designable away: the
+training and inference pipelines read features from the **same** definitions, so
+there is no second code path to drift.
+
+| Pipeline | Trigger / cadence | Reads | Writes | Compute profile |
+|---|---|---|---|---|
+| Feature | schedule or stream | raw sources | feature store (both tiers) | data-parallel, CPU |
+| Training | manual / drift / CT trigger | offline store (point-in-time) | model registry | bursty GPU |
+| Inference | per request | online store + registry | predictions | always-on, latency-bound |
+
 ## The write path
 
 **Batch pipeline.** A scheduled job (daily, hourly, or finer) reads from the data

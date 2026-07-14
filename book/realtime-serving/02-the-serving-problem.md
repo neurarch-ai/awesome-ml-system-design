@@ -30,6 +30,39 @@ flowchart LR
   SRV -->|"inference result"| APP
 ```
 
+## Online, async, or batch: pick the deployment type first
+
+Before tuning latency, confirm you even need real-time serving. The *LLM
+Engineer's Handbook* separates three deployment types by **who is waiting on the
+result**, and picking the wrong one is a common design-interview miss (over-engineering
+a real-time path for a job that runs nightly).
+
+| Deployment type | Use when | Latency target | Examples |
+|---|---|---|---|
+| Online real-time | a user or upstream service is blocked on the result | ms to low seconds | search-page ranking, fraud check at checkout, ad selection |
+| Asynchronous | the result is needed soon but not synchronously; enqueue, process, callback or poll | seconds to minutes | moderating an uploaded video, generating a report, scoring a long document |
+| Offline batch | a whole dataset is scored on a schedule with no per-request path | minutes to hours | nightly recommendation refresh, backfilling scores, embedding a corpus |
+
+The cost gradient runs the other way: batch is cheapest (pack large batches on spot
+capacity, no idle replicas), async is in between (a queue absorbs spikes so you
+size for the mean, not the peak), and online real-time is the most expensive
+because you provision for the peak and keep replicas warm. If the product can
+tolerate a queue, async or batch can be an order of magnitude cheaper than online.
+
+## Monolith vs microservices serving
+
+Given you need online serving, the second structural choice is whether the model
+runs *inside* the business service or as a separate one.
+
+| Architecture | Use when | Cost |
+|---|---|---|
+| Monolithic (model in the app process) | small model, single consumer, tight latency, small team | one deploy, no network hop, but you scale app and model together and inherit the model's language and memory footprint |
+| Microservices (model server behind the app) | large or GPU-bound model, multiple consumers, independent scaling | GPU model service scales apart from the CPU app and is reusable, at the price of a network hop and more operational surface |
+
+The deciding factor is usually the hardware asymmetry: a GPU model that must scale
+on QPS while the business logic scales on something else forces the split, because
+you do not want to buy a GPU every time you need another CPU-bound app replica.
+
 ## The latency budget
 
 The 50 ms p99 end-to-end target is not the model's budget. It is the total
