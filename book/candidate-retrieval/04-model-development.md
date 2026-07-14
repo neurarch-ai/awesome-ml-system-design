@@ -88,6 +88,24 @@ in-batch items.
 
 $$L = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{e^{\, s(x_i, y_i)}}{\sum_{j=1}^{B} e^{\, s(x_i, y_j)}}, \qquad s(x_i, y_j) = u(x_i)^{\top} v(y_j)$$
 
+In code the whole thing is a few lines: one matrix multiply gives the B-by-B score
+matrix, and the positive for each user is the diagonal, so the loss is just a
+cross-entropy against `arange(B)`.
+
+```python
+# u, v: (B, d) user and item embeddings for one batch of B positive pairs
+# log_q: (B,) estimated log sampling probability of each item (for the correction)
+logits = u @ v.T                    # (B, B): logits[i, j] = score(user i, item j)
+logits = logits - log_q.view(1, B)  # logQ correction, subtracted on the item axis
+labels = torch.arange(B)            # user i's positive is item i (the diagonal)
+loss = F.cross_entropy(logits, labels)   # softmax over the row = over in-batch items
+```
+
+The `- log_q` line is the entire logQ correction, and dropping the `labels`
+diagonal from the denominator (not shown) is the user-level masking fix. Seeing
+that the correction is one subtraction, applied to the training logits and never at
+serving, is what the interview is really checking.
+
 Real systems adjust this in three recurring ways:
 
 - **logQ-corrected logit** (YouTube, Expedia): subtract the sampling term,
