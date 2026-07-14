@@ -13,7 +13,25 @@ values above 1 are possible when insertions are numerous):
 $$\text{WER} = \frac{S + I + D}{N}$$
 
 where $S$, $I$, $D$ count substituted, inserted, and deleted words against the
-reference, and $N$ is the reference word count.
+reference, and $N$ is the reference word count. The counts come from a word-level
+edit-distance (Levenshtein) alignment, which is the actual computation behind the
+formula:
+
+```python
+def wer(ref, hyp):                 # ref, hyp: strings -> (S + I + D) / N
+    r, h = ref.split(), hyp.split()
+    d = [[0]*(len(h)+1) for _ in range(len(r)+1)]
+    for i in range(len(r)+1): d[i][0] = i     # i deletions to empty hypothesis
+    for j in range(len(h)+1): d[0][j] = j     # j insertions from empty reference
+    for i in range(1, len(r)+1):
+        for j in range(1, len(h)+1):
+            cost = 0 if r[i-1] == h[j-1] else 1        # 0 match, 1 substitution
+            d[i][j] = min(d[i-1][j] + 1,       # deletion
+                          d[i][j-1] + 1,       # insertion
+                          d[i-1][j-1] + cost)  # substitution or match
+    return d[len(r)][len(h)] / len(r)
+# wer("the cat sat", "the dog sat") -> 1 substitution / 3 words = 0.333
+```
 
 ![How WER is computed: reference-hypothesis alignment](assets/fig-wer-computation.png)
 

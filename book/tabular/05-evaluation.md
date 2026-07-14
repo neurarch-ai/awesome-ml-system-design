@@ -77,7 +77,25 @@ perfectly calibrated model falls on the diagonal. Deviations show overconfidence
 $$\text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
 
 where $\text{acc}(B_m)$ is the observed positive rate in bin $B_m$ and
-$\text{conf}(B_m)$ is the mean predicted probability.
+$\text{conf}(B_m)$ is the mean predicted probability. In code it is a single pass
+over the bins, weighting each bin's confidence-accuracy gap by its share of the
+data:
+
+```python
+import numpy as np
+def ece(probs, labels, n_bins=10):
+    probs, labels = np.asarray(probs, float), np.asarray(labels, float)
+    edges = np.linspace(0, 1, n_bins + 1)
+    e = 0.0
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = (probs > lo) & (probs <= hi)      # predictions falling in this bin
+        if m.sum() == 0: continue
+        conf = probs[m].mean()                # mean predicted prob in the bin
+        acc = labels[m].mean()                # observed positive rate in the bin
+        e += m.mean() * abs(acc - conf)       # weight the gap by bin fraction
+    return e
+# perfectly calibrated probabilities give ece ~ 0; systematic overconfidence inflates it
+```
 
 ![Reliability (calibration) curve: predicted probability vs observed positive rate](assets/fig-calibration-curve.png)
 
