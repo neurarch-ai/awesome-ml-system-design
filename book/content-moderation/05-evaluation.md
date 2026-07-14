@@ -21,6 +21,10 @@ percent on typical moderation tasks.
 
 $$R_{\text{at}\ P_{\min}} = R(\tau^{\star}) \quad \text{where} \quad \tau^{\star} = \arg\max_{\tau}\, R(\tau) \quad \text{s.t.}\ P(\tau) \geq P_{\min}^{(k)}$$
 
+![Precision-recall curve with per-policy precision floors](assets/fig-precision-recall-floor.png)
+
+*The PR curve trades recall against precision as the score threshold moves; fix a precision floor per policy (horizontal dashed lines) and read off the highest achievable recall at that floor (dotted vertical lines, filled dots at each operating point). Higher-severity policies demand higher precision floors and therefore accept lower recall. Illustrative.*
+
 Report this per policy, per modality, and per language. A global recall number hides
 the gaps where the model is weakest. Roblox explicitly tracks per-policy and
 per-language recall because uneven multilingual quality hides behind aggregate metrics.

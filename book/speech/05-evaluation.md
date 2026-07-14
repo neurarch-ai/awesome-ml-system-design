@@ -13,7 +13,13 @@ values above 1 are possible when insertions are numerous):
 $$\text{WER} = \frac{S + I + D}{N}$$
 
 where $S$, $I$, $D$ count substituted, inserted, and deleted words against the
-reference, and $N$ is the reference word count. **CER (character error rate)**
+reference, and $N$ is the reference word count.
+
+![How WER is computed: reference-hypothesis alignment](assets/fig-wer-computation.png)
+
+*Each column is one alignment position: green cells are matches (=), orange is a substitution (S, wrong word), red-dashed is a deletion (D, word present in reference only), blue-dashed is an insertion (I, word present in hypothesis only). WER = (S+D+I)/N = (1+1+1)/4 = 0.75 for this example. Illustrative.*
+
+**CER (character error rate)**
 applies the same edit-distance computation at the character level and outputs an
 error rate in the same form:
 

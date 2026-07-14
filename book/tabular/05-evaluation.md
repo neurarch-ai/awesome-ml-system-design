@@ -79,6 +79,10 @@ $$\text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{con
 where $\text{acc}(B_m)$ is the observed positive rate in bin $B_m$ and
 $\text{conf}(B_m)$ is the mean predicted probability.
 
+![Reliability (calibration) curve: predicted probability vs observed positive rate](assets/fig-calibration-curve.png)
+
+*A well-calibrated model (blue, left panel) tracks the diagonal: a predicted probability of 0.7 means roughly 70% of those examples are true positives. A miscalibrated model (red, right panel) bows away from the diagonal; the shaded gap between the curve and the diagonal is exactly what ECE integrates. Illustrative.*
+
 **Brier Score.** Mean squared error between predicted probability and binary
 label; rewards both discrimination and calibration simultaneously.
 

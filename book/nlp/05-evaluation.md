@@ -18,6 +18,10 @@ $$P^{(c)} = \frac{TP^{(c)}}{TP^{(c)} + FP^{(c)}}, \qquad R^{(c)} = \frac{TP^{(c)
 
 $$F_1^{(c)} = \frac{2 \cdot P^{(c)} \cdot R^{(c)}}{P^{(c)} + R^{(c)}}$$
 
+![Confusion matrix showing how precision, recall, and F1 are computed](assets/fig-confusion-matrix-prf1.png)
+
+*Left: a 2x2 confusion matrix with illustrative counts; precision uses the predicted-positive column (TP divided by TP plus FP), recall uses the actual-positive row (TP divided by TP plus FN). Right: the three formulas with numbers substituted, yielding F1 as their harmonic mean. Illustrative.*
+
 Across $C$ classes, **macro-averaged F1** is the unweighted mean of the
 per-class F1 scores; it gives every class equal influence on the final number
 regardless of class frequency, which is exactly right for the minority class

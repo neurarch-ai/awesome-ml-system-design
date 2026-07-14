@@ -29,6 +29,10 @@ ranking feature, or a few hundred if the sequence model is used as a retrieval
 tower. Optimizing for k=10 when you pass 200 candidates to ranking produces
 misleading results.
 
+![Recall@k and NDCG@k vs k for next-item recommendation](assets/fig-recall-ndcg-at-k.png)
+
+*Recall@k (blue) rises quickly and saturates: once the list is long enough to contain the true next item most of the time, adding more candidates gives diminishing returns. NDCG@k (orange) rises more slowly because it penalises the true item appearing near the bottom of the top-k list. The dashed red line marks the k passed to the downstream ranker; evaluate there, not at a larger k that the ranker never sees. Illustrative.*
+
 ### NDCG@k (Normalized Discounted Cumulative Gain)
 
 NDCG rewards ranking the true next item higher within the top k, not just
