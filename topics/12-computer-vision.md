@@ -49,7 +49,7 @@ Scope for this design: real-time moderation gate, async multi-label tagging, and
 ```mermaid
 flowchart TD
   U[Upload] --> ING[Ingest: decode, EXIF fix, resize, thumbnail]
-  ING --> MOD{Moderation gate\nreal-time}
+  ING --> MOD{Moderation gate<br/>real-time}
   MOD -->|clear| PUB[Publish]
   MOD -->|violation| BLK[Block + log]
   MOD -->|ambiguous| HRQ[Human review queue]
@@ -226,10 +226,10 @@ Despite different tasks, these systems share one skeleton: a canonical ingest st
 
 ```mermaid
 flowchart LR
-  IMG[Image ingest\ndecode / EXIF / resize] --> BB[Pretrained backbone\nCNN or transformer]
-  BB --> HEAD[Task head\nclassify / detect / segment / embed]
+  IMG[Image ingest<br/>decode / EXIF / resize] --> BB[Pretrained backbone<br/>CNN or transformer]
+  BB --> HEAD[Task head<br/>classify / detect / segment / embed]
   HEAD --> DEC{Decision}
-  DEC -->|score vs threshold| SURF[Product surface\nmoderate / tag]
+  DEC -->|score vs threshold| SURF[Product surface<br/>moderate / tag]
   DEC -->|vector to ANN index| IDX[(ANN index)]
   IDX --> SURF
   SURF --> REV[Human review]

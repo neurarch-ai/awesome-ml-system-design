@@ -42,11 +42,11 @@ Audio is captured, framed into short windows, turned into features (log-mel spec
 flowchart TD
   A[Mic capture, 16 kHz] --> B[Frame + window, 10-25 ms]
   B --> C[Feature: log-mel or raw waveform]
-  C --> D{Always-on wake word\non-device, tiny}
+  C --> D{Always-on wake word<br/>on-device, tiny}
   D -- no trigger --> D
   D -- trigger --> E[Cloud wake-word verification]
   C --> F{Workload}
-  F -- live --> G[Streaming ASR: RNN-T / CTC\n+ endpointer]
+  F -- live --> G[Streaming ASR: RNN-T / CTC<br/>+ endpointer]
   F -- upload --> H[Batch ASR: Conformer seq2seq]
   H --> I[Diarization + punctuation/casing]
   G --> J[Partial + final transcript]
