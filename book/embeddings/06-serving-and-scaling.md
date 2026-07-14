@@ -18,7 +18,7 @@ flowchart LR
     UENC --> QV["query embedding"]
     QV --> ANN["ANN search over index"]
     IDX --> ANN
-    ANN --> MERGE["union + dedup with\nfreshness / popularity sources"]
+    ANN --> MERGE["union + dedup with<br/>freshness / popularity sources"]
     MERGE --> OUT["candidate set"]
   end
 ```

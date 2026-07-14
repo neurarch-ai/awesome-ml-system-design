@@ -30,16 +30,16 @@
 
 ```mermaid
 flowchart LR
-  SRC["raw events\n+ upstream sources"]
-  DEF["shared feature\ndefinition"]
-  BATCH["batch pipeline\n(Spark / warehouse)"]
-  STREAM["streaming pipeline\n(Kafka + Flink)"]
-  OFF["offline store\n(full timestamped history)"]
-  ON["online store\n(latest value, KV)"]
-  PTJOIN["as-of join\non event time"]
-  TRAIN["training dataset\n(no leakage)"]
-  RANK["ranking request\n(feature lookup)"]
-  MON["parity + PSI\nmonitoring"]
+  SRC["raw events<br/>+ upstream sources"]
+  DEF["shared feature<br/>definition"]
+  BATCH["batch pipeline<br/>(Spark / warehouse)"]
+  STREAM["streaming pipeline<br/>(Kafka + Flink)"]
+  OFF["offline store<br/>(full timestamped history)"]
+  ON["online store<br/>(latest value, KV)"]
+  PTJOIN["as-of join<br/>on event time"]
+  TRAIN["training dataset<br/>(no leakage)"]
+  RANK["ranking request<br/>(feature lookup)"]
+  MON["parity + PSI<br/>monitoring"]
 
   SRC --> BATCH
   SRC --> STREAM

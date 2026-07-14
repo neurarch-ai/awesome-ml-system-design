@@ -9,14 +9,14 @@ forward pass over candidates.
 
 ```mermaid
 flowchart TD
-  REQ["user query"] --> QU["query understanding\n(intent, spelling, expansion)\n~5-10 ms"]
-  QU --> LEX["BM25 over inverted index\n~10-20 ms"]
-  QU --> SEM["ANN over dual-encoder index\n~10-20 ms"]
-  LEX --> U["union + dedupe\n(~1,000 candidates)"]
+  REQ["user query"] --> QU["query understanding<br/>(intent, spelling, expansion)<br/>~5-10 ms"]
+  QU --> LEX["BM25 over inverted index<br/>~10-20 ms"]
+  QU --> SEM["ANN over dual-encoder index<br/>~10-20 ms"]
+  LEX --> U["union + dedupe<br/>(~1,000 candidates)"]
   SEM --> U
-  U --> FEAT["assemble query-doc features\n(batch, shared query features fetched once)"]
-  FEAT --> LTR["LTR model forward pass\n(batch over 1,000 docs)\n~20-30 ms"]
-  LTR --> RR["optional re-rank\n(diversity, freshness)\n~5 ms"]
+  U --> FEAT["assemble query-doc features<br/>(batch, shared query features fetched once)"]
+  FEAT --> LTR["LTR model forward pass<br/>(batch over 1,000 docs)<br/>~20-30 ms"]
+  LTR --> RR["optional re-rank<br/>(diversity, freshness)<br/>~5 ms"]
   RR --> OUT["top-K results"]
 ```
 

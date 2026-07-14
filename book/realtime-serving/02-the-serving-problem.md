@@ -18,9 +18,9 @@ metrics and logging across every model in the company.
 
 ```mermaid
 flowchart LR
-  APP["application\n(caller)"]
-  SRV["model server\n(TF Serving / Triton / TorchServe)"]
-  REG["model registry\n(versioned artifacts)"]
+  APP["application<br/>(caller)"]
+  SRV["model server<br/>(TF Serving / Triton / TorchServe)"]
+  REG["model registry<br/>(versioned artifacts)"]
   FEAT["online feature store"]
 
   APP -->|"predict(features)"| SRV

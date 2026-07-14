@@ -19,11 +19,11 @@ assembly + model inference + threshold) completes within the p99 latency budget.
 
 ```mermaid
 flowchart LR
-  AUTH["payment auth request\n(amount, card, merchant, device, geo)"] --> ASSM["feature assembly\n(streaming velocity lookups\n+ graph feature fetch\n+ raw tx fields)"]
-  ASSM --> MODEL["model inference\n(gradient-boosted trees or DNN)"]
+  AUTH["payment auth request<br/>(amount, card, merchant, device, geo)"] --> ASSM["feature assembly<br/>(streaming velocity lookups<br/>+ graph feature fetch<br/>+ raw tx fields)"]
+  ASSM --> MODEL["model inference<br/>(gradient-boosted trees or DNN)"]
   MODEL --> SCORE["fraud probability p"]
-  SCORE --> THRESH{"p vs tau_star\n(c_FP / (c_FP + c_FN))"}
-  THRESH -->|"p < tau_low"| ALLOW["allow\n(fast path)"]
+  SCORE --> THRESH{"p vs tau_star<br/>(c_FP / (c_FP + c_FN))"}
+  THRESH -->|"p < tau_low"| ALLOW["allow<br/>(fast path)"]
   THRESH -->|"p > tau_high"| BLOCK["block / step-up auth"]
   THRESH -->|"tau_low <= p <= tau_high"| REVIEW["route to review queue"]
 ```

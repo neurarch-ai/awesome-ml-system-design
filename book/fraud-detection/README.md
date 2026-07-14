@@ -30,14 +30,14 @@ Grab, Airbnb, Capital One, Wayfair, and Booking.com actually ship it.
 
 ```mermaid
 flowchart TD
-  TX["incoming transaction\n(amount, device, merchant, geo)"] --> FEAT["assemble real-time features\n(velocity aggregates + graph/entity signals)"]
-  FEAT --> MODEL["score transaction\n(supervised classifier + anomaly detector)"]
+  TX["incoming transaction<br/>(amount, device, merchant, geo)"] --> FEAT["assemble real-time features<br/>(velocity aggregates + graph/entity signals)"]
+  FEAT --> MODEL["score transaction<br/>(supervised classifier + anomaly detector)"]
   MODEL --> THRESH{"score vs cost-based threshold"}
   THRESH -->|"low risk"| ALLOW["allow"]
   THRESH -->|"high risk"| BLOCK["block / step-up auth"]
   THRESH -->|"borderline"| REVIEW["human review queue"]
   REVIEW --> VERDICT["analyst verdict (fast label)"]
-  ALLOW --> OUTCOME["outcome arrives later\n(chargeback / dispute, weeks)"]
+  ALLOW --> OUTCOME["outcome arrives later<br/>(chargeback / dispute, weeks)"]
   BLOCK --> OUTCOME
   VERDICT --> LABELS["label store"]
   OUTCOME --> LABELS

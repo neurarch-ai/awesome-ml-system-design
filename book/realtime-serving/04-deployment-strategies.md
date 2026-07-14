@@ -16,12 +16,12 @@ rollback is a pointer change back.
 
 ```mermaid
 flowchart LR
-  REG["model registry\n(versioned artifact)"]
-  SHADOW["shadow replica\n(throwaway output)"]
-  CANARY["canary slice\n(5% real traffic)"]
-  RAMP["gradual ramp\n(25, 50, 100%)"]
-  ROLLBACK["rollback\n(pointer back)"]
-  MON["monitoring\n(health + metrics)"]
+  REG["model registry<br/>(versioned artifact)"]
+  SHADOW["shadow replica<br/>(throwaway output)"]
+  CANARY["canary slice<br/>(5% real traffic)"]
+  RAMP["gradual ramp<br/>(25, 50, 100%)"]
+  ROLLBACK["rollback<br/>(pointer back)"]
+  MON["monitoring<br/>(health + metrics)"]
 
   REG -->|"mirror"| SHADOW
   SHADOW -->|"no breakage"| CANARY

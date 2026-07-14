@@ -30,14 +30,14 @@ reach for shadow then canary then gradual rollout before anyone asks.
 
 ```mermaid
 flowchart TD
-  TRAIN["train + offline eval"] --> REG["model registry\n(versioned artifact + metadata)"]
-  REG -->|"promote candidate"| CTRL{"safe rollout\ncontroller"}
-  CTRL -->|"mirror traffic"| SHADOW["shadow replica\n(no user impact)"]
-  CTRL -->|"canary slice"| SRV["model server fleet\n(TF Serving / Triton / MLServer)"]
+  TRAIN["train + offline eval"] --> REG["model registry<br/>(versioned artifact + metadata)"]
+  REG -->|"promote candidate"| CTRL{"safe rollout<br/>controller"}
+  CTRL -->|"mirror traffic"| SHADOW["shadow replica<br/>(no user impact)"]
+  CTRL -->|"canary slice"| SRV["model server fleet<br/>(TF Serving / Triton / MLServer)"]
   CTRL -->|"stable traffic"| SRV
-  REQ["online request"] --> FEAT["feature fetch\n(online store)"]
+  REQ["online request"] --> FEAT["feature fetch<br/>(online store)"]
   FEAT --> SRV
-  SRV --> BATCH["dynamic batching\n+ inference"]
+  SRV --> BATCH["dynamic batching<br/>+ inference"]
   BATCH --> RESP["prediction"]
   RESP --> LOG["log preds + latencies"]
   LOG --> MON["monitoring + drift"]

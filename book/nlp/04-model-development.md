@@ -13,12 +13,12 @@ linear tagging layer independently.
 
 ```mermaid
 flowchart TD
-  TOK["token sequence\n[CLS] w1 w2 ... wN [SEP]"] --> EMBS["token + position embeddings"]
-  EMBS --> TRANS["transformer blocks\n(L layers, d-dim, H heads)"]
-  TRANS --> CLS_OUT["[CLS] embedding\n(pooled representation)"]
-  TRANS --> TOK_OUT["per-token embeddings\nt1 t2 ... tN"]
-  CLS_OUT --> CLS_HEAD["linear layer\n(softmax, C classes)"]
-  TOK_OUT --> NER_HEAD["linear layer per token\n(BIO tags)"]
+  TOK["token sequence<br/>[CLS] w1 w2 ... wN [SEP]"] --> EMBS["token + position embeddings"]
+  EMBS --> TRANS["transformer blocks<br/>(L layers, d-dim, H heads)"]
+  TRANS --> CLS_OUT["[CLS] embedding<br/>(pooled representation)"]
+  TRANS --> TOK_OUT["per-token embeddings<br/>t1 t2 ... tN"]
+  CLS_OUT --> CLS_HEAD["linear layer<br/>(softmax, C classes)"]
+  TOK_OUT --> NER_HEAD["linear layer per token<br/>(BIO tags)"]
   CLS_HEAD --> PROBS["P(label | text)"]
   NER_HEAD --> SPANS["entity spans"]
 ```
@@ -64,9 +64,9 @@ attending over the encoder's states at each step.
 ```mermaid
 flowchart LR
   SRC["source tokens"] --> SW["subword split"]
-  SW --> ENC["encoder\n(transformer stack)"]
-  ENC --> ATT["cross-attention weights\n(over source positions)"]
-  ATT --> DEC["decoder\n(autoregressive)"]
+  SW --> ENC["encoder<br/>(transformer stack)"]
+  ENC --> ATT["cross-attention weights<br/>(over source positions)"]
+  ATT --> DEC["decoder<br/>(autoregressive)"]
   DEC --> BEAM["beam search"]
   BEAM --> TGT["target tokens"]
 ```

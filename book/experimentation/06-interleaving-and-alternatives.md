@@ -27,14 +27,14 @@ users than an A/B test.
 flowchart TD
   U["user request"] --> RA["ranker A: top-k list"]
   U --> RB["ranker B: top-k list"]
-  RA --> IL["team-draft interleaving:\nbuild one blended list"]
+  RA --> IL["team-draft interleaving:<br/>build one blended list"]
   RB --> IL
   IL --> SHOW["show blended list to user"]
   SHOW --> CLICK["user clicks item X"]
-  CLICK --> ATTR{"which ranker\ncontributed X?"}
+  CLICK --> ATTR{"which ranker<br/>contributed X?"}
   ATTR -->|"ranker A"| CA["credit ranker A"]
   ATTR -->|"ranker B"| CB["credit ranker B"]
-  CA --> WIN["winner = ranker with more attributed clicks\nacross all users"]
+  CA --> WIN["winner = ranker with more attributed clicks<br/>across all users"]
   CB --> WIN
 ```
 

@@ -8,11 +8,11 @@ invisible in an offline AUC.
 
 ```mermaid
 flowchart TD
-  Q{"What must the\nscore answer?"}
-  Q -->|"Rank risk or value"| CLS["Classification or regression\n(approve/decline, LTV point estimate)"]
-  Q -->|"WHEN will it happen"| SURV["Survival analysis\n(churn timing, time-to-default)"]
-  Q -->|"WHETHER to intervene"| UP["Uplift / causal model\n(discount, retention offer, incentive)"]
-  CLS --> CAL{"Does absolute value\nset money?"}
+  Q{"What must the<br/>score answer?"}
+  Q -->|"Rank risk or value"| CLS["Classification or regression<br/>(approve/decline, LTV point estimate)"]
+  Q -->|"WHEN will it happen"| SURV["Survival analysis<br/>(churn timing, time-to-default)"]
+  Q -->|"WHETHER to intervene"| UP["Uplift / causal model<br/>(discount, retention offer, incentive)"]
+  CLS --> CAL{"Does absolute value<br/>set money?"}
   SURV --> CAL
   UP --> CAL
   CAL -->|"yes"| CALIBRATE["Calibrate: Platt / isotonic"]

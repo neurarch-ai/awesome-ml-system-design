@@ -31,14 +31,14 @@ Tecton, and Google actually ship it.
 
 ```mermaid
 flowchart LR
-  SRC["raw events\n+ data sources"]
-  BATCH["batch pipeline\n(Spark / warehouse)"]
-  STREAM["streaming pipeline\n(Kafka / Flink)"]
-  DEF["shared feature\ndefinition"]
-  OFF["offline store\n(full history)"]
-  ON["online store\n(latest value, low-latency KV)"]
-  TRAIN["point-in-time\nas-of join\n(training dataset)"]
-  SERVE["feature lookup\nat request time"]
+  SRC["raw events<br/>+ data sources"]
+  BATCH["batch pipeline<br/>(Spark / warehouse)"]
+  STREAM["streaming pipeline<br/>(Kafka / Flink)"]
+  DEF["shared feature<br/>definition"]
+  OFF["offline store<br/>(full history)"]
+  ON["online store<br/>(latest value, low-latency KV)"]
+  TRAIN["point-in-time<br/>as-of join<br/>(training dataset)"]
+  SERVE["feature lookup<br/>at request time"]
 
   SRC --> BATCH
   SRC --> STREAM

@@ -11,12 +11,12 @@ conversions arrive late.
 
 ```mermaid
 flowchart LR
-  REQ["ad request"] --> CAND["eligible ads\n(targeting)"]
-  CAND --> MODEL["pCTR / pCVR model\n(calibrated probabilities)"]
+  REQ["ad request"] --> CAND["eligible ads<br/>(targeting)"]
+  CAND --> MODEL["pCTR / pCVR model<br/>(calibrated probabilities)"]
   MODEL --> ECPM["eCPM = bid x pCTR"]
-  ECPM --> AUCT["auction\n(second-price)"]
+  ECPM --> AUCT["auction<br/>(second-price)"]
   AUCT --> SERVE["served ad"]
-  SERVE -.->|"delayed conversions +\ncorrection"| TRAIN["training"]
+  SERVE -.->|"delayed conversions +<br/>correction"| TRAIN["training"]
   TRAIN -.-> MODEL
 ```
 

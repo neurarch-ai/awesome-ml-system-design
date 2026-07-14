@@ -38,7 +38,7 @@ shape every design decision in this chapter.
 
 ```mermaid
 flowchart TD
-  Q["query"] --> QU["query understanding\n(intent, spelling, expansion)"]
+  Q["query"] --> QU["query understanding<br/>(intent, spelling, expansion)"]
   QU --> LEX["BM25 over inverted index"]
   QU --> SEM["ANN over dual-encoder embeddings"]
   LEX --> U["union + dedupe (~1,000 candidates)"]

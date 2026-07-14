@@ -13,9 +13,9 @@ within the tens-of-millisecond budget. Illustrative.*
 
 ```mermaid
 flowchart LR
-  C["corpus\n(100M docs)"] --> R["retrieval\n(~1,000)"]
-  R --> K["ranking\n(~100)"]
-  K --> S["shown\n(~10)"]
+  C["corpus<br/>(100M docs)"] --> R["retrieval<br/>(~1,000)"]
+  R --> K["ranking<br/>(~100)"]
+  K --> S["shown<br/>(~10)"]
 ```
 
 ## Stage 1: lexical retrieval with BM25

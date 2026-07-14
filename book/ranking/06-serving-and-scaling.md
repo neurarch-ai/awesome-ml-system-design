@@ -26,18 +26,18 @@ candidate independently, and pushes you toward four decisions:
 ```mermaid
 flowchart LR
   subgraph Offline["offline path"]
-    LOG["impression logs"] --> FP["feature pipeline\n(point-in-time join)"]
+    LOG["impression logs"] --> FP["feature pipeline<br/>(point-in-time join)"]
     FP --> TRAIN["train ranker"]
-    TRAIN --> MODEL["ship model + embedding tables\nto serving cluster"]
-    ITEMS["item catalog"] --> PRECOMP["precompute item features\ninto feature store"]
+    TRAIN --> MODEL["ship model + embedding tables<br/>to serving cluster"]
+    ITEMS["item catalog"] --> PRECOMP["precompute item features<br/>into feature store"]
   end
   subgraph Online["online path (low tens of ms)"]
-    REQ["request: user + candidates"] --> UF["fetch user + context\nfeatures once"]
-    REQ --> IF["fetch item + cross features\nper candidate (batched)"]
-    UF --> BATCH["batch-score all candidates:\none model forward pass"]
+    REQ["request: user + candidates"] --> UF["fetch user + context<br/>features once"]
+    REQ --> IF["fetch item + cross features<br/>per candidate (batched)"]
+    UF --> BATCH["batch-score all candidates:<br/>one model forward pass"]
     IF --> BATCH
     BATCH --> CAL["calibrate (Platt / isotonic)"]
-    CAL --> UTIL["utility = weighted\nper-objective sum"]
+    CAL --> UTIL["utility = weighted<br/>per-objective sum"]
     UTIL --> OUT["ordered list"]
   end
   MODEL --> BATCH

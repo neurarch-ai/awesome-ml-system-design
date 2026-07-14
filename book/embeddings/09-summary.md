@@ -33,16 +33,16 @@
 
 ```mermaid
 flowchart LR
-  LOG["interaction logs\n(clicks, sessions, graph edges)"] --> PAIRS["mine positive pairs\n(defines related)"]
-  PAIRS --> TRAIN["train encoder\n(InfoNCE / triplet + negatives)"]
-  NEGS["in-batch + hard negs\n+ logQ correction"] --> TRAIN
-  CF["content features\n(text, category, graph)"] --> TRAIN
-  TRAIN --> EMB["batch-embed every entity\n(offline)"]
-  EMB --> IDX["ANN index\n(HNSW / IVF / IVF-PQ)"]
-  TRAIN --> QENC["query / user encoder\n(online, per request)"]
+  LOG["interaction logs<br/>(clicks, sessions, graph edges)"] --> PAIRS["mine positive pairs<br/>(defines related)"]
+  PAIRS --> TRAIN["train encoder<br/>(InfoNCE / triplet + negatives)"]
+  NEGS["in-batch + hard negs<br/>+ logQ correction"] --> TRAIN
+  CF["content features<br/>(text, category, graph)"] --> TRAIN
+  TRAIN --> EMB["batch-embed every entity<br/>(offline)"]
+  EMB --> IDX["ANN index<br/>(HNSW / IVF / IVF-PQ)"]
+  TRAIN --> QENC["query / user encoder<br/>(online, per request)"]
   QENC --> ANN["nearest-neighbor lookup"]
   IDX --> ANN
-  ANN --> MULTI["retrieval / ranking input\n/ fraud features"]
+  ANN --> MULTI["retrieval / ranking input<br/>/ fraud features"]
 ```
 
 ## Test yourself

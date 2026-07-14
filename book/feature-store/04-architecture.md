@@ -10,15 +10,15 @@ populated by the same shared definition, so code skew is structurally impossible
 
 ```mermaid
 flowchart TB
-  SRC["raw events\n+ upstream tables"]
-  DEF["shared feature definition\n(one DSL / SDK)"]
-  BATCH["batch pipeline\n(Spark / warehouse job)"]
-  STREAM["streaming pipeline\n(Kafka + Flink / Samza)"]
-  OFF["offline store\ntimestamped history\n(BigQuery / Snowflake / Hive / S3)"]
-  ON["online store\nlatest value per entity\n(Redis / Cassandra / DynamoDB / Bigtable)"]
-  PTJOIN["point-in-time\nas-of join"]
+  SRC["raw events<br/>+ upstream tables"]
+  DEF["shared feature definition<br/>(one DSL / SDK)"]
+  BATCH["batch pipeline<br/>(Spark / warehouse job)"]
+  STREAM["streaming pipeline<br/>(Kafka + Flink / Samza)"]
+  OFF["offline store<br/>timestamped history<br/>(BigQuery / Snowflake / Hive / S3)"]
+  ON["online store<br/>latest value per entity<br/>(Redis / Cassandra / DynamoDB / Bigtable)"]
+  PTJOIN["point-in-time<br/>as-of join"]
   TRAINDS["training dataset"]
-  SVCREQ["feature lookup\n(ranking request)"]
+  SVCREQ["feature lookup<br/>(ranking request)"]
 
   SRC --> BATCH
   SRC --> STREAM

@@ -7,12 +7,12 @@ priced result in low tens of milliseconds. The scoring path is:
 
 ```mermaid
 flowchart TD
-  REQ["ad request\n(user + context)"] --> CAND["candidate ads\n(targeting / eligibility)"]
-  CAND --> FEAT["feature assembly\n(point-in-time read from feature store)"]
-  FEAT --> LOOKUP["embedding lookups\n(user, ad, advertiser, creative ids)"]
-  LOOKUP --> FWD["forward pass\n(interaction + top MLP)"]
-  FWD --> CAL["calibration layer\n(Platt / isotonic / fine-tuned sigmoid)"]
-  CAL --> ECPM["eCPM = bid x pCTR\nrank, apply reserve"]
+  REQ["ad request<br/>(user + context)"] --> CAND["candidate ads<br/>(targeting / eligibility)"]
+  CAND --> FEAT["feature assembly<br/>(point-in-time read from feature store)"]
+  FEAT --> LOOKUP["embedding lookups<br/>(user, ad, advertiser, creative ids)"]
+  LOOKUP --> FWD["forward pass<br/>(interaction + top MLP)"]
+  FWD --> CAL["calibration layer<br/>(Platt / isotonic / fine-tuned sigmoid)"]
+  CAL --> ECPM["eCPM = bid x pCTR<br/>rank, apply reserve"]
   ECPM --> SERVE["winning ad"]
 ```
 

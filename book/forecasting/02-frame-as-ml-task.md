@@ -8,10 +8,10 @@ The right frame: given a history plus covariates, predict a **probability distri
 
 ```mermaid
 flowchart LR
-  SERIES["demand history\n(per SKU per store)"] --> MODEL["forecasting model"]
-  COV["known-future covariates\n(calendar, promos, price)"] --> MODEL
-  MODEL --> DIST["predictive distribution\n(P10, P50, P90 per horizon step)"]
-  DIST --> OPT["downstream optimizer\n(stocks to P90 = critical fractile)"]
+  SERIES["demand history<br/>(per SKU per store)"] --> MODEL["forecasting model"]
+  COV["known-future covariates<br/>(calendar, promos, price)"] --> MODEL
+  MODEL --> DIST["predictive distribution<br/>(P10, P50, P90 per horizon step)"]
+  DIST --> OPT["downstream optimizer<br/>(stocks to P90 = critical fractile)"]
 ```
 
 ![Forecast with prediction intervals](assets/fig-forecast-intervals.png)

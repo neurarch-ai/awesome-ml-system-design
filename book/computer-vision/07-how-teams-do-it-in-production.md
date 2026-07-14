@@ -12,10 +12,10 @@ Read every design below as a specialization of this canonical flow.
 
 ```mermaid
 flowchart LR
-  IMG[Image ingest\ndecode / EXIF-fix / resize] --> BB[Pretrained backbone\nCNN or transformer]
-  BB --> HEAD[Task head\nclassify / detect / segment / embed]
-  HEAD --> POST[Post-process\nthreshold / NMS / ANN lookup]
-  POST --> SURF[Product surface\nmoderate / tag / search]
+  IMG[Image ingest<br/>decode / EXIF-fix / resize] --> BB[Pretrained backbone<br/>CNN or transformer]
+  BB --> HEAD[Task head<br/>classify / detect / segment / embed]
+  HEAD --> POST[Post-process<br/>threshold / NMS / ANN lookup]
+  POST --> SURF[Product surface<br/>moderate / tag / search]
   SURF --> REV[Human review]
   REV -.fresh labels.-> BB
 ```

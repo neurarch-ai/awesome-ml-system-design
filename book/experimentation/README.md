@@ -42,16 +42,16 @@ Lyft, Booking.com, and Spotify actually run theirs.
 
 ```mermaid
 flowchart TD
-  H["hypothesis + OEC\n(pre-register direction + MDE)"] --> PWR["power calc:\nsample size + duration up front"]
-  PWR --> RAND{"randomize by\ndiversion unit"}
+  H["hypothesis + OEC<br/>(pre-register direction + MDE)"] --> PWR["power calc:<br/>sample size + duration up front"]
+  PWR --> RAND{"randomize by<br/>diversion unit"}
   RAND -->|"control arm"| CBUCK["current system"]
   RAND -->|"treatment arm"| TBUCK["new system"]
-  CBUCK --> MET["log success metric\n+ guardrail metrics"]
+  CBUCK --> MET["log success metric<br/>+ guardrail metrics"]
   TBUCK --> MET
-  MET --> QC{"quality checks\n(SRM, flicker)"}
+  MET --> QC{"quality checks<br/>(SRM, flicker)"}
   QC -->|"fail"| VOID["invalid: do not read"]
-  QC -->|"pass"| VR["variance reduction\n(CUPED / interleaving)"]
-  VR --> DEC{"success lift above MDE\nand guardrails safe?"}
+  QC -->|"pass"| VR["variance reduction<br/>(CUPED / interleaving)"]
+  VR --> DEC{"success lift above MDE<br/>and guardrails safe?"}
   DEC -->|"yes"| SHIP["ship: ramp to 100%"]
   DEC -->|"guardrail breach"| KILL["kill: roll back"]
   DEC -->|"flat / underpowered"| ITER["iterate or run longer"]

@@ -104,12 +104,12 @@ point-in-time boundaries.
 
 ```mermaid
 flowchart LR
-  RAW["raw history\n(events, transactions, bureau)"]
-  RAW --> TS["time-travel join\n(as-of decision timestamp)"]
-  TS --> STATIC["static attributes\n(precomputed)"]
-  TS --> AGG["behavioral aggregates\n(rolling windows)"]
-  TS --> ENG["engineered features\n(ratios, trends)"]
-  STATIC --> JOIN["feature vector\n(logged at serve time)"]
+  RAW["raw history<br/>(events, transactions, bureau)"]
+  RAW --> TS["time-travel join<br/>(as-of decision timestamp)"]
+  TS --> STATIC["static attributes<br/>(precomputed)"]
+  TS --> AGG["behavioral aggregates<br/>(rolling windows)"]
+  TS --> ENG["engineered features<br/>(ratios, trends)"]
+  STATIC --> JOIN["feature vector<br/>(logged at serve time)"]
   AGG --> JOIN
   ENG --> JOIN
   JOIN --> MDL["model"]

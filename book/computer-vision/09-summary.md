@@ -32,17 +32,17 @@
 
 ```mermaid
 flowchart TD
-  UP[Image upload] --> ING[Ingest\ndecode / EXIF-fix / resize / normalize]
-  ING --> BB[Pretrained backbone\nCNN or transformer shared across tasks]
-  BB --> CLS[Multi-label classification head\nroom-type tagging, async]
-  BB --> MOD[Binary classification head\nmoderation gate, real-time]
-  BB --> EMB[Embedding head\nvisual search, offline index]
-  CLS --> THRESH[Per-class thresholds\nCalibrated on validation]
+  UP[Image upload] --> ING[Ingest<br/>decode / EXIF-fix / resize / normalize]
+  ING --> BB[Pretrained backbone<br/>CNN or transformer shared across tasks]
+  BB --> CLS[Multi-label classification head<br/>room-type tagging, async]
+  BB --> MOD[Binary classification head<br/>moderation gate, real-time]
+  BB --> EMB[Embedding head<br/>visual search, offline index]
+  CLS --> THRESH[Per-class thresholds<br/>Calibrated on validation]
   MOD --> GATE{Score vs threshold}
   GATE -->|clear pass| PUB[Publish]
   GATE -->|violation| BLOCK[Block and log]
   GATE -->|ambiguous| REVIEW[Human review queue]
-  EMB --> ANN[(ANN index\nHNSW or IVF)]
+  EMB --> ANN[(ANN index<br/>HNSW or IVF)]
   ANN --> SEARCH[Visual search API]
   REVIEW -.gold labels.-> RETRAIN[Retraining pipeline]
   RETRAIN -.new backbone.-> BB

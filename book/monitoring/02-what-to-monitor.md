@@ -9,10 +9,10 @@ possible, before they compound.
 
 ```mermaid
 flowchart TD
-  DH["Layer 1: Data health\n(nulls, schema, freshness, ranges)"]
-  ID["Layer 2: Input drift\n(feature distribution vs reference)"]
-  PD["Layer 3: Prediction drift\n(model output distribution)"]
-  PM["Layer 4: Performance\n(AUC, calibration, recall by segment)"]
+  DH["Layer 1: Data health<br/>(nulls, schema, freshness, ranges)"]
+  ID["Layer 2: Input drift<br/>(feature distribution vs reference)"]
+  PD["Layer 3: Prediction drift<br/>(model output distribution)"]
+  PM["Layer 4: Performance<br/>(AUC, calibration, recall by segment)"]
   DH --> ID --> PD --> PM
 ```
 

@@ -17,7 +17,7 @@ then stitched, diarized, and punctuated.
 flowchart TD
   subgraph Streaming["Streaming path (live dictation)"]
     MIC["Mic frames, 10 ms"] --> BUF["Frame buffer"]
-    BUF --> RNNT["RNN-T encoder + joint\n(causal, stateful)"]
+    BUF --> RNNT["RNN-T encoder + joint<br/>(causal, stateful)"]
     RNNT --> EP["Endpointer"]
     EP -- still speaking --> BUF
     EP -- done --> FINAL["Final transcript"]

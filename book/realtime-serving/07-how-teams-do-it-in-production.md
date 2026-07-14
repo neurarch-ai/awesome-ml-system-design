@@ -34,15 +34,15 @@ a rollback that is a registry pointer move, not a rebuild.
 
 ```mermaid
 flowchart LR
-  REG["model registry\n(versioned artifact + metadata)"]
-  SRV["stateless model server\n(TF Serving / Triton / MLServer)"]
-  BATCH["dynamic batching\n(window W, max batch B)"]
+  REG["model registry<br/>(versioned artifact + metadata)"]
+  SRV["stateless model server<br/>(TF Serving / Triton / MLServer)"]
+  BATCH["dynamic batching<br/>(window W, max batch B)"]
   GATE{"safe-deploy gate"}
-  SHADOW["shadow replica\n(compare vs prod)"]
-  CANARY["canary + gradual ramp\n(5, 25, 50, 100%)"]
-  AS["autoscale\n(queue depth / GPU util)"]
-  MON["log preds + latency\nto monitoring + drift"]
-  RB["rollback\n(registry pointer)"]
+  SHADOW["shadow replica<br/>(compare vs prod)"]
+  CANARY["canary + gradual ramp<br/>(5, 25, 50, 100%)"]
+  AS["autoscale<br/>(queue depth / GPU util)"]
+  MON["log preds + latency<br/>to monitoring + drift"]
+  RB["rollback<br/>(registry pointer)"]
 
   REG --> SRV
   SRV --> BATCH

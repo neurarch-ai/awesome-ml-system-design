@@ -46,13 +46,13 @@ label factory and long-tail fallback. This chapter makes that argument concrete.
 
 ```mermaid
 flowchart TD
-  IN["free text (ticket / listing / message)"] --> NORM["normalize + tokenize\n(subword, language ID)"]
-  NORM --> ENC["shared encoder\n(fine-tuned BERT-family)"]
-  NORM --> S2S["seq2seq model\n(translation / correction)"]
-  ENC --> CLS["classification head\n(route / intent / toxicity / spam)"]
-  ENC --> NER["token-tagging head\n(NER / field extraction)"]
-  NORM --> EMB["bi-encoder\n(sentence embedding)"]
-  EMB --> ER["entity resolution\n(ANN match to taxonomy)"]
+  IN["free text (ticket / listing / message)"] --> NORM["normalize + tokenize<br/>(subword, language ID)"]
+  NORM --> ENC["shared encoder<br/>(fine-tuned BERT-family)"]
+  NORM --> S2S["seq2seq model<br/>(translation / correction)"]
+  ENC --> CLS["classification head<br/>(route / intent / toxicity / spam)"]
+  ENC --> NER["token-tagging head<br/>(NER / field extraction)"]
+  NORM --> EMB["bi-encoder<br/>(sentence embedding)"]
+  EMB --> ER["entity resolution<br/>(ANN match to taxonomy)"]
   CLS --> CAL["calibrate + threshold"]
   NER --> CAL
   ER --> CAL

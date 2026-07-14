@@ -28,12 +28,12 @@ load-bearing. State that before you draw a single box.
 
 ```mermaid
 flowchart LR
-  REQ["ad request\n(user + context)"] --> CAND["eligible ads\n(targeting)"]
-  CAND --> FEAT["assemble features\n(sparse ids + dense + crosses)"]
-  FEAT --> MODEL["pCTR model\n(embeddings + interactions)"]
-  MODEL --> CAL["calibration\n(map score to true rate)"]
+  REQ["ad request<br/>(user + context)"] --> CAND["eligible ads<br/>(targeting)"]
+  CAND --> FEAT["assemble features<br/>(sparse ids + dense + crosses)"]
+  FEAT --> MODEL["pCTR model<br/>(embeddings + interactions)"]
+  MODEL --> CAL["calibration<br/>(map score to true rate)"]
   CAL --> ECPM["eCPM = bid x pCTR"]
-  ECPM --> AUC["auction\n(second-price)"]
+  ECPM --> AUC["auction<br/>(second-price)"]
   AUC --> SERVE["served ad"]
   SERVE -.->|"delayed labels + correction"| FEAT
 ```

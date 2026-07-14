@@ -34,9 +34,9 @@ ordering, sets the money.
 
 ```mermaid
 flowchart LR
-  F["point-in-time features"] --> MDL["model\n(GBDT; survival or uplift where needed)"]
-  MDL --> CAL["calibration\n(Platt / isotonic, sliced)"]
-  CAL --> DEC["decision policy\n(EV threshold / uplift target / optimizer)"]
+  F["point-in-time features"] --> MDL["model<br/>(GBDT; survival or uplift where needed)"]
+  MDL --> CAL["calibration<br/>(Platt / isotonic, sliced)"]
+  CAL --> DEC["decision policy<br/>(EV threshold / uplift target / optimizer)"]
   DEC --> ACT["action"]
   ACT -.->|"delayed labels"| F
 ```

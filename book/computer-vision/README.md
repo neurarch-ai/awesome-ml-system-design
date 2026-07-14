@@ -40,16 +40,16 @@ others actually ship them.
 
 ```mermaid
 flowchart LR
-  IMG[Image ingest\ndecode / EXIF / resize / normalize] --> BB[Pretrained backbone\nCNN or transformer]
-  BB --> CLS[Classification head\nwhole-image tag or moderation]
-  BB --> DET[Detection head\nboxes + classes]
-  BB --> SEG[Segmentation head\nper-pixel mask]
-  BB --> EMB[Embedding head\nvector for ANN search]
-  CLS --> THRESH[Per-class threshold\ngate or tag]
-  DET --> NMS[NMS post-process\noperating point]
-  SEG --> MASK[Mask output\nIoU eval]
-  EMB --> ANN[(ANN index\nvisual search)]
-  THRESH --> HUMAN[Human review loop\nfresh labels for retraining]
+  IMG[Image ingest<br/>decode / EXIF / resize / normalize] --> BB[Pretrained backbone<br/>CNN or transformer]
+  BB --> CLS[Classification head<br/>whole-image tag or moderation]
+  BB --> DET[Detection head<br/>boxes + classes]
+  BB --> SEG[Segmentation head<br/>per-pixel mask]
+  BB --> EMB[Embedding head<br/>vector for ANN search]
+  CLS --> THRESH[Per-class threshold<br/>gate or tag]
+  DET --> NMS[NMS post-process<br/>operating point]
+  SEG --> MASK[Mask output<br/>IoU eval]
+  EMB --> ANN[(ANN index<br/>visual search)]
+  THRESH --> HUMAN[Human review loop<br/>fresh labels for retraining]
   NMS --> HUMAN
   MASK --> HUMAN
   ANN --> HUMAN

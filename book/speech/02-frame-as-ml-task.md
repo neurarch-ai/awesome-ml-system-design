@@ -32,13 +32,13 @@ not edit-distance metrics.
 ```mermaid
 flowchart TD
   RAW["Raw audio 16 kHz"] --> FRAME["Frame + window 10-25 ms"]
-  FRAME --> FEAT["Feature: log-mel spectrogram\nor self-supervised encoder"]
-  FEAT --> T1["ASR\ntext token sequence"]
-  FEAT --> T2["Wake word\nbinary trigger score"]
-  FEAT --> T3["Diarization\nsegment + speaker label"]
-  FEAT --> T4["Speaker ID / verification\ncosine against enrolled embedding"]
-  TEXT["Text"] --> T5["TTS acoustic model\nmel-spectrogram"]
-  T5 --> VOC["Neural vocoder\nwaveform"]
+  FRAME --> FEAT["Feature: log-mel spectrogram<br/>or self-supervised encoder"]
+  FEAT --> T1["ASR<br/>text token sequence"]
+  FEAT --> T2["Wake word<br/>binary trigger score"]
+  FEAT --> T3["Diarization<br/>segment + speaker label"]
+  FEAT --> T4["Speaker ID / verification<br/>cosine against enrolled embedding"]
+  TEXT["Text"] --> T5["TTS acoustic model<br/>mel-spectrogram"]
+  T5 --> VOC["Neural vocoder<br/>waveform"]
 ```
 
 The front end (framing, windowing, log-mel features) is the same for ASR,

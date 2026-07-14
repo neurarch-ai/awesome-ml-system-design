@@ -21,9 +21,9 @@ vary per candidate.
 flowchart LR
   U["user + context"] --> FA["feature assembly"]
   CAND["candidates (few hundred)"] --> FA
-  FA --> SCORE["batch-score: one forward pass\nover all candidates"]
+  FA --> SCORE["batch-score: one forward pass<br/>over all candidates"]
   SCORE --> CAL["calibrate (if needed)"]
-  CAL --> UTIL["utility = weighted sum\nof per-objective scores"]
+  CAL --> UTIL["utility = weighted sum<br/>of per-objective scores"]
   UTIL --> LIST["ordered list (top tens)"]
 ```
 

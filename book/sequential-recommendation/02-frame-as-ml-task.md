@@ -16,10 +16,10 @@ a **user-intent vector** (for a ranking feature or retrieval tower) or a
 
 ```mermaid
 flowchart LR
-  S["ordered interactions\n[item_1, item_2, ..., item_N]"] --> ENC["sequence encoder"]
+  S["ordered interactions<br/>[item_1, item_2, ..., item_N]"] --> ENC["sequence encoder"]
   ENC --> UV["user intent vector (d-dim)"]
-  UV --> RK["ranking head\n(score candidates)"]
-  UV --> RT["retrieval tower\n(ANN lookup)"]
+  UV --> RK["ranking head<br/>(score candidates)"]
+  UV --> RT["retrieval tower<br/>(ANN lookup)"]
 ```
 
 Two clarifications that always come up:

@@ -20,14 +20,14 @@ flowchart LR
     ENC2 --> HEAD2["task head (classify / tag)"]
     HEAD2 --> CAL2["calibrate + threshold"]
     CAL2 --> ACT2["auto-route / auto-block"]
-    CAL2 --> QUEUE["review queue\n(uncertain / high-risk)"]
+    CAL2 --> QUEUE["review queue<br/>(uncertain / high-risk)"]
   end
   subgraph Offline["offline (batch, any latency)"]
-    QUEUE --> LLM["LLM fallback\n(hard cases)"]
+    QUEUE --> LLM["LLM fallback<br/>(hard cases)"]
     QUEUE --> HUM2["human review"]
     HUM2 --> LABELS["new labels"]
     LLM --> LABELS
-    LABELS --> RETRAIN["retrain encoder\n(nightly or weekly)"]
+    LABELS --> RETRAIN["retrain encoder<br/>(nightly or weekly)"]
     RETRAIN --> ENC2
   end
 ```

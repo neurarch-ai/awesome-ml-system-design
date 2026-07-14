@@ -43,20 +43,20 @@ complained. Illustrative.*
 
 ```mermaid
 flowchart TD
-  SERVE["online serving\n(model + features)"] -->|"async log"| LOG["prediction + feature log\n(with served features)"]
-  LOG --> DH["data health\nnulls, schema, freshness"]
-  LOG --> ID["input drift\nPSI, KS, chi-square"]
-  LOG --> PD["prediction drift\nscore distribution, entropy"]
-  OUT["outcomes / labels\n(arrive at varied delay)"] --> JOIN["join labels back"]
+  SERVE["online serving<br/>(model + features)"] -->|"async log"| LOG["prediction + feature log<br/>(with served features)"]
+  LOG --> DH["data health<br/>nulls, schema, freshness"]
+  LOG --> ID["input drift<br/>PSI, KS, chi-square"]
+  LOG --> PD["prediction drift<br/>score distribution, entropy"]
+  OUT["outcomes / labels<br/>(arrive at varied delay)"] --> JOIN["join labels back"]
   LOG --> JOIN
-  JOIN --> PERF["performance by segment\nAUC, calibration, recall"]
-  DH --> ALERT{"threshold\nbreached?"}
+  JOIN --> PERF["performance by segment<br/>AUC, calibration, recall"]
+  DH --> ALERT{"threshold<br/>breached?"}
   ID --> ALERT
   PD --> ALERT
   PERF --> ALERT
   ALERT -->|"yes"| TRIAGE["triage: bug or drift?"]
-  TRIAGE -->|"drift"| RETRAIN["triggered retrain\nthrough eval gate"]
-  TRIAGE -->|"bug"| FIX["fix pipeline\nbackfill window"]
+  TRIAGE -->|"drift"| RETRAIN["triggered retrain<br/>through eval gate"]
+  TRIAGE -->|"bug"| FIX["fix pipeline<br/>backfill window"]
   TRIAGE -->|"new model caused it"| ROLLBACK["one-step rollback"]
   RETRAIN --> SERVE
   ROLLBACK --> SERVE

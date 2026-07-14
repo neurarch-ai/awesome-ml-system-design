@@ -41,12 +41,12 @@ Instacart actually ship it.
 ```mermaid
 flowchart LR
   LOG["interaction log"] --> SEQ["per-user ordered sequences"]
-  SEQ --> TRAIN["train sequence encoder\n(SASRec / GRU4Rec / BERT4Rec)"]
+  SEQ --> TRAIN["train sequence encoder<br/>(SASRec / GRU4Rec / BERT4Rec)"]
   TRAIN --> ENC["deployed encoder"]
-  ACT["latest user action"] -->|"streaming ingest"| STORE["fast online store\n(recent events, keyed by user)"]
+  ACT["latest user action"] -->|"streaming ingest"| STORE["fast online store<br/>(recent events, keyed by user)"]
   STORE --> ENC
   ENC --> UV["user intent vector"]
-  UV --> H["ranking feature or\nretrieval user tower"]
+  UV --> H["ranking feature or<br/>retrieval user tower"]
   H --> NEXT["next recommendation"]
 ```
 

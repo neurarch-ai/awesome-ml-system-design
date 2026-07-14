@@ -11,13 +11,13 @@ an incrementally updated state).
 ```mermaid
 flowchart LR
   subgraph Offline["offline (training)"]
-    LOG["interaction logs"] --> SEQB["build per-user sequences\n(dedup, filter, cap N)"]
+    LOG["interaction logs"] --> SEQB["build per-user sequences<br/>(dedup, filter, cap N)"]
     SEQB --> PAIRS["causal (sequence, next-item) pairs"]
     PAIRS --> TRAIN["train sequence encoder"]
     TRAIN --> DEPLOY["deploy encoder + item embeddings"]
   end
   subgraph Online["online (per request)"]
-    ACT["user action"] -->|"streaming ingest"| KV["fast KV store\n(recent events by user)"]
+    ACT["user action"] -->|"streaming ingest"| KV["fast KV store<br/>(recent events by user)"]
     KV --> ENC["sequence encoder (online)"]
     ENC --> UV["user intent vector"]
     UV --> RANK["ranking feature / retrieval tower"]

@@ -8,11 +8,11 @@ converts it to a compact, acoustic-relevant representation before any learning.
 
 ```mermaid
 flowchart LR
-  WAV["16 kHz waveform"] --> WIN["Frame: 25 ms window,\n10 ms hop"]
+  WAV["16 kHz waveform"] --> WIN["Frame: 25 ms window,<br/>10 ms hop"]
   WIN --> FFT["Short-time FFT"]
   FFT --> MEL["Mel filterbank: 80 bins"]
   MEL --> LOG["Log compression"]
-  LOG --> NORM["Per-speaker or\nglobal normalization"]
+  LOG --> NORM["Per-speaker or<br/>global normalization"]
   NORM --> MODEL["Input to model"]
 ```
 

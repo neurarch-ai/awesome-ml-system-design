@@ -22,12 +22,12 @@ directly.
 
 ```mermaid
 flowchart TD
-  SPARSE["sparse categoricals\n(device ID, merchant, geo, card BIN)"] --> CROSS["cross-product transforms"]
-  CROSS --> WIDE["wide linear model\n(memorization: exact co-occurrences)"]
-  SPARSE --> EMB["embedding tables\n(low-dim dense representations)"]
-  DENSE["dense features\n(velocity, amount, account age)"] --> CONCAT["concatenate"]
+  SPARSE["sparse categoricals<br/>(device ID, merchant, geo, card BIN)"] --> CROSS["cross-product transforms"]
+  CROSS --> WIDE["wide linear model<br/>(memorization: exact co-occurrences)"]
+  SPARSE --> EMB["embedding tables<br/>(low-dim dense representations)"]
+  DENSE["dense features<br/>(velocity, amount, account age)"] --> CONCAT["concatenate"]
   EMB --> CONCAT
-  CONCAT --> MLP["deep MLP\n(generalization: unseen combos)"]
+  CONCAT --> MLP["deep MLP<br/>(generalization: unseen combos)"]
   WIDE --> SUM["weighted sum of logits"]
   MLP --> SUM
   SUM --> OUT["sigmoid → fraud probability p"]

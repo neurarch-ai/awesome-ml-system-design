@@ -32,11 +32,11 @@ Meta actually ship it.
 ```mermaid
 flowchart TD
   MIC["Mic 16 kHz audio"] --> FEAT["Frame + log-mel features"]
-  FEAT --> WW["Always-on wake word\non-device, tiny"]
-  WW -- trigger --> VER["Cloud verification\n(CRA or larger model)"]
+  FEAT --> WW["Always-on wake word<br/>on-device, tiny"]
+  WW -- trigger --> VER["Cloud verification<br/>(CRA or larger model)"]
   FEAT --> FORK{Workload}
-  FORK -- live dictation --> STREAM["Streaming ASR\nRNN-T or CTC + endpointer"]
-  FORK -- uploaded recording --> BATCH["Batch ASR\nConformer seq2seq"]
+  FORK -- live dictation --> STREAM["Streaming ASR<br/>RNN-T or CTC + endpointer"]
+  FORK -- uploaded recording --> BATCH["Batch ASR<br/>Conformer seq2seq"]
   BATCH --> DIAR["Diarization + punctuation"]
   STREAM --> PTRAN["Partial + final transcript"]
   DIAR --> FTRAN["Transcript with speaker turns"]

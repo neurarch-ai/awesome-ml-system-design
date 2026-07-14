@@ -41,27 +41,27 @@
 flowchart TD
   RAW["Mic 16 kHz"] --> FEAT["Log-mel features, 80 bins, 10 ms hop"]
 
-  FEAT --> WW["Always-on wake word\non-device, 1-5 MB, loose threshold"]
-  WW -- fires --> VER["Cloud CRA verifier\nkills false accepts"]
+  FEAT --> WW["Always-on wake word<br/>on-device, 1-5 MB, loose threshold"]
+  WW -- fires --> VER["Cloud CRA verifier<br/>kills false accepts"]
   VER -- confirmed --> ACT["Activate assistant"]
 
   FEAT --> CASUAL{Workload}
 
-  CASUAL -- live dictation --> RNNT["Streaming RNN-T\ncausal encoder + joint + endpointer"]
+  CASUAL -- live dictation --> RNNT["Streaming RNN-T<br/>causal encoder + joint + endpointer"]
   RNNT --> PART["Partials in 300 ms"]
   RNNT --> FIN["Final transcript on endpoint"]
 
-  CASUAL -- uploaded recording --> CONF["Conformer encoder-decoder\nor Whisper seq2seq, full context"]
+  CASUAL -- uploaded recording --> CONF["Conformer encoder-decoder<br/>or Whisper seq2seq, full context"]
   CONF --> DIAR["Diarize: embed + cluster / sparse factorization"]
   DIAR --> PUNC["Punctuation + casing restoration"]
   PUNC --> LABELED["Speaker-labeled transcript"]
 
-  FEAT --> SEP["VoiceFilter-Lite\nd-vector conditioned mask, 2.2 MB"]
+  FEAT --> SEP["VoiceFilter-Lite<br/>d-vector conditioned mask, 2.2 MB"]
   SEP --> RNNT
 
-  TEXT["Input text"] --> ACOUS["Acoustic model\nTacotron 2 / FastSpeech 2"]
+  TEXT["Input text"] --> ACOUS["Acoustic model<br/>Tacotron 2 / FastSpeech 2"]
   ACOUS --> MEL["80-dim mel-spectrogram"]
-  MEL --> VOC["Neural vocoder\nHiFi-GAN / WaveNet"]
+  MEL --> VOC["Neural vocoder<br/>HiFi-GAN / WaveNet"]
   VOC --> WAV["24 kHz waveform"]
 ```
 

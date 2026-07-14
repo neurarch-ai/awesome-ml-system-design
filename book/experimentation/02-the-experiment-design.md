@@ -80,17 +80,17 @@ results.
 
 ```mermaid
 flowchart TD
-  R["request arrives\n(user_id, experiment_id)"] --> H["hash -> arm"]
+  R["request arrives<br/>(user_id, experiment_id)"] --> H["hash -> arm"]
   H -->|"control"| C["current ranker"]
   H -->|"treatment"| T["new ranker"]
-  C --> LOG["exposure log:\nuser_id, arm, timestamp"]
+  C --> LOG["exposure log:<br/>user_id, arm, timestamp"]
   T --> LOG
-  C --> MET["outcome log:\nengagement_rate, latency,\nerror_rate, revenue, complaint_rate"]
+  C --> MET["outcome log:<br/>engagement_rate, latency,<br/>error_rate, revenue, complaint_rate"]
   T --> MET
-  LOG --> JOIN["join exposure + outcomes\nper user, per day"]
+  LOG --> JOIN["join exposure + outcomes<br/>per user, per day"]
   MET --> JOIN
-  JOIN --> AGG["aggregate per arm\nover full experiment window"]
-  AGG --> ANAL["analysis:\ntest significance, check guardrails"]
+  JOIN --> AGG["aggregate per arm<br/>over full experiment window"]
+  AGG --> ANAL["analysis:<br/>test significance, check guardrails"]
 ```
 
 The exposure log records every user who was **assigned** to an arm. The outcome

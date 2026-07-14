@@ -80,8 +80,8 @@ flowchart LR
   subgraph Offline["offline (windowed)"]
     LOG --> STORE["prediction + feature store"]
     LABELS["outcomes / labels"] --> STORE
-    STORE --> DRIFT["drift checks\n(PSI, KS, chi-square)"]
-    STORE --> PERF["performance metrics\n(by segment, by version)"]
+    STORE --> DRIFT["drift checks<br/>(PSI, KS, chi-square)"]
+    STORE --> PERF["performance metrics<br/>(by segment, by version)"]
     DRIFT --> ALERT["tiered alerting"]
     PERF --> ALERT
   end

@@ -8,9 +8,9 @@ parallelism, and what kind of signal they capture.
 
 ```mermaid
 flowchart TD
-  SEQ["ordered sequence: item embeddings + time signal"] --> G["GRU4Rec\n(recurrent, step-by-step)"]
-  SEQ --> S["SASRec\n(causal self-attention, parallel)"]
-  SEQ --> B["BERT4Rec\n(bidirectional, masked-item)"]
+  SEQ["ordered sequence: item embeddings + time signal"] --> G["GRU4Rec<br/>(recurrent, step-by-step)"]
+  SEQ --> S["SASRec<br/>(causal self-attention, parallel)"]
+  SEQ --> B["BERT4Rec<br/>(bidirectional, masked-item)"]
   G --> UV1["user intent vector"]
   S --> UV2["user intent vector"]
   B --> UV3["user intent vector"]

@@ -25,11 +25,11 @@ bridging the two.
 
 ```mermaid
 flowchart TD
-  TX["transaction feature vector"] --> SUP["supervised classifier\n(trained on labeled fraud)"]
-  TX --> ANOM["anomaly detector\n(no labels required)"]
+  TX["transaction feature vector"] --> SUP["supervised classifier<br/>(trained on labeled fraud)"]
+  TX --> ANOM["anomaly detector<br/>(no labels required)"]
   SUP --> SCORE_S["calibrated fraud probability"]
   ANOM --> SCORE_A["anomaly score (reconstruction error / isolation score)"]
-  SCORE_S --> MERGE["combine scores\n(e.g. max, weighted, separate thresholds)"]
+  SCORE_S --> MERGE["combine scores<br/>(e.g. max, weighted, separate thresholds)"]
   SCORE_A --> MERGE
   MERGE --> THRESH{"cost-based threshold"}
   THRESH -->|"high confidence fraud"| BLOCK["block / step-up auth"]

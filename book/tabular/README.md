@@ -24,11 +24,11 @@ Airbnb, Expedia, Wayfair, Uber, Gojek, Pinterest, and others actually ship it.
 
 ```mermaid
 flowchart LR
-  H["history + features\nat decision time"] --> PIT["point-in-time join\n(no future leakage)"]
-  PIT --> MDL["model\n(GBDT; survival or uplift where needed)"]
-  MDL --> CAL["calibration\n(Platt / isotonic, sliced)"]
-  CAL --> DEC["decision policy\n(EV threshold / uplift target / optimizer)"]
-  DEC --> ACT["action\n(limit, price, incentive, retention)"]
+  H["history + features<br/>at decision time"] --> PIT["point-in-time join<br/>(no future leakage)"]
+  PIT --> MDL["model<br/>(GBDT; survival or uplift where needed)"]
+  MDL --> CAL["calibration<br/>(Platt / isotonic, sliced)"]
+  CAL --> DEC["decision policy<br/>(EV threshold / uplift target / optimizer)"]
+  DEC --> ACT["action<br/>(limit, price, incentive, retention)"]
   ACT -.->|"labels mature, biased + delayed"| H
 ```
 

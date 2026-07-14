@@ -61,16 +61,16 @@ reasons over image and text together.
 
 ```mermaid
 flowchart LR
-  TEXT["text\n(post or caption)"] --> TENC["text encoder\ne.g. BERT, ModernBERT"]
-  IMAGE["image or\nvideo frame"] --> IENC["image encoder\ne.g. EfficientNet, ViT"]
-  AUDIO["audio / voice"] --> AENC["audio encoder\ne.g. wav2vec2 distilled"]
-  TENC --> FUSE["optional: joint fusion\nfor cross-modal harm"]
+  TEXT["text<br/>(post or caption)"] --> TENC["text encoder<br/>e.g. BERT, ModernBERT"]
+  IMAGE["image or<br/>video frame"] --> IENC["image encoder<br/>e.g. EfficientNet, ViT"]
+  AUDIO["audio / voice"] --> AENC["audio encoder<br/>e.g. wav2vec2 distilled"]
+  TENC --> FUSE["optional: joint fusion<br/>for cross-modal harm"]
   IENC --> FUSE
-  TENC --> HEADS["per-policy\nclassification heads"]
+  TENC --> HEADS["per-policy<br/>classification heads"]
   IENC --> HEADS
   AENC --> HEADS
   FUSE --> HEADS
-  HEADS --> SCORES["calibrated per-policy\nrisk scores"]
+  HEADS --> SCORES["calibrated per-policy<br/>risk scores"]
 ```
 
 The joint fusion layer is expensive, so you gate it behind cheaper unimodal pre-filters

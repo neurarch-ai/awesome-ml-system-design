@@ -31,19 +31,19 @@
 ```mermaid
 flowchart TD
   TRAIN["train + offline eval"]
-  REG["model registry\n(versioned artifact + metadata)"]
-  CTRL{"safe rollout\ncontroller"}
-  SHADOW["shadow replica\n(mirror, no user impact)"]
-  CANARY["canary\n(5% real traffic)"]
-  RAMP["gradual ramp\n(25, 50, 100%)"]
-  SRV["model server fleet\n(TF Serving / Triton / MLServer)"]
-  BATCH["dynamic batching\n+ inference"]
+  REG["model registry<br/>(versioned artifact + metadata)"]
+  CTRL{"safe rollout<br/>controller"}
+  SHADOW["shadow replica<br/>(mirror, no user impact)"]
+  CANARY["canary<br/>(5% real traffic)"]
+  RAMP["gradual ramp<br/>(25, 50, 100%)"]
+  SRV["model server fleet<br/>(TF Serving / Triton / MLServer)"]
+  BATCH["dynamic batching<br/>+ inference"]
   FEAT["feature store"]
-  AS["autoscale\n(queue depth / GPU)"]
+  AS["autoscale<br/>(queue depth / GPU)"]
   LOG["log preds + latency"]
   MON["monitoring + drift"]
-  RB["rollback\n(registry pointer)"]
-  FALLBACK["fallback\n(static score / cheaper model)"]
+  RB["rollback<br/>(registry pointer)"]
+  FALLBACK["fallback<br/>(static score / cheaper model)"]
 
   TRAIN --> REG
   REG --> CTRL

@@ -76,11 +76,11 @@ a model trained on a broken feature window straight to production.
 
 ```mermaid
 flowchart TD
-  BREACH["alert: PSI above 0.25 or AUC drop"] --> TRIAGE{"pipeline bug\nor real drift?"}
+  BREACH["alert: PSI above 0.25 or AUC drop"] --> TRIAGE{"pipeline bug<br/>or real drift?"}
   TRIAGE -->|"data-health check passes"| DRIFT["real drift confirmed"]
   TRIAGE -->|"data-health check fails"| BUG["fix the pipeline first"]
   DRIFT --> RETRAIN["trigger retrain on recent data"]
-  RETRAIN --> GATE["eval gate\n(offline + shadow + staged rollout)"]
+  RETRAIN --> GATE["eval gate<br/>(offline + shadow + staged rollout)"]
   GATE -->|"pass"| PROMOTE["promote new model"]
   GATE -->|"fail"| ROLLBACK["rollback to previous version"]
   BUG --> BACKFILL["backfill the broken feature window"]

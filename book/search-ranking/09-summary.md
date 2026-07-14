@@ -38,14 +38,14 @@
 
 ```mermaid
 flowchart TD
-  LOG["click + impression logs"] --> DEBIAS["IPW debiasing\n(position model or randomization)"]
+  LOG["click + impression logs"] --> DEBIAS["IPW debiasing<br/>(position model or randomization)"]
   HJ["human-judged pairs"] --> LBL["graded relevance labels"]
   DEBIAS --> LBL
-  LBL --> FEAT["point-in-time feature join\n(query-doc features at query time)"]
-  FEAT --> TRAIN["train LTR model\n(LambdaMART or deep ranker)"]
+  LBL --> FEAT["point-in-time feature join<br/>(query-doc features at query time)"]
+  FEAT --> TRAIN["train LTR model<br/>(LambdaMART or deep ranker)"]
   TRAIN --> RANK["ranking service"]
 
-  QUERY["user query"] --> QU["query understanding\n(intent, spelling, expansion)"]
+  QUERY["user query"] --> QU["query understanding<br/>(intent, spelling, expansion)"]
   QU --> LEX["BM25 over inverted index"]
   QU --> SEM["ANN over dual-encoder embeddings"]
   LEX --> U["union + dedupe (~1,000 candidates)"]

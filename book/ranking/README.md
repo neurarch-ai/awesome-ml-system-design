@@ -29,10 +29,10 @@ Pinterest, Airbnb, LinkedIn, Spotify, Snap, and others actually ship it.
 flowchart LR
   RET["retrieval: a few hundred candidates"] --> FA
   subgraph Ranking["ranking stage (low tens of ms)"]
-    FA["assemble features:\nuser context once,\nitem + cross per candidate"] --> MOD
-    MOD["batch-score all candidates:\nDLRM / DCN / Wide-and-Deep\nor GBDT LambdaMART"] --> CAL
-    CAL["calibrate (Platt / isotonic)\nif score feeds auction or blend"] --> UTI
-    UTI["utility = weighted\nper-objective sum"]
+    FA["assemble features:<br/>user context once,<br/>item + cross per candidate"] --> MOD
+    MOD["batch-score all candidates:<br/>DLRM / DCN / Wide-and-Deep<br/>or GBDT LambdaMART"] --> CAL
+    CAL["calibrate (Platt / isotonic)<br/>if score feeds auction or blend"] --> UTI
+    UTI["utility = weighted<br/>per-objective sum"]
   end
   UTI --> OUT["ordered list (top tens)"]
 ```

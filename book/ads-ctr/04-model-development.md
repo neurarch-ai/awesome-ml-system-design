@@ -61,8 +61,8 @@ flowchart TD
   SP1["user id"] --> E1["embedding table"]
   SP2["ad id"]   --> E2["embedding table"]
   SP3["creative"] --> E3["embedding table"]
-  DENSE["dense features"] --> BMLP["bottom MLP\n(optional)"]
-  E1 --> INT["interaction layer\n(differs per arch)"]
+  DENSE["dense features"] --> BMLP["bottom MLP<br/>(optional)"]
+  E1 --> INT["interaction layer<br/>(differs per arch)"]
   E2 --> INT
   E3 --> INT
   BMLP --> INT
@@ -77,9 +77,9 @@ side generalizes to unseen crosses. The two branches are trained jointly.
 
 ```mermaid
 flowchart TD
-  XCROSS["hand-crafted crossed features"] --> WIDE["wide linear branch\n(memorization)"]
+  XCROSS["hand-crafted crossed features"] --> WIDE["wide linear branch<br/>(memorization)"]
   RAW["sparse + dense features"] --> EMB["embeddings"]
-  EMB --> DEEP["deep MLP\n(generalization)"]
+  EMB --> DEEP["deep MLP<br/>(generalization)"]
   WIDE --> JOIN["joint output layer"]
   DEEP --> JOIN
   JOIN --> OUT["pCTR (sigmoid)"]
@@ -93,8 +93,8 @@ embedding layer**, so there is no separate feature engineering for the FM side.
 ```mermaid
 flowchart TD
   RAW["raw sparse features"] --> EMB["shared embedding layer"]
-  EMB --> FM["FM component\n(pairwise dot products)"]
-  EMB --> DEEP["deep MLP\n(high-order interactions)"]
+  EMB --> FM["FM component<br/>(pairwise dot products)"]
+  EMB --> DEEP["deep MLP<br/>(high-order interactions)"]
   FM --> ADD["combine"]
   DEEP --> ADD
   ADD --> OUT["pCTR (sigmoid)"]
@@ -108,7 +108,7 @@ run either stacked with or in parallel to the MLP.
 ```mermaid
 flowchart TD
   RAW["sparse + dense features"] --> EMB["embedding + stacking layer"]
-  EMB --> CROSS["cross network\n(explicit bounded-degree crosses)"]
+  EMB --> CROSS["cross network<br/>(explicit bounded-degree crosses)"]
   EMB --> DNN["deep MLP"]
   CROSS --> COMB["combine (stacked or parallel)"]
   DNN --> COMB

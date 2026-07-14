@@ -34,13 +34,13 @@ actually do it.
 
 ```mermaid
 flowchart TD
-  SERVE["online serving\n(model + features)"] -->|"log predictions + served features"| LOG["prediction + feature log"]
-  OUT["outcomes / labels\n(arrive later)"] --> JOIN["join labels back"]
+  SERVE["online serving<br/>(model + features)"] -->|"log predictions + served features"| LOG["prediction + feature log"]
+  OUT["outcomes / labels<br/>(arrive later)"] --> JOIN["join labels back"]
   LOG --> JOIN
-  LOG --> DRIFT["drift checks\n(input + prediction distribution)"]
-  LOG --> HEALTH["data health\n(nulls, schema, freshness)"]
-  JOIN --> PERF["performance metrics\n(AUC, calibration, recall) by segment"]
-  DRIFT --> ALERT{"threshold\nbreached?"}
+  LOG --> DRIFT["drift checks<br/>(input + prediction distribution)"]
+  LOG --> HEALTH["data health<br/>(nulls, schema, freshness)"]
+  JOIN --> PERF["performance metrics<br/>(AUC, calibration, recall) by segment"]
+  DRIFT --> ALERT{"threshold<br/>breached?"}
   HEALTH --> ALERT
   PERF --> ALERT
   ALERT -->|"yes"| PAGE["alert + dashboard"]

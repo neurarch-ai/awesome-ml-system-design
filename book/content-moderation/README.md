@@ -29,20 +29,20 @@ the safety net and the label source. Everything in this chapter is downstream of
 ```mermaid
 flowchart TD
   CONTENT["content upload: text / image / video / voice"]
-  CONTENT --> HASH["perceptual hash match\nagainst known-bad DB"]
-  HASH -->|"hit"| AUTOACT["auto-action + report\nif legally required"]
-  HASH -->|"no match"| CLASSIFY["per-policy classifiers\nby modality"]
-  CLASSIFY --> POLICY["policy engine\nscore + threshold + context"]
+  CONTENT --> HASH["perceptual hash match<br/>against known-bad DB"]
+  HASH -->|"hit"| AUTOACT["auto-action + report<br/>if legally required"]
+  HASH -->|"no match"| CLASSIFY["per-policy classifiers<br/>by modality"]
+  CLASSIFY --> POLICY["policy engine<br/>score + threshold + context"]
   POLICY -->|"confident harm"| REMOVE["auto-remove or block"]
   POLICY -->|"confident benign"| ALLOW["allow"]
-  POLICY -->|"borderline or high severity"| QUEUE["human review queue\npriority = severity x reach"]
+  POLICY -->|"borderline or high severity"| QUEUE["human review queue<br/>priority = severity x reach"]
   QUEUE --> DECISION["reviewer decision"]
   DECISION --> ENFORCE["enforce or restore on appeal"]
   DECISION --> LABELS["label store"]
   LABELS --> RETRAIN["retraining pipeline"]
   RETRAIN --> CLASSIFY
   AUTOACT --> LABELS
-  LABELS --> HASHGROW["confirmed items grow\nthe hash set"]
+  LABELS --> HASHGROW["confirmed items grow<br/>the hash set"]
   HASHGROW --> HASH
 ```
 

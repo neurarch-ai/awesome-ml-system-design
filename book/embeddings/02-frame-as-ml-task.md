@@ -16,11 +16,11 @@ from behavioral logs.
 
 ```mermaid
 flowchart LR
-  LOGS["interaction / co-occurrence logs"] --> PAIRS["positive pairs\n(co-engaged entities)"]
+  LOGS["interaction / co-occurrence logs"] --> PAIRS["positive pairs<br/>(co-engaged entities)"]
   PAIRS --> ENC["encoder f"]
   NEG["sampled negatives"] --> ENC
   CF["content features"] --> ENC
-  ENC --> SPACE["shared embedding space\n(dot product = relatedness)"]
+  ENC --> SPACE["shared embedding space<br/>(dot product = relatedness)"]
   SPACE --> IDX["ANN index for retrieval"]
   SPACE --> RK["ranking feature"]
 ```

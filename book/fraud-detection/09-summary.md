@@ -34,24 +34,24 @@
 
 ```mermaid
 flowchart TD
-  TX["incoming transaction\n(amount, device, merchant, geo)"] --> ASSM["feature assembly\n(velocity aggregates + graph/entity lookups\n+ raw tx fields)"]
-  ASSM --> SUP["supervised classifier\n(gradient-boosted trees or wide-and-deep DNN)"]
-  ASSM --> ANOM["anomaly detector\n(Isolation Forest / autoencoder)"]
+  TX["incoming transaction<br/>(amount, device, merchant, geo)"] --> ASSM["feature assembly<br/>(velocity aggregates + graph/entity lookups<br/>+ raw tx fields)"]
+  ASSM --> SUP["supervised classifier<br/>(gradient-boosted trees or wide-and-deep DNN)"]
+  ASSM --> ANOM["anomaly detector<br/>(Isolation Forest / autoencoder)"]
   SUP  --> MERGE["combine scores"]
   ANOM --> MERGE
-  MERGE --> THRESH{"score vs tau_star\n= c_FP / (c_FP + c_FN)"}
+  MERGE --> THRESH{"score vs tau_star<br/>= c_FP / (c_FP + c_FN)"}
   THRESH -->|"low risk"| ALLOW["allow"]
   THRESH -->|"high risk"| BLOCK["block / step-up auth"]
-  THRESH -->|"borderline"| REVIEW["human review queue\n(route by expected cost)"]
-  REVIEW --> VERDICT["analyst verdict\n(fast label, minutes)"]
-  ALLOW  --> OUTCOME["settled outcome\n(chargeback / dispute, weeks)"]
+  THRESH -->|"borderline"| REVIEW["human review queue<br/>(route by expected cost)"]
+  REVIEW --> VERDICT["analyst verdict<br/>(fast label, minutes)"]
+  ALLOW  --> OUTCOME["settled outcome<br/>(chargeback / dispute, weeks)"]
   BLOCK  --> OUTCOME
   VERDICT --> LABELS["label store"]
   OUTCOME --> LABELS
-  LABELS -->|"fast: review verdicts"| TRAIN["retrain pipeline\n(time-based split, maturation window)"]
+  LABELS -->|"fast: review verdicts"| TRAIN["retrain pipeline<br/>(time-based split, maturation window)"]
   LABELS -->|"slow: settled chargebacks"| TRAIN
   TRAIN -->|"new model + recalibrate"| SUP
-  TRAIN -->|"drift alarms"| MONITOR["monitoring\n(input + score distribution drift)"]
+  TRAIN -->|"drift alarms"| MONITOR["monitoring<br/>(input + score distribution drift)"]
   MONITOR --> TRAIN
 ```
 

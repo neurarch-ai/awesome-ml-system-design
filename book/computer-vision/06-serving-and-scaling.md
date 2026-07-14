@@ -9,13 +9,13 @@ fail-open policy.
 
 ```mermaid
 flowchart LR
-  UP[Image upload] --> ING[Ingest\ndecode / EXIF / resize / normalize]
-  ING --> MOD{Moderation gate\nreal-time, sync}
+  UP[Image upload] --> ING[Ingest<br/>decode / EXIF / resize / normalize]
+  ING --> MOD{Moderation gate<br/>real-time, sync}
   MOD -->|clear pass| QUEUE[Async job queue]
   MOD -->|hard block| BLOCK[Block and log]
   MOD -->|ambiguous| REVIEW[Human review queue]
-  QUEUE --> TAG[Tagging classifier\nbatch, async]
-  QUEUE --> EMB[Embedding model\nbatch, async]
+  QUEUE --> TAG[Tagging classifier<br/>batch, async]
+  QUEUE --> EMB[Embedding model<br/>batch, async]
   TAG --> META[(Metadata store)]
   EMB --> ANN[(ANN index)]
   REVIEW -.gold labels.-> RETRAIN[Retraining pipeline]

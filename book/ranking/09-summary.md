@@ -38,18 +38,18 @@
 
 ```mermaid
 flowchart LR
-  LOG["impression logs\n(billions of rows)"] --> PITJOIN["point-in-time\nfeature join"]
-  PITJOIN --> TRAIN["train ranker\n(DLRM / DCN / Wide-and-Deep\nor LambdaMART)"]
-  TRAIN --> MODEL["ship model +\nembedding tables"]
-  TRAIN --> EVAL["offline eval:\nAUC / NDCG / ECE\n(pre-gate only)"]
+  LOG["impression logs<br/>(billions of rows)"] --> PITJOIN["point-in-time<br/>feature join"]
+  PITJOIN --> TRAIN["train ranker<br/>(DLRM / DCN / Wide-and-Deep<br/>or LambdaMART)"]
+  TRAIN --> MODEL["ship model +<br/>embedding tables"]
+  TRAIN --> EVAL["offline eval:<br/>AUC / NDCG / ECE<br/>(pre-gate only)"]
   subgraph Serving["serving (low tens of ms)"]
-    REQ["request: user + candidates"] --> UF["fetch user context\nonce"]
-    REQ --> IF["fetch item + cross\nfeatures per candidate"]
-    UF --> BATCH["batch-score:\none forward pass"]
+    REQ["request: user + candidates"] --> UF["fetch user context<br/>once"]
+    REQ --> IF["fetch item + cross<br/>features per candidate"]
+    UF --> BATCH["batch-score:<br/>one forward pass"]
     IF --> BATCH
     MODEL --> BATCH
-    BATCH --> CAL["calibrate\n(Platt / isotonic)\nif needed"]
-    CAL --> UTIL["utility = weighted\nper-objective sum"]
+    BATCH --> CAL["calibrate<br/>(Platt / isotonic)<br/>if needed"]
+    CAL --> UTIL["utility = weighted<br/>per-objective sum"]
     UTIL --> OUT["ordered list"]
   end
   EVAL -.->|"gate on A/B"| OUT

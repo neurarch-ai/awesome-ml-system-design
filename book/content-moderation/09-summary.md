@@ -41,22 +41,22 @@
 ```mermaid
 flowchart TD
   CONTENT["content: text / image / video / voice"]
-  CONTENT --> HASH["perceptual hash match\nagainst known-bad DB"]
-  HASH -->|"hash hit"| AUTOACT["auto-action + legal report\nif required"]
-  HASH -->|"novel content"| CHEAP["cheap unimodal classifiers\nby modality"]
-  CHEAP -->|"cross-modal ambiguity"| JOINT["joint image-text model\nfor cross-modal harm"]
-  CHEAP -->|"single-modality confident"| POLICY["policy engine\nscore + threshold + context"]
+  CONTENT --> HASH["perceptual hash match<br/>against known-bad DB"]
+  HASH -->|"hash hit"| AUTOACT["auto-action + legal report<br/>if required"]
+  HASH -->|"novel content"| CHEAP["cheap unimodal classifiers<br/>by modality"]
+  CHEAP -->|"cross-modal ambiguity"| JOINT["joint image-text model<br/>for cross-modal harm"]
+  CHEAP -->|"single-modality confident"| POLICY["policy engine<br/>score + threshold + context"]
   JOINT --> POLICY
   POLICY -->|"above auto-action floor"| REMOVE["auto-remove or block"]
   POLICY -->|"below auto-allow floor"| ALLOW["allow"]
-  POLICY -->|"between floors or high severity"| QUEUE["human review queue\npriority = severity x reach"]
+  POLICY -->|"between floors or high severity"| QUEUE["human review queue<br/>priority = severity x reach"]
   QUEUE --> DECISION["reviewer decision"]
   DECISION --> ENFORCE["enforce or restore on appeal"]
   DECISION --> LABELS["label store"]
   AUTOACT --> LABELS
-  LABELS --> RETRAIN["continuous retraining\nper-policy cadence"]
+  LABELS --> RETRAIN["continuous retraining<br/>per-policy cadence"]
   RETRAIN --> CHEAP
-  LABELS --> HASHGROW["confirmed items grow\nperceptual hash DB"]
+  LABELS --> HASHGROW["confirmed items grow<br/>perceptual hash DB"]
   HASHGROW --> HASH
 ```
 

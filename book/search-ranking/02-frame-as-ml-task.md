@@ -29,8 +29,8 @@ sequential sub-problems:
 ```mermaid
 flowchart LR
   RAW["raw query"] --> QU["query understanding"]
-  QU --> RET["retrieval\n(~1,000 candidates)"]
-  RET --> RANK["learning-to-rank\n(~10 results)"]
+  QU --> RET["retrieval<br/>(~1,000 candidates)"]
+  RET --> RANK["learning-to-rank<br/>(~10 results)"]
 ```
 
 Each stage has its own input/output contract. Understanding produces a clean query

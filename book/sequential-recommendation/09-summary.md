@@ -33,15 +33,15 @@
 
 ```mermaid
 flowchart LR
-  LOG["interaction log"] --> SEQB["build per-user sequences\n(dedup, filter, cap N)"]
-  SEQB --> PAIRS["causal (sequence, next-item)\ntraining pairs"]
-  PAIRS --> TRAIN["train sequence encoder\n(SASRec / GRU4Rec / BERT4Rec)"]
+  LOG["interaction log"] --> SEQB["build per-user sequences<br/>(dedup, filter, cap N)"]
+  SEQB --> PAIRS["causal (sequence, next-item)<br/>training pairs"]
+  PAIRS --> TRAIN["train sequence encoder<br/>(SASRec / GRU4Rec / BERT4Rec)"]
   TRAIN --> ENC["deployed encoder + item embeddings"]
   ACT["user action (streaming)"] --> KV["fast per-user KV store"]
   KV --> ENC
   ENC --> UV["user intent vector"]
-  UV --> RT["retrieval: ANN user tower\n(PinnerFormer, Instacart)"]
-  UV --> RK["ranking: sequence feature\n(BST, TransAct, LinkedIn Feed SR)"]
+  UV --> RT["retrieval: ANN user tower<br/>(PinnerFormer, Instacart)"]
+  UV --> RK["ranking: sequence feature<br/>(BST, TransAct, LinkedIn Feed SR)"]
   RT --> NEXT["next recommendation"]
   RK --> NEXT
 ```

@@ -21,7 +21,7 @@ classifier analysis even if it passed the cheap inline check.
 flowchart LR
   subgraph Inline["inline: synchronous"]
     T1["text post submitted"] --> T2["normalization + hash check"]
-    T2 --> T3["fast text classifier\na few hundred ms"]
+    T2 --> T3["fast text classifier<br/>a few hundred ms"]
     T3 -->|"confident"| T4["allow or block at post time"]
     T3 -->|"uncertain"| T5["post with async review flag"]
   end
@@ -30,7 +30,7 @@ flowchart LR
     V2 --> V3["frame sampling + audio track"]
     V3 --> V4["image + audio classifiers"]
     V4 --> V5["post or age-gate based on score"]
-    VIRAL["content going viral\n(virality signal from feed)"] --> V6["re-score with heavy model"]
+    VIRAL["content going viral<br/>(virality signal from feed)"] --> V6["re-score with heavy model"]
     V6 --> V7["escalate or allow"]
   end
   subgraph HumanLoop["human review queue"]

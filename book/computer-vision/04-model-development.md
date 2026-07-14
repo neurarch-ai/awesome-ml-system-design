@@ -10,12 +10,12 @@ task.
 
 ```mermaid
 flowchart LR
-  IMG[Image\n224x224x3 or similar] --> BB[Pretrained backbone\nconvolutional or transformer]
+  IMG[Image<br/>224x224x3 or similar] --> BB[Pretrained backbone<br/>convolutional or transformer]
   BB --> FEAT[Feature map or pooled vector]
-  FEAT --> CLS[Classification head\nsigmoid or softmax]
-  FEAT --> DET[Detection head\nFPN + anchor regression]
-  FEAT --> SEG[Segmentation head\ndecoder + upsampling]
-  FEAT --> EMB[Embedding head\nL2-normalized projection]
+  FEAT --> CLS[Classification head<br/>sigmoid or softmax]
+  FEAT --> DET[Detection head<br/>FPN + anchor regression]
+  FEAT --> SEG[Segmentation head<br/>decoder + upsampling]
+  FEAT --> EMB[Embedding head<br/>L2-normalized projection]
 ```
 
 Sharing one backbone across heads is the single biggest structural cost win.

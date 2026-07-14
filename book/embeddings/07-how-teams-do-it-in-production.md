@@ -30,7 +30,7 @@ inductive** (content features let it embed a new entity) or **transductive**
 
 ```mermaid
 flowchart TD
-  L["interaction / co-occurrence logs"] --> P["build positive pairs\n(the join that defines related)"]
+  L["interaction / co-occurrence logs"] --> P["build positive pairs<br/>(the join that defines related)"]
   P --> B1{"encoder family?"}
   B1 -->|graph aggregation| G["GraphSAGE / PinSage / LightGCN"]
   B1 -->|two-tower dot product| T["Spotify / Instacart"]

@@ -44,25 +44,25 @@
 
 ```mermaid
 flowchart TD
-  IN["free text\n(ticket / listing / message)"] --> LID["language ID\n(fastText, under 1 ms)"]
-  LID --> NORM["normalize + subword tokenize\n(Unicode, casing, homoglyph cleanup)"]
-  NORM --> ENC["shared fine-tuned encoder\n(DistilBERT / MiniLM / BERT-base)"]
-  NORM --> S2S["seq2seq encoder-decoder\n(T5 / BART for translation or correction)"]
-  NORM --> BENC["bi-encoder\n(MiniLM / BGE for entity resolution)"]
-  ENC --> CLS["classification head\n(routing, spam, toxicity)"]
-  ENC --> NER["token-tagging head\n(NER, field extraction)"]
-  BENC --> ANN["ANN match to taxonomy\n(entity resolution)"]
+  IN["free text<br/>(ticket / listing / message)"] --> LID["language ID<br/>(fastText, under 1 ms)"]
+  LID --> NORM["normalize + subword tokenize<br/>(Unicode, casing, homoglyph cleanup)"]
+  NORM --> ENC["shared fine-tuned encoder<br/>(DistilBERT / MiniLM / BERT-base)"]
+  NORM --> S2S["seq2seq encoder-decoder<br/>(T5 / BART for translation or correction)"]
+  NORM --> BENC["bi-encoder<br/>(MiniLM / BGE for entity resolution)"]
+  ENC --> CLS["classification head<br/>(routing, spam, toxicity)"]
+  ENC --> NER["token-tagging head<br/>(NER, field extraction)"]
+  BENC --> ANN["ANN match to taxonomy<br/>(entity resolution)"]
   CLS --> CAL["temperature-scale calibrate"]
   NER --> CAL
   ANN --> CAL
-  S2S --> BLEU["BLEU / COMET eval\n(translation metrics)"]
+  S2S --> BLEU["BLEU / COMET eval<br/>(translation metrics)"]
   CAL --> GATE{"confident?"}
   GATE -->|"yes, above threshold"| ACT["auto-route / auto-block / emit"]
   GATE -->|"uncertain or high-risk"| HUM["human review queue"]
   HUM --> LBL["fresh labels"]
-  LBL --> RETRAIN["retrain encoder\n(recalibrate on promotion)"]
+  LBL --> RETRAIN["retrain encoder<br/>(recalibrate on promotion)"]
   RETRAIN --> ENC
-  LLM_OFF["LLM offline\n(label factory, hard-tail fallback)"] -.-> LBL
+  LLM_OFF["LLM offline<br/>(label factory, hard-tail fallback)"] -.-> LBL
 ```
 
 ## Test yourself

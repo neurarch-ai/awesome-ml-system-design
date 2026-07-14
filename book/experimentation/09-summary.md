@@ -37,20 +37,20 @@
 
 ```mermaid
 flowchart TD
-  H["hypothesis + OEC\n(pre-register direction + MDE)"] --> SZ["compute sample size\nand duration up front"]
-  SZ --> HASH["deterministic hash\n(user_id || experiment_id) -> arm"]
-  HASH -->|"control (0-49)"| C["current system\nlogs exposure + metrics"]
-  HASH -->|"treatment (50-99)"| T["new system\nlogs exposure + metrics"]
-  C --> QC{"quality checks\nSRM, flicker, pre-exposure bias"}
+  H["hypothesis + OEC<br/>(pre-register direction + MDE)"] --> SZ["compute sample size<br/>and duration up front"]
+  SZ --> HASH["deterministic hash<br/>(user_id || experiment_id) -> arm"]
+  HASH -->|"control (0-49)"| C["current system<br/>logs exposure + metrics"]
+  HASH -->|"treatment (50-99)"| T["new system<br/>logs exposure + metrics"]
+  C --> QC{"quality checks<br/>SRM, flicker, pre-exposure bias"}
   T --> QC
   QC -->|"fail"| VOID["invalid: fix before reading"]
-  QC -->|"pass"| VR["CUPED or interleaving\nvariance reduction"]
-  VR --> ANAL["t-test on per-user aggregates\nor mSPRT for continuous monitoring"]
-  ANAL --> DEC{"primary above MDE?\nguardrails non-inferior?\nno segment reversal?"}
+  QC -->|"pass"| VR["CUPED or interleaving<br/>variance reduction"]
+  VR --> ANAL["t-test on per-user aggregates<br/>or mSPRT for continuous monitoring"]
+  ANAL --> DEC{"primary above MDE?<br/>guardrails non-inferior?<br/>no segment reversal?"}
   DEC -->|"all pass"| RAMP["ship: ramp to 100%"]
   DEC -->|"guardrail breach"| KILL["kill: roll back"]
   DEC -->|"flat / below MDE"| ITER["iterate or run longer"]
-  RAMP --> HB["optional long-term holdback\nto catch slow effects"]
+  RAMP --> HB["optional long-term holdback<br/>to catch slow effects"]
 ```
 
 ## Test yourself

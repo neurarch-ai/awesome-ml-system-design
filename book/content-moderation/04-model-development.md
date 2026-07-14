@@ -8,11 +8,11 @@ cheap classifiers second, expensive joint models only on the cases that reach th
 ```mermaid
 flowchart TD
   CONTENT["content: text / image / video / voice"]
-  CONTENT --> HASH["perceptual hash lookup\n(near-zero cost, near-zero FP)"]
+  CONTENT --> HASH["perceptual hash lookup<br/>(near-zero cost, near-zero FP)"]
   HASH -->|known-bad| AUTOACT["auto-action + report"]
-  HASH -->|novel| CHEAP["cheap unimodal classifiers\ntext: BERT / EfficientNet for image"]
+  HASH -->|novel| CHEAP["cheap unimodal classifiers<br/>text: BERT / EfficientNet for image"]
   CHEAP -->|confident| POLICY["policy engine"]
-  CHEAP -->|ambiguous cross-modal| JOINT["joint image-text model\ne.g. CLIP-style fusion"]
+  CHEAP -->|ambiguous cross-modal| JOINT["joint image-text model<br/>e.g. CLIP-style fusion"]
   JOINT --> POLICY
   POLICY -->|above auto-action threshold| REMOVE["remove or block"]
   POLICY -->|below auto-allow threshold| ALLOW["allow"]

@@ -29,12 +29,12 @@ Spotify, and Instacart actually ship it.
 
 ```mermaid
 flowchart LR
-  LOG["interaction logs\n(clicks, sessions, graph edges)"] --> POS["mine positive pairs\n(the join that defines related)"]
-  POS --> ENC["train encoder\n(contrastive / graph / sequence)"]
-  NEG["negatives\n(in-batch + hard + logQ)"] --> ENC
-  CF["content features\n(text, category, image)"] --> ENC
+  LOG["interaction logs<br/>(clicks, sessions, graph edges)"] --> POS["mine positive pairs<br/>(the join that defines related)"]
+  POS --> ENC["train encoder<br/>(contrastive / graph / sequence)"]
+  NEG["negatives<br/>(in-batch + hard + logQ)"] --> ENC
+  CF["content features<br/>(text, category, image)"] --> ENC
   ENC --> EMB["batch-embed every entity"]
-  EMB --> IDX["ANN index\n(HNSW / IVF-PQ)"]
+  EMB --> IDX["ANN index<br/>(HNSW / IVF-PQ)"]
   IDX --> RET["retrieval"]
   IDX --> RK["ranking input"]
   IDX --> FR["fraud / dedup / other tasks"]

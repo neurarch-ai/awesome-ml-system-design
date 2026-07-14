@@ -27,11 +27,11 @@ flowchart LR
   subgraph Batch["batch path (scheduled)"]
     H["history snapshot"] --> FEAT["point-in-time features"]
     FEAT --> MDL["model inference"]
-    MDL --> STORE["score store\n(lookup by entity id)"]
+    MDL --> STORE["score store<br/>(lookup by entity id)"]
   end
   subgraph RT["realtime path (on request)"]
-    REQ["scoring request\n(new application)"] --> FS["feature store\n(live features)"]
-    FS --> MDLRT["model inference\n(seconds)"]
+    REQ["scoring request<br/>(new application)"] --> FS["feature store<br/>(live features)"]
+    FS --> MDLRT["model inference<br/>(seconds)"]
     MDLRT --> DEC["decision + reasons"]
   end
   STORE --> DEC

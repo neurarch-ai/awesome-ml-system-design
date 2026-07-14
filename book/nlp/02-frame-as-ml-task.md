@@ -24,8 +24,8 @@ probabilities. The encoder is fine-tuned end-to-end on labeled examples.
 
 ```mermaid
 flowchart LR
-  TXT["token sequence"] --> ENC["encoder\n(BERT-family)"]
-  ENC --> CLS["[CLS] embedding"] --> HEAD["linear head\n(softmax or sigmoid)"]
+  TXT["token sequence"] --> ENC["encoder<br/>(BERT-family)"]
+  ENC --> CLS["[CLS] embedding"] --> HEAD["linear head<br/>(softmax or sigmoid)"]
   HEAD --> PROBS["P(label | text)"]
 ```
 
@@ -81,10 +81,10 @@ text. That single question decides the architecture class.
 ```mermaid
 flowchart TD
   TXT["free text input"] --> Q{"output structure?"}
-  Q -->|"one label per doc"| CLS["encoder + classification head\n(routing, spam, toxicity)"]
-  Q -->|"label per token or span"| NER["encoder + token-tagging head\n(NER, field extraction)"]
-  Q -->|"match to taxonomy"| ER["bi-encoder + ANN\n(entity resolution)"]
-  Q -->|"generate new text"| S2S["seq2seq encoder-decoder\n(translation, correction)"]
+  Q -->|"one label per doc"| CLS["encoder + classification head<br/>(routing, spam, toxicity)"]
+  Q -->|"label per token or span"| NER["encoder + token-tagging head<br/>(NER, field extraction)"]
+  Q -->|"match to taxonomy"| ER["bi-encoder + ANN<br/>(entity resolution)"]
+  Q -->|"generate new text"| S2S["seq2seq encoder-decoder<br/>(translation, correction)"]
 ```
 
 ## When to use which framing

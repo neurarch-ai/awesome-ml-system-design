@@ -42,15 +42,15 @@
 
 ```mermaid
 flowchart TD
-  H["history + events"] --> PIT["point-in-time join\n(no future leakage)"]
-  LABEL["outcomes\n(matured labels)"] --> PIT
-  PIT --> RI["reject inference\n(selection bias correction)"]
-  RI --> TRAIN["train model\n(GBDT; survival or uplift where needed)"]
-  TRAIN --> CAL["fit calibration\n(Platt / isotonic on holdout)"]
-  CAL --> EVAL["eval: calibration, ranking,\nbusiness value, fairness slices"]
-  EVAL --> GATE{"champion-\nchallenger gate"}
-  GATE -->|"pass"| SERVE["model + calibrator + policy\n(EV threshold / optimizer)"]
-  REQ["scoring request"] --> FS["feature store\n(features as-of now)"]
+  H["history + events"] --> PIT["point-in-time join<br/>(no future leakage)"]
+  LABEL["outcomes<br/>(matured labels)"] --> PIT
+  PIT --> RI["reject inference<br/>(selection bias correction)"]
+  RI --> TRAIN["train model<br/>(GBDT; survival or uplift where needed)"]
+  TRAIN --> CAL["fit calibration<br/>(Platt / isotonic on holdout)"]
+  CAL --> EVAL["eval: calibration, ranking,<br/>business value, fairness slices"]
+  EVAL --> GATE{"champion-<br/>challenger gate"}
+  GATE -->|"pass"| SERVE["model + calibrator + policy<br/>(EV threshold / optimizer)"]
+  REQ["scoring request"] --> FS["feature store<br/>(features as-of now)"]
   FS --> SERVE
   SERVE --> ACT["decision + adverse-action reasons"]
   ACT -.->|"logged; label matures months later"| LABEL

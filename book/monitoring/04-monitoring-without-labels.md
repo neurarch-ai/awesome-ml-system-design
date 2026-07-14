@@ -73,9 +73,9 @@ fires once labels join back.
 
 ```mermaid
 flowchart LR
-  LOG["prediction + feature log"] --> FAST["fast path\n(input drift, prediction drift,\ndata health)"]
+  LOG["prediction + feature log"] --> FAST["fast path<br/>(input drift, prediction drift,<br/>data health)"]
   LOG --> JOIN["wait for labels"]
-  JOIN --> SLOW["slow path\n(AUC, calibration, recall\nby segment)"]
+  JOIN --> SLOW["slow path<br/>(AUC, calibration, recall<br/>by segment)"]
   FAST -->|"early warning"| ALERT["tiered alert"]
   SLOW -->|"confirmation"| ALERT
 ```

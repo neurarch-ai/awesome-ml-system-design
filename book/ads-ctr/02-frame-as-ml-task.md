@@ -33,8 +33,8 @@ reserve price) wins and is charged second-price.
 
 ```mermaid
 flowchart LR
-  U["user + context\n(id, device, geo, time)"] --> FEAT["feature assembly\n(sparse + dense)"]
-  A["ad\n(ad id, creative, bid)"] --> FEAT
+  U["user + context<br/>(id, device, geo, time)"] --> FEAT["feature assembly<br/>(sparse + dense)"]
+  A["ad<br/>(ad id, creative, bid)"] --> FEAT
   FEAT --> MODEL["pCTR model"]
   MODEL --> P["pCTR in [0,1]"]
   P --> ECPM["eCPM = bid x pCTR"]

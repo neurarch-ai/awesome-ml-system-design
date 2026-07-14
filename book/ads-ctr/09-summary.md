@@ -33,17 +33,17 @@
 
 ```mermaid
 flowchart TD
-  IMP["impression logs"] --> J["join labels\n(point-in-time correct)"]
-  CLK["click logs\n(fast)"] --> J
-  CONV["conversion logs\n(arrive days later)"] --> J
-  J --> W["delay-aware labeling\n(window / weighted / two-model)"]
-  W --> T["train pCTR model\n(sparse embeddings + interactions)"]
-  T --> CALF["fit calibration layer\n(Platt / isotonic hourly)"]
-  CALF --> EV["offline eval\n(log loss, AUC, ECE sliced)"]
+  IMP["impression logs"] --> J["join labels<br/>(point-in-time correct)"]
+  CLK["click logs<br/>(fast)"] --> J
+  CONV["conversion logs<br/>(arrive days later)"] --> J
+  J --> W["delay-aware labeling<br/>(window / weighted / two-model)"]
+  W --> T["train pCTR model<br/>(sparse embeddings + interactions)"]
+  T --> CALF["fit calibration layer<br/>(Platt / isotonic hourly)"]
+  CALF --> EV["offline eval<br/>(log loss, AUC, ECE sliced)"]
   EV --> G{"gate"}
   G -->|"pass"| PUSH["push model + embedding tables"]
-  PUSH --> S["serving\n(batch scoring + feature store)"]
-  S --> AUCT["auction\neCPM = bid x pCTR"]
+  PUSH --> S["serving<br/>(batch scoring + feature store)"]
+  S --> AUCT["auction<br/>eCPM = bid x pCTR"]
   AUCT --> SERVE["served ad"]
   SERVE -.->|"late labels + exploration"| IMP
 ```
