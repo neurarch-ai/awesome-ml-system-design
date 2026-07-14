@@ -36,7 +36,7 @@ A global model with learned attribute and category embeddings can forecast a bra
 
 **Q: A Transformer is the state of the art for sequences. Should you default to it for forecasting?**
 
-No. For short-horizon tabular demand forecasting, a well-tuned global GBT consistently matches or beats deep models at a fraction of the training and serving cost. Transformers (TFT, PatchTST) earn their keep when the horizon is long (PatchTST handles long sequences cheaply via patch tokens), when there are many correlated series with rich covariate structure, or when cold-start via learned embeddings is required. Zalando explicitly chose LightGBM over TFT for 5 million SKUs because iteration speed and cost dominated at their horizon. Justify the deep model; do not default to it.
+No. For short-horizon tabular demand forecasting, a well-tuned global GBT consistently matches or beats deep models at a fraction of the training and serving cost. Transformers (TFT, PatchTST) earn their keep when the horizon is long (PatchTST handles long sequences cheaply via patch tokens), when there are many correlated series with rich covariate structure, or when cold-start via learned embeddings is required. Zalando explicitly chose LightGBM over TFT because iteration speed and cost dominated at their horizon. Justify the deep model; do not default to it.
 
 **Q: The item-store series are very sparse and have many zero weeks. How do you handle intermittent demand?**
 
