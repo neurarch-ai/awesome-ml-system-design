@@ -24,6 +24,12 @@ In the next-item setup, each user has exactly one relevant item (the held-out
 next interaction), so this simplifies to the fraction of users for whom the true
 next item appeared in the top k.
 
+```python
+def recall_at_k(recommended, relevant, k):   # recommended: ranked ids; relevant: set of ids
+    return len(set(recommended[:k]) & set(relevant)) / len(relevant)
+# next-item case: relevant = {true_next}, so this is 1.0 if true_next in top-k else 0.0
+```
+
 The right k is the k you actually use downstream, typically 10 to 50 for a
 ranking feature, or a few hundred if the sequence model is used as a retrieval
 tower. Optimizing for k=10 when you pass 200 candidates to ranking produces

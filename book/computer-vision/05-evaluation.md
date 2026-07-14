@@ -41,6 +41,18 @@ number in [0, 1]:
 
 $$\text{IoU} = \frac{\text{area}(\hat{B} \cap B^*)}{\text{area}(\hat{B} \cup B^*)}$$
 
+The intersection is the overlap rectangle; the union is the two areas minus that
+overlap, so a non-overlapping pair scores 0 and a perfect match scores 1.
+
+```python
+def iou(a, b):                       # boxes as (x1, y1, x2, y2)
+    ix1, iy1 = max(a[0], b[0]), max(a[1], b[1])       # top-left of the overlap
+    ix2, iy2 = min(a[2], b[2]), min(a[3], b[3])       # bottom-right of the overlap
+    inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)     # 0 when the boxes do not overlap
+    union = (a[2]-a[0])*(a[3]-a[1]) + (b[2]-b[0])*(b[3]-b[1]) - inter
+    return inter / union
+```
+
 A detection counts as a true positive when its IoU with the best-matching
 ground-truth box exceeds a threshold (commonly 0.5). The model produces a set
 of (box, class, confidence-score) triples. **Average precision (AP)** for one

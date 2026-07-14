@@ -24,6 +24,19 @@ and discounts lower positions. Yelp and Airbnb use NDCG as the offline signal fo
 their learning-to-rank models because NDCG directly rewards putting the most
 relevant item at rank 1.
 
+In code it is two short functions: score the actual order, divide by the score of
+the ideal order.
+
+```python
+import numpy as np
+def dcg(rels):                       # rels: relevance grades in predicted-rank order
+    return sum(r / np.log2(i + 2) for i, r in enumerate(rels))  # i=0 -> log2(2)=1
+def ndcg_at_k(rels, k):
+    idcg = dcg(sorted(rels, reverse=True)[:k])   # ideal ordering: grades sorted desc
+    return dcg(rels[:k]) / idcg if idcg else 0.0
+# ndcg_at_k([3, 2, 3, 0, 1], k=5)  ->  DCG / IDCG, always in [0, 1]
+```
+
 ![How NDCG is computed: position discount and DCG vs IDCG](assets/fig-ndcg-discount.png)
 
 *Left: the position discount $1/\log_2(i+1)$ falls steeply from 1.0 at rank 1 to 0.29 at rank 10, so misplacing a relevant item costs far more near the top of the list than near the bottom. Right: an illustrative five-item list; the blue bars show the discounted gain $r_i/\log_2(i+1)$ for the actual ordering (DCG), the green bars show the same terms for the ideal ordering (IDCG), and NDCG is their ratio capped at 1. Illustrative.*

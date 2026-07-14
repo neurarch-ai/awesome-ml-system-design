@@ -54,6 +54,12 @@ MRR weights the first relevant result; NDCG weights all of them. Use both for a
 diverse query mix: NDCG for graded informational queries, MRR as a sanity check on
 navigational ones.
 
+```python
+def mrr(first_hit_ranks):   # first_hit_ranks[q]: 1-based rank of first relevant hit, 0 if none
+    return sum(1.0 / r if r else 0.0 for r in first_hit_ranks) / len(first_hit_ranks)
+# mrr([2, 1, 3]) -> (1/2 + 1/1 + 1/3) / 3 ~= 0.611  (matches the figure)
+```
+
 ![How MRR is computed: reciprocal rank curve and per-query example](assets/fig-mrr-reciprocal.png)
 
 *Left: the reciprocal rank $1/\text{rank}$ drops sharply as the first relevant result slides down the list; moving from rank 1 to rank 2 already cuts the score in half. Right: three illustrative queries showing that MRR is simply the mean of those reciprocal ranks: $(1/2 + 1/1 + 1/3) / 3 \approx 0.611$. Illustrative.*
