@@ -55,6 +55,28 @@ ingest raw text or image tensors.
 | Uplift / CATE models (two-model, S-learner, T-learner, causal forest) | interventions (pricing, discount, retention offer) where the question is WHETHER behavior changes, not who will act | a churn or propensity score that targets sure things and lost causes too |
 | Logistic regression | an interpretable final layer or a low-complexity baseline; also the second layer in PayPal's two-stage design | the first model you try on a rich feature set, where a tree will beat it |
 
+**Tools.** Gradient-boosted trees: XGBoost, LightGBM (Microsoft), CatBoost
+(Yandex); all three expose monotone-constraint options for regulated decisions.
+Neural nets with learned embeddings: PyTorch (Meta) or TensorFlow (Google), with
+DLRM (Meta) and DeepCTR implementations for the recommender-style Wide-and-Deep and
+DeepFM families. Survival: lifelines for Cox proportional hazards, scikit-survival
+for survival forests, and XGBoost's survival objective for gradient-boosted hazards.
+Uplift and CATE: CausalML and EconML (causal forest, S-learner, T-learner). Logistic
+regression and Platt-style baselines: scikit-learn.
+
+**Worked example.** A lending marketplace scores applicants where columns are
+heterogeneous (income, utilization, tenure) with missing values, so the default
+first model is a gradient-boosted tree (LightGBM) rather than a neural net that adds
+no lift on already-meaningful columns. Because declines must carry defensible
+adverse-action reasons, the production model switches to a monotone-constrained GBDT
+(CatBoost or XGBoost with per-feature constraints) so risk moves in the legally
+required direction. Learned embeddings only earn their place if the feature set grows
+to millions of merchant or device IDs where one-hot would explode memory. For the
+separate question of when to time a retention offer, the team reaches for an uplift
+model (CausalML) to target persuadables rather than a churn score that also chases
+sure things, and keeps a logistic regression as the interpretable baseline everything
+else must beat.
+
 ## Calibration: the probability is the product
 
 The section that separates a senior answer from a mid-level one.

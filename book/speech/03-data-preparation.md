@@ -106,3 +106,21 @@ real speaker-diverse, noise-diverse recordings is expensive. Common approaches:
 | Self-supervised pretraining (wav2vec2 / HuBERT) | labeled data is scarce or the language is low-resource | full supervised training on a tiny labeled set |
 | Multilingual joint pretraining | low-resource language that can borrow from high-resource ones | language-isolated supervised training |
 | TTS-synthesized wake word data | bootstrapping a trigger detector before any real recordings | waiting for a live data collection campaign |
+
+**Tools.** SpecAugment ships in torchaudio, NeMo (NVIDIA), and ESPnet recipes. Noise
+and reverb mixing: audiomentations and pyroomacoustics for room impulse responses.
+Weak supervision at scale follows the whisper (OpenAI) recipe of pairing audio with
+noisy captions. Self-supervised pretraining: wav2vec 2.0 and HuBERT (Meta), available
+through fairseq and torchaudio, both supporting multilingual joint pretraining.
+TTS-synthesized wake word data can come from Coqui TTS or any neural voice model.
+
+**Worked example.** A voice-assistant maker building ASR for a low-resource language
+has only a few hours of transcribed audio, so it starts from a self-supervised
+wav2vec 2.0 or HuBERT checkpoint and fine-tunes a small CTC head rather than training
+fully supervised on a tiny set. Because the language is related to several
+high-resource ones, it uses multilingual joint pretraining so representations are
+borrowed across languages instead of staying isolated. On every training run it
+applies SpecAugment as the default first augmentation, and adds noise plus reverb
+mixing because the product must survive far-field phone-quality audio. To bootstrap
+the wake word before any field recordings exist, it synthesizes trigger examples with
+TTS rather than waiting for a live collection campaign.

@@ -101,6 +101,23 @@ across languages and domains.
 | On-device int8-quantized RNN-T | always-on or privacy paths inside a memory/power envelope | a heavy cloud model running on a low-power core |
 | Attention seq2seq | when zero-shot breadth and multitask (ASR plus translation) matter | latency-sensitive streaming, where it fails |
 
+**Tools.** Streaming transducers and CTC: NeMo (NVIDIA), k2 and icefall for RNN-T,
+and Kaldi for classic CTC decoding and forced alignment with an external language
+model. Full-context Conformer and attention seq2seq: ESPnet, SpeechBrain, and
+torchaudio all ship Conformer encoders with CTC, transducer, or attention heads.
+Weak-supervision zero-shot ASR: whisper (OpenAI). On-device int8 deployment: export
+via ONNX Runtime or TensorFlow Lite to fit the memory and power envelope.
+
+**Worked example.** A voice-assistant maker needs live dictation that returns a first
+partial well under a third of a second on a phone, so it reaches for an int8-quantized
+RNN-T (NeMo or icefall) that commits left to right rather than a Conformer seq2seq
+that must see the whole utterance. For its separate feature that transcribes uploaded
+voice memos, latency does not bind, so it uses a full-context Conformer
+encoder-decoder that can self-correct and wins on accuracy. When the product expands
+to many languages without per-language labeled corpora, it drops in a whisper-style
+weakly supervised model for zero-shot breadth. CTC with an external LM stays in the
+toolbox specifically for cheap forced alignment when it needs per-word timestamps.
+
 ## TTS: two-stage pipeline
 
 TTS is the reverse problem: text to waveform. Modern systems split it into two

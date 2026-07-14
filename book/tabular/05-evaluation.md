@@ -166,6 +166,24 @@ treatment). Budget should flow only to persuadables.*
 | AUUC / Qini coefficient | uplift and intervention models where budget efficiency matters (AUUC = raw area; Qini = area above random baseline) | accuracy or AUC on the treatment-response label, which does not measure incremental value |
 | Sliced metrics (by segment, vintage, protected group) | always, especially for regulated decisions | global aggregates that mask slice-level failures |
 
+**Tools.** Ranking and calibration metrics: scikit-learn (roc_auc_score,
+average_precision_score for AUC-PR, brier_score_loss, and CalibratedClassifierCV for
+Platt and isotonic). Survival ranking: lifelines and scikit-survival both provide the
+concordance index and integrated Brier score. Expected calibration error and
+reliability diagrams: netcal, or a short bin-and-weight pass as shown above. Uplift
+metrics (AUUC, Qini): CausalML and scikit-uplift. Sliced reporting is usually a
+groupby over any of these with pandas.
+
+**Worked example.** A payments company evaluates a default model whose positive rate
+is low, so it leads with AUC-PR (average precision) rather than AUC-ROC, which would
+look flattering while ignoring minority-class recall. Because the score feeds a
+credit-limit formula, a reliability curve plus ECE is mandatory: a strong AUC that is
+poorly calibrated prices risk wrong. When the same team runs a retention-offer model,
+it switches to the Qini coefficient (area above the random baseline) so budget
+efficiency, not raw response, is measured. Every one of these is reported sliced by
+product and vintage, since a healthy global ECE can hide a badly miscalibrated new
+segment.
+
 ## The evaluation discipline
 
 **Use a time-based split, not a random split.** Hold out future events and evaluate
