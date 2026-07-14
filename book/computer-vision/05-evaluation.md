@@ -8,13 +8,17 @@ output shape is and what the product actually gates on.
 
 ### Classification: per-class precision and recall
 
-Accuracy collapses all classes into one number. A model that predicts the
-majority class every time can score 95% on an imbalanced dataset while
+**Accuracy** (the fraction of correctly classified examples over the total, a
+number in [0, 1]) collapses all classes into one number. A model that predicts
+the majority class every time can score 95% on an imbalanced dataset while
 completely failing on every rare class. Use per-class precision and recall, and
 macro-average to expose the tail.
 
 For a binary gate (moderation), the operating point matters more than any single
-number. Fix a minimum precision and take the recall achievable there:
+number. The model outputs a confidence score per image; **precision** is the
+fraction of flagged images that are true violations and **recall** is the fraction
+of true violations that are flagged, both numbers in [0, 1]. Fix a minimum
+precision floor $P_{\min}$ and take the highest recall achievable at or above it:
 
 $$R_{\text{op}} = \max \left\lbrace R : P(t) \geq P_{\min} \right\rbrace$$
 
@@ -22,17 +26,31 @@ For example: "at 90% precision, what is our recall on the nudity class?" That
 question maps directly to the product tradeoff (how many violations do we catch
 vs. how many legitimate photos do we wrongly flag).
 
-For medical or screening use cases (diabetic retinopathy), F1 is used because
-it punishes a collapse in either precision or recall equally:
+For medical or screening use cases (diabetic retinopathy), the model classifies
+each image as positive or negative; **F1** scores those binary predictions against
+ground truth and returns a number in [0, 1]. It is the harmonic mean of precision
+and recall, punishing a collapse in either equally:
 
 $$F_1 = \frac{2 \cdot P \cdot R}{P + R}$$
 
 ### Detection: mAP at IoU thresholds
 
-Average precision for one class is the area under its precision-recall curve
-(the shaded area in the figure below). Mean average precision (mAP) averages
-this over all classes. COCO-style mAP further averages over IoU thresholds from
-0.5 to 0.95 in steps of 0.05, written mAP@[.5:.95].
+A predicted bounding box $\hat{B}$ is matched to a ground-truth box $B^*$ using
+**intersection-over-union (IoU)**, which measures spatial overlap and returns a
+number in [0, 1]:
+
+$$\text{IoU} = \frac{\text{area}(\hat{B} \cap B^*)}{\text{area}(\hat{B} \cup B^*)}$$
+
+A detection counts as a true positive when its IoU with the best-matching
+ground-truth box exceeds a threshold (commonly 0.5). The model produces a set
+of (box, class, confidence-score) triples. **Average precision (AP)** for one
+class is the area under its precision-recall curve at a fixed IoU threshold.
+**mAP** is the mean of AP over all classes, returning a number in [0, 1]:
+
+$$\text{AP}^{(c)} = \int_0^1 P^{(c)}(r)\,dr, \qquad \text{mAP} = \frac{1}{C}\sum_{c=1}^{C} \text{AP}^{(c)}$$
+
+COCO-style mAP further averages over IoU thresholds from 0.5 to 0.95 in steps
+of 0.05, written mAP@[.5:.95].
 
 ![Precision-recall curves and mAP](assets/fig-pr-map.png)
 
@@ -46,32 +64,49 @@ since the product must pick one threshold to run at.
 
 ### Segmentation: mean IoU (mIoU)
 
-mIoU averages intersection-over-union over all classes, so a dominant class
+The model assigns a class label to each pixel; **mIoU** scores those per-pixel
+labels against ground-truth segmentation masks and returns a number in [0, 1].
+Let $A_c$ be the set of pixels predicted as class $c$ and $B_c$ the ground-truth
+pixels for class $c$; mIoU averages IoU over all classes so a dominant class
 cannot hide weak ones:
 
 $$\text{mIoU} = \frac{1}{C} \sum_{c=1}^{C} \frac{\lvert A_c \cap B_c \rvert}{\lvert A_c \cup B_c \rvert}$$
 
-Boundary IoU is a stricter variant that evaluates only the pixels near the
-boundary contour, useful when edge quality matters (garment cutout, where a
-rough boundary is visible to the user).
+**Boundary IoU** is a stricter variant that restricts evaluation to pixels within
+a narrow band around the predicted and ground-truth contours, useful when edge
+quality matters (garment cutout, where a rough boundary is visible to the user).
 
 ### Embedding retrieval: recall at k
 
-Recall at k over a labeled query set is the fraction of queries where the
-relevant item appears in the top-k results of the ANN lookup:
+The model produces an embedding for each query image; **R@k** measures retrieval
+quality by checking whether the ground-truth relevant item appears in the top-k
+nearest neighbors, returning a number in [0, 1] over a labeled query set $Q$:
 
 $$R@k = \frac{1}{\lvert Q \rvert} \sum_{q \in Q} \mathbf{1}\!\left[\text{rel}(q) \in \text{top-}k(q)\right]$$
 
 Measure at the k you actually serve (the ANN shortlist before any re-ranking).
 Tuning to look good at k=5 when you serve k=100 optimizes the wrong point.
 
-Also track mean average precision over the ranked list (MAP, not mAP) for cases
-where multiple relevant items exist per query.
+Also track **mean average precision (MAP)** over the ranked list for cases where
+multiple relevant items exist per query. AP(q) is the mean of the precision
+values at each rank position where a relevant item appears; MAP averages that
+over all queries, returning a number in [0, 1]:
+
+$$\text{AP}(q) = \frac{1}{|R_q|}\sum_{k=1}^{K} P@k(q)\cdot\text{rel}(q,k), \qquad \text{MAP} = \frac{1}{|Q|}\sum_{q \in Q} \text{AP}(q)$$
+
+where $R_q$ is the set of relevant items for query $q$ and $\text{rel}(q,k)$ is
+1 if the item at rank $k$ is relevant, 0 otherwise.
 
 ### OCR: text accuracy and field coverage
 
-Report character-error rate (CER) and word-error rate (WER) on a held-out
-transcription set. For structured documents (ID cards, receipts), report
+The model produces a text transcription from a document image; **WER** and
+**CER** score how many edit operations separate it from the reference. Let $S$,
+$I$, $D$ be substitutions, insertions, and deletions and $N$ the reference count:
+
+$$\text{WER} = \frac{S + I + D}{N_{\text{words}}}, \qquad \text{CER} = \frac{S_c + I_c + D_c}{N_{\text{chars}}}$$
+
+Both output error rates (0 = perfect; values above 1 are possible when insertions
+are numerous). For structured documents (ID cards, receipts), also report
 per-field extraction accuracy (all characters in the target field correct).
 
 ## When to use which metric

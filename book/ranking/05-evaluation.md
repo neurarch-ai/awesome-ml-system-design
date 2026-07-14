@@ -10,13 +10,19 @@ when is a strong interview signal.
 returned items match the ground-truth relevance, weighted by position. Hits near
 the top count more than hits further down.
 
-$$\text{NDCG@k} = \frac{\text{DCG@k}}{\text{IDCG@k}}, \qquad \text{DCG@k} = \sum_{i=1}^{k} \frac{2^{r_i} - 1}{\log_2(i + 1)}$$
+- **Input / output.** The metric takes a ranked list of k items, each assigned a
+  graded relevance label $r_i \ge 0$, and returns a scalar in $[0, 1]$; 1.0 means
+  the returned order is identical to the ideal.
+- **How it is computed.** Sum relevance gains discounted by log position, then
+  normalize by the ideal achievable score:
 
-where $r_i$ is the relevance label of the item at position $i$ and IDCG@k is
-the DCG of the ideal (perfect) ranking. NDCG rewards relevant items appearing
-near the top of the ranked list and discounts lower positions. Yelp and Airbnb
-use NDCG as the offline signal for their learning-to-rank models because NDCG
-directly rewards putting the most relevant item at rank 1.
+$$\text{DCG@k} = \sum_{i=1}^{k} \frac{r_i}{\log_2(i+1)}, \qquad \text{NDCG@k} = \frac{\text{DCG@k}}{\text{IDCG@k}}$$
+
+where IDCG@k is the DCG of the perfect re-ordering of those same items (all items
+sorted by decreasing $r_i$). NDCG rewards relevant items appearing near the top
+and discounts lower positions. Yelp and Airbnb use NDCG as the offline signal for
+their learning-to-rank models because NDCG directly rewards putting the most
+relevant item at rank 1.
 
 ![NDCG@k curves for different optimization approaches](assets/fig-ndcg-k.png)
 
@@ -27,22 +33,37 @@ treats items independently and lags behind. Illustrative values.*
 ## AUC: ranking quality of a binary objective
 
 **AUC** (area under the ROC curve) measures whether the model ranks positive
-examples above negative examples across all thresholds. It is the standard
-offline metric for binary classification objectives (click vs. no-click) at
-scale, because it is threshold-free and easy to compute over billions of rows.
-AUC does not require balanced classes, which matters when the click rate
-is 1-2%. The typical failure mode: AUC can improve while calibration worsens, so
-never use AUC alone when scores feed an auction.
+examples above negative examples across all thresholds.
+
+- **Input / output.** Takes model scores paired with binary labels (clicked /
+  not clicked) and returns a scalar in $[0, 1]$: 0.5 is random, 1.0 is perfect
+  rank-order separation.
+- **How it is computed.** AUC equals the probability that a randomly drawn
+  positive example is scored higher than a randomly drawn negative:
+
+$$\text{AUC} = \Pr\!\left(\hat{p}(x^+) \gt \hat{p}(x^-)\right)$$
+
+It is threshold-free and easy to compute over billions of rows, which makes it
+the standard offline metric for binary classification objectives (click vs.
+no-click) at scale. AUC does not require balanced classes, which matters when
+the click rate is 1-2%. The typical failure mode: AUC can improve while
+calibration worsens, so never use AUC alone when scores feed an auction.
 
 ## Logloss: sharpness of the probability estimate
 
 **Logloss** (binary cross-entropy) penalizes confident wrong predictions harder
 than uncertain ones. It is complementary to AUC: AUC captures ranking quality,
-logloss captures sharpness of the probability estimates. A model can gain AUC
-while its logloss worsens if it is shifting confident scores in the right
-direction but over- or under-estimating magnitudes.
+logloss captures sharpness of the probability estimates.
+
+- **Input / output.** Takes predicted probabilities $\hat{p}_i$ and binary labels
+  $y_i \in \{0, 1\}$; returns a positive scalar where lower is better, minimized
+  only by a perfectly calibrated predictor.
+- **How it is computed.**
 
 $$\mathcal{L} = -\frac{1}{N} \sum_{i=1}^{N} \left[ y_i \log \hat{p}_i + (1 - y_i) \log (1 - \hat{p}_i) \right]$$
+
+A model can gain AUC while its logloss worsens if it is shifting confident
+scores in the right direction but over- or under-estimating magnitudes.
 
 ## Calibration: does 0.1 mean 10%?
 
@@ -51,11 +72,18 @@ blend, **the predicted probability must mean what it says**. A calibration
 reliability diagram plots mean predicted confidence on the x-axis against actual
 fraction of positives on the y-axis. The diagonal is perfect calibration.
 
+**ECE (Expected Calibration Error)** is a scalar summary of the reliability curve:
+
+- **Input / output.** Takes predicted probabilities bucketed into $M$ bins,
+  paired with binary labels; returns a positive scalar in $[0, 1]$ where 0 is
+  perfect calibration.
+- **How it is computed.**
+
 $$\text{ECE} = \sum_{b=1}^{M} \frac{n_b}{N} \left| \text{acc}(b) - \text{conf}(b) \right|$$
 
-where $M$ is the number of bins, $n_b$ the count in bin $b$, $\text{acc}(b)$ the
-fraction of actual positives in the bin, and $\text{conf}(b)$ the mean predicted
-probability. ECE summarizes the area between the curve and the diagonal.
+where $n_b$ is the count in bin $b$, $\text{acc}(b)$ is the fraction of actual
+positives in that bin, and $\text{conf}(b)$ is the mean predicted probability.
+ECE summarizes the area between the reliability curve and the diagonal.
 
 Training on downsampled negatives and stratified samples distorts calibration,
 so apply a post-hoc step (Platt scaling or isotonic regression) and monitor ECE

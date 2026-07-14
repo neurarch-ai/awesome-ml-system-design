@@ -25,7 +25,11 @@ a fraction of logged actions, most events are discarded. You need a large
 volume of uniformly-random traffic to get a low-variance estimate.
 
 **Inverse propensity scoring (IPS)** reuses any logged traffic where
-propensities are known and nonzero, not just uniform random traffic.
+propensities are known and nonzero, not just uniform random traffic. It takes
+as input a log of events $(x_i, a_i, r_i)_{i=1}^n$ with known logging
+propensities $\pi_0(a_i \mid x_i)$ and a candidate policy $\pi$; it outputs
+a scalar estimate of the expected per-round reward the new policy would have
+earned on that traffic.
 
 $$\hat{V}_{\text{IPS}}(\pi) = \frac{1}{n} \sum_{i=1}^{n} \frac{\pi(a_i \mid x_i)}{\pi_0(a_i \mid x_i)} \, r_i$$
 
@@ -55,7 +59,12 @@ and verifying the estimator recovers known outcomes.
 
 Regret is the gap between the cumulative reward the policy earned and the
 cumulative reward an oracle (knowing all true arm values) would have earned.
-Lower cumulative regret over time means the policy learned faster and paid
+Over $T$ rounds:
+
+$$\text{Regret}(T) = \sum_{t=1}^{T}\bigl(\mu^* - \mu_{a_t}\bigr), \quad \mu^* = \max_a\, \mu_a$$
+
+where $\mu^*$ is the mean reward of the best arm and $\mu_{a_t}$ is the mean
+reward of the arm chosen at round $t$. Lower cumulative regret over time means the policy learned faster and paid
 a smaller cost for exploration.
 
 - **Linear regret:** the policy never learns; the exploration cost compounds

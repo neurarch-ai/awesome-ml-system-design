@@ -8,6 +8,11 @@ slightly different about that prediction quality.
 
 ### Recall@k
 
+**Input / output.** The model takes a user's interaction history (a sequence of
+past item ids) and outputs a ranked list of candidate next items; Recall@k
+outputs a scalar in $[0, 1]$ measuring what fraction of users had their true
+next item appear somewhere in that top-k list.
+
 Of the users in the test set, what fraction had their actual next item appear in
 the model's top k predictions? This is the primary metric because it directly
 answers the product question: does the ranked list contain what the user actually
@@ -31,7 +36,11 @@ including it:
 
 $$\text{NDCG@k} = \frac{1}{Z}\sum_{i=1}^{k} \frac{2^{rel_i}-1}{\log_2(i+1)}$$
 
-where $Z$ normalizes to the ideal ranking. A model that puts the true next item
+where $Z = \text{IDCG@k} = \sum_{i=1}^{\min(|\text{relevant}|,\, k)} \frac{1}{\log_2(i+1)}$
+is the ideal DCG (the maximum achievable when all relevant items are ranked
+first). For the standard next-item task with exactly one relevant item,
+$Z = 1/\log_2(2) = 1$, so NDCG@k reduces to $1/\log_2(\text{rank}+1)$ when
+the true item appears in the top k, and 0 otherwise. A model that puts the true next item
 at rank 1 scores higher on NDCG than one that puts it at rank k. NDCG@k
 complements Recall@k: a model can have high recall (the item is in the top k)
 but low NDCG (it is near the bottom of that set).
@@ -42,7 +51,8 @@ MRR is the average of the reciprocal rank of the true next item across users:
 
 $$\text{MRR} = \frac{1}{|U|}\sum_{u \in U} \frac{1}{\text{rank}_u}$$
 
-MRR is sensitive to whether the true item is rank 1 vs rank 10 vs rank 100. It
+where $1/\text{rank}_u = 0$ when the true next item does not appear among the
+returned results. MRR is sensitive to whether the true item is rank 1 vs rank 10 vs rank 100. It
 is a natural fit when the goal is to surface the single best next recommendation
 as early as possible (for a "top pick" placement), rather than filling a list.
 

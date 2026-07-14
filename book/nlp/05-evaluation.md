@@ -5,19 +5,23 @@
 Reporting aggregate accuracy on an NLP classification task is almost always wrong,
 and on a safety or spam task it is actively dangerous. Consider: a model that
 predicts "not spam" for every message achieves 99.5% accuracy when spam is 0.5%
-of traffic. It catches zero spam. Aggregate accuracy optimizes toward "predict the
-majority class," which is exactly the failure mode that makes safety systems
-worthless.
+of traffic. It catches zero spam. Aggregate **accuracy** (the fraction of correctly labeled examples over the
+total, a number in [0, 1]) optimizes toward "predict the majority class," which
+is exactly the failure mode that makes safety systems worthless.
 
 The correct metric family for classification is **precision, recall, and F1 per
-class**, especially the rare class:
+class**, especially the rare class. The model assigns a predicted label to each
+text input; each metric scores one class at a time against the ground-truth
+labels and returns a number in [0, 1]:
 
 $$P^{(c)} = \frac{TP^{(c)}}{TP^{(c)} + FP^{(c)}}, \qquad R^{(c)} = \frac{TP^{(c)}}{TP^{(c)} + FN^{(c)}}$$
 
 $$F_1^{(c)} = \frac{2 \cdot P^{(c)} \cdot R^{(c)}}{P^{(c)} + R^{(c)}}$$
 
-Across $C$ classes, macro-averaged F1 weights every class equally regardless of
-frequency, which is exactly right for the minority class that accuracy ignores:
+Across $C$ classes, **macro-averaged F1** is the unweighted mean of the
+per-class F1 scores; it gives every class equal influence on the final number
+regardless of class frequency, which is exactly right for the minority class
+that accuracy ignores, and returns a number in [0, 1]:
 
 $$F_1^{\text{macro}} = \frac{1}{C}\sum_{c=1}^{C} F_1^{(c)}$$
 
@@ -37,33 +41,57 @@ labeling noise, class overlap, or a feature gap.
 Different NLP tasks call for different metrics. Using the wrong one is a classic
 interview mistake.
 
-**NER and extraction:** span-level F1, not token-level accuracy. A span is correct
-only if both the boundary and the entity type are correct (strict match). Partial-
-match F1 (boundary correct, type wrong) is reported separately to diagnose
-taxonomy confusion vs boundary errors. Token accuracy on a BIO-tagged sequence
-can look high simply because O tags dominate.
+**NER and extraction:** span-level F1, not token-level accuracy. The model
+produces a set of (start, end, entity-type) spans from text; the metric scores
+that set against the gold span set $S^*$ and returns a number in [0, 1]. Let
+$\hat{S}$ be the predicted spans:
+
+$$P_{\text{span}} = \frac{|\hat{S} \cap S^*|}{|\hat{S}|}, \quad R_{\text{span}} = \frac{|\hat{S} \cap S^*|}{|S^*|}, \quad F_1^{\text{span}} = \frac{2\,P_{\text{span}}\,R_{\text{span}}}{P_{\text{span}} + R_{\text{span}}}$$
+
+A predicted span counts as a true positive only if both its boundary and its
+entity type match a gold span exactly (strict match). Partial-match F1 (boundary
+correct, type wrong) is reported separately to diagnose taxonomy confusion vs
+boundary errors. Token accuracy on a BIO-tagged sequence can look high simply
+because O tags dominate.
 
 **Translation:** BLEU or COMET for automatic tracking, plus human adequacy and
-fluency ratings. BLEU is the brevity penalty times the geometric mean of clipped
+fluency ratings. **BLEU** measures n-gram overlap between a model-produced token
+sequence (the hypothesis) and one or more reference translations, outputting a
+number in [0, 1]. It is the brevity penalty times the geometric mean of clipped
 n-gram precisions:
 
 $$\text{BLEU} = \text{BP} \cdot \left(\prod_{n=1}^{N} p_n\right)^{1/N}$$
 
-where $\text{BP}$ penalizes translations shorter than the reference and $p_n$ is
-the fraction of hypothesis n-grams that appear in the reference (clipped to the
-reference count). BLEU is fast and cheap to compute, but it misses meaning: a
-correct paraphrase with different word choice scores poorly. COMET (a learned metric trained on human
-judgments) correlates better with human quality ratings. The release gate for
-production translation systems is human ratings, not BLEU alone. Google GNMT used
-a 0-6 human rater scale as the final quality bar.
+where $\text{BP} = \min(1,\, e^{1 - r/c})$ penalizes hypotheses shorter than
+the reference ($c$ is hypothesis length in words, $r$ is reference length) and
+$p_n$ is the fraction of hypothesis n-grams that appear in the reference, clipped
+to the reference count. BLEU is fast and cheap to compute, but it misses meaning:
+a correct paraphrase with different word choice scores poorly. **COMET** measures
+translation quality using a cross-lingual neural model (typically an XLM-R
+backbone) fine-tuned on human adequacy and fluency ratings; it takes the source
+sentence, the model hypothesis, and a reference as input and returns a scalar
+score (higher is better; near-perfect translations score close to 1.0 on
+normalized variants). COMET correlates better with human quality ratings than
+BLEU does. The release gate for production translation systems is human ratings,
+not BLEU alone. Google GNMT used a 0-6 human rater scale as the final quality bar.
 
-**Grammatical error correction:** $F_{0.5}$ rather than $F_1$. False corrections
-(editing good text) annoy users more than misses (leaving an error in), so
-precision counts four times as much as recall in the harmonic mean. Grammarly's GECToR
-reports $F_{0.5}$ on CoNLL-2014 and BEA-2019 benchmarks for this reason.
+**Grammatical error correction:** $F_{0.5}$ rather than $F_1$. The model
+proposes edits to a sentence; the metric scores those edits against a gold
+correction set and returns a number in [0, 1]. False corrections (editing good
+text) annoy users more than misses (leaving an error in), so precision counts
+four times as much as recall:
 
-**Entity resolution:** pairwise precision and recall on matched pairs, measured
-against a held-out set of known-synonym or known-distinct pairs.
+$$F_{0.5} = \frac{(1 + 0.5^2)\,P \cdot R}{0.5^2 \cdot P + R} = \frac{1.25\,P \cdot R}{0.25\,P + R}$$
+
+Grammarly's GECToR reports $F_{0.5}$ on CoNLL-2014 and BEA-2019 benchmarks for
+this reason.
+
+**Entity resolution:** pairwise precision and recall. The model produces a set
+$\hat{E}$ of predicted synonym pairs; the metric scores it against a gold set
+$E^*$ of known-synonym pairs on a held-out test split, returning numbers in
+[0, 1]:
+
+$$P_{\text{pair}} = \frac{|\hat{E} \cap E^*|}{|\hat{E}|}, \qquad R_{\text{pair}} = \frac{|\hat{E} \cap E^*|}{|E^*|}$$
 
 ## Calibration: turning a score into a probability
 

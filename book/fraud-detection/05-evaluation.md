@@ -3,8 +3,13 @@
 ## Why PR-AUC beats ROC-AUC under extreme imbalance
 
 ROC-AUC is the standard metric for binary classifiers, but it is silently
-misleading when positives are rare. The reason is structural: ROC-AUC is driven
-by the true-positive rate and the false-positive rate. At a 0.2 percent base
+misleading when positives are rare. It measures the probability that the model
+assigns a higher fraud score to a randomly drawn positive (fraud) than to a
+randomly drawn negative (legitimate): $\text{ROC-AUC} = P(\hat{s}^+ \gt \hat{s}^-)$,
+computed as the area under the curve of true-positive rate
+$\text{TPR} = \text{TP}/(\text{TP}+\text{FN})$ against false-positive rate
+$\text{FPR} = \text{FP}/(\text{FP}+\text{TN})$, sweeping over all score thresholds.
+The reason it is misleading here is structural: at a 0.2 percent base
 rate, there are roughly 500 negative examples for every positive. Even a model
 with very poor precision can achieve a high true-positive rate without moving
 the false-positive rate much, because the vast true-negative mass absorbs false
@@ -31,18 +36,30 @@ and honest. Illustrative with synthetic distributions.*
 
 ## PR-AUC formula (average precision)
 
+**Input / output.** The model takes transaction features and outputs a fraud
+score $\hat{s} \in [0,1]$ per transaction; the metric sweeps every score
+threshold, building the precision-recall curve, and summarizes the full curve
+as a single scalar in $(0, 1]$.
+
 $$\text{AP} = \sum_{k}(R_k - R_{k-1}) \cdot P_k$$
 
-where $P_k = \text{TP}_k / (\text{TP}_k + \text{FP}_k)$ is the precision and
-$R_k = \text{TP}_k / (\text{TP}_k + \text{FN}_k)$ is the recall at threshold $k$.
+where $P_k = \text{TP}_k / (\text{TP}_k + \text{FP}_k)$ is the precision
+(fraction of flagged transactions that are genuine fraud) and
+$R_k = \text{TP}_k / (\text{TP}_k + \text{FN}_k)$ is the recall
+(fraction of all genuine fraud flagged) at threshold $k$.
 Average precision is the recall-weighted mean of precision values, summarizing
 the entire curve into one number. It is the primary offline metric for fraud
 scoring.
 
 ## Precision at fixed recall
 
-For a given operating constraint, report precision at a fixed recall target.
-For example: "what is the precision when recall equals 0.80?" This is the
+For a given operating constraint, report precision at a fixed recall floor
+$R_{\min}$. Find the score threshold $\tau^{\star}$ that maximizes precision
+while keeping recall at or above the floor, then read off the precision there:
+
+$$P_{\text{at}\ R_{\min}} = P(\tau^{\star}), \quad \tau^{\star} = \arg\max_\tau\, P(\tau) \quad \text{s.t.}\ R(\tau) \geq R_{\min}$$
+
+The typical question is "what is the precision when recall equals 0.80?" This is the
 right question for a cost-sensitive system where the business has decided it
 must catch at least 80 percent of fraud and wants to know how many legitimate
 transactions that requires blocking. PR-AUC summarizes the full curve, but
@@ -82,9 +99,11 @@ Offline PR-AUC and cost-at-threshold are the pre-ship gates. The real ship
 decision is made on live metrics measured against settled labels:
 
 - **Blocked fraud dollars.** The dollar value of fraud stopped. The goal.
-- **False-positive rate on settled labels.** Of the transactions blocked or
-  routed to review, what fraction turned out to be legitimate (measured once
-  chargebacks settle). The constraint.
+- **False-positive rate on settled labels.** Of the transactions the system
+  blocked or routed to review, what fraction turned out to be legitimate once
+  chargebacks settle. This is the false discovery rate on the actioned set:
+  $\text{FDR} = \text{FP}/(\text{TP}+\text{FP}) = 1 - \text{precision}$,
+  measuring the cost the system imposes on legitimate users. The constraint.
 - **Review queue precision and throughput.** Of cases sent to analysts, what
   fraction are confirmed fraud? If it falls, the model is sending too many
   easy legitimates to the queue.

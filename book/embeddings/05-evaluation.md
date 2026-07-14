@@ -7,8 +7,10 @@ different failure mode.
 
 ## Offline metric: recall@k against held-out future positives
 
-Of the items a user will engage with in the future (held out), what fraction
-appear in the top $k$ retrieved from the embedding index?
+**Input / output.** The model embeds a user query (or user vector) and issues
+a nearest-neighbor lookup against the item index; Recall@k counts what fraction
+of the user's held-out future positives appear among the $k$ returned items,
+averaged over users, and outputs a scalar in $[0, 1]$.
 
 $$\text{Recall@k} = \frac{1}{|U|}\sum_{u \in U} \frac{|\text{retrieved}_k(u) \cap \text{relevant}(u)|}{|\text{relevant}(u)|}$$
 
@@ -26,14 +28,19 @@ for the long tail; average recall hides that. Report both.
 Two properties define a well-formed embedding space, and a space can look fine on
 cosine probes while quietly failing on one of them.
 
-**Alignment** measures how close positive pairs are in the embedding space. Lower
-is better:
+**Alignment** measures how close positive pairs are in the embedding space.
+Input: a set of positive pairs $(x, x^+)$ drawn from the training signal (for
+example, user-item co-engagements); the metric computes expected squared L2
+distance between each pair's embeddings. Output: a non-negative scalar; lower
+is better, meaning positive pairs sit near each other:
 
 $$\ell_{\text{align}} = \mathbb{E}_{(x,\, x^{+})} \bigl\lVert f(x) - f(x^{+}) \bigr\rVert^{2}$$
 
 **Uniformity** measures how spread the embeddings are across the unit
-hypersphere. More spread (lower value of the log term) means the space uses its
-capacity rather than collapsing:
+hypersphere. Input: uniformly random pairs $(x, y)$ from the corpus; the metric
+computes the log of their average Gaussian-kernel similarity. Output: a negative
+scalar; more negative is better (the space is well spread and uses its full
+capacity rather than collapsing to a tight cluster):
 
 $$\ell_{\text{unif}} = \log \, \mathbb{E}_{x,\, y} \; e^{-2 \lVert f(x) - f(y) \rVert^{2}}$$
 
@@ -57,12 +64,21 @@ downstream task trained on top of it:
 
 - **Retrieval Recall@k** after loading vectors into a real ANN index (end-to-end,
   not just cosine on a probe set).
-- **Ranking NDCG or MRR** when the embedding is used as a feature in a ranking
-  model trained separately.
+- **Ranking NDCG@k or MRR** when the embedding is used as a feature in a ranking
+  model trained separately. NDCG@k rewards placing relevant items higher:
+  $\text{NDCG@k} = \frac{1}{Z}\sum_{i=1}^{k}\frac{2^{rel_i}-1}{\log_2(i+1)}$
+  where $Z = \text{IDCG@k}$ is the ideal DCG and higher is better. MRR averages
+  the reciprocal rank of the first relevant result:
+  $\text{MRR} = \frac{1}{|Q|}\sum_q \frac{1}{\text{rank}_q}$, with
+  $1/\text{rank}_q = 0$ when no relevant result is returned; higher is better.
 - **Classification accuracy** on a held-out probe set if you have any labeled
   categories (item category, user segment).
 - **Fraud PR-AUC** for systems like Wayfair's Melange, where the whole point is to
-  improve a downstream fraud detector with scarce labels.
+  improve a downstream fraud detector with scarce labels. PR-AUC (average
+  precision) is the area under the precision-recall curve:
+  $\text{AP} = \sum_{k}(R_k - R_{k-1})\cdot P_k$; it is preferred over ROC-AUC
+  when fraud events are rare because it focuses entirely on the positive class
+  and is not inflated by the large negative mass.
 
 The probe set should not overlap training. If it does, you are measuring
 memorization, not generalization.

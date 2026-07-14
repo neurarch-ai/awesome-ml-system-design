@@ -8,19 +8,23 @@ the wrong metric is a quick way to optimize the wrong thing.
 The standard offline metric is **NDCG** (normalized discounted cumulative gain).
 It rewards putting the most relevant document closest to the top, accounts for
 graded relevance labels, and normalizes the score to lie in $[0, 1]$ by dividing
-by the ideal ordering:
+by the ideal ordering.
 
-$$\text{DCG}@K = \sum_{i=1}^{K} \frac{2^{rel_i} - 1}{\log_2(i+1)}, \qquad \text{NDCG}@K = \frac{\text{DCG}@K}{\text{IDCG}@K}$$
+- **Input / output.** The metric takes a ranked list of K documents, each assigned
+  a graded relevance label $rel_i \ge 0$ (e.g., 3 = perfect, 2 = good, 1 = fair,
+  0 = bad), and returns a scalar in $[0, 1]$; 1.0 means the returned order is the
+  ideal ordering.
+- **How it is computed.**
 
-where $rel_i$ is the graded relevance of the document at position $i$ (e.g., 3 for
-perfect, 2 for good, 1 for fair, 0 for bad), and $\text{IDCG}@K$ is the DCG of
-the ideal re-ordering of those same documents.
+$$\text{DCG}@K = \sum_{i=1}^{K} \frac{rel_i}{\log_2(i+1)}, \qquad \text{NDCG}@K = \frac{\text{DCG}@K}{\text{IDCG}@K}$$
+
+where $\text{IDCG}@K$ is the DCG of the ideal re-ordering of those same documents.
 
 Why NDCG and not accuracy or precision? Because the metric must be (1) graded
 (match the four-point relevance scale) and (2) position-weighted (reflect that
 positions 1 and 2 are worth far more than positions 9 and 10). Accuracy and
-precision are binary. Precision@k treats all positions equally. NDCG is the one
-metric that is both.
+precision are binary. Precision@k (= relevant items in top k divided by k)
+treats all positions equally. NDCG is the one metric that is both.
 
 The choice of $k$ matters. NDCG@10 evaluates the ten results the user sees.
 NDCG@100 evaluates a much deeper list. Tune and report at the $k$ that matches
@@ -37,10 +41,15 @@ clearly irrelevant ones. Evaluate at the $k$ you actually render. Illustrative.*
 
 **MRR** (mean reciprocal rank) is a simpler companion metric for navigational
 queries, where the user wants exactly one right answer (a product page, a
-documentation URL) and cares only about how far down it appears:
+documentation URL) and cares only about how far down it appears.
+
+- **Input / output.** Takes a set of queries $Q$ and, for each query, the rank
+  position of the first relevant result; returns a scalar in $(0, 1]$.
+- **How it is computed.**
 
 $$\text{MRR} = \frac{1}{|Q|} \sum_{q \in Q} \frac{1}{\text{rank}_q}$$
 
+where $\text{rank}_q$ is the position of the first relevant result for query $q$.
 MRR weights the first relevant result; NDCG weights all of them. Use both for a
 diverse query mix: NDCG for graded informational queries, MRR as a sanity check on
 navigational ones.

@@ -7,13 +7,19 @@ precision-recall based, measured per policy, and tied to actual cost.
 
 ## Primary offline metric: recall at a fixed precision floor
 
-For each policy class, fix the precision floor $P_{\min}^{(k)}$ and report the recall
-your model achieves at that floor, evaluated on a held-out test set with a time-based
+**What it measures.** The classifier takes content (text, image, or video) and
+outputs a harm score. Precision $P(\tau) = \text{TP}/(\text{TP}+\text{FP})$ is
+the fraction of flagged items that are genuinely harmful; recall
+$R(\tau) = \text{TP}/(\text{TP}+\text{FN})$ is the fraction of all genuinely
+harmful items that were flagged. For each policy class, fix a precision floor
+$P_{\min}^{(k)}$ and find the highest recall the model achieves while keeping
+precision at or above that floor. The metric output is a scalar recall in
+$[0, 1]$, evaluated on a held-out test set with a time-based
 split (hold out future content, not random content). A time-based split is mandatory:
 a random split leaks future content into training and flatters recall by 5 to 15
 percent on typical moderation tasks.
 
-$$\text{Recall at } P_{\min} = \text{Recall}(\tau^{\star}) \quad \text{where} \quad \tau^{\star} = \arg\max_{\tau}\ \text{Recall}(\tau) \quad \text{s.t.}\ \text{Precision}(\tau) \geq P_{\min}^{(k)}$$
+$$R_{\text{at}\ P_{\min}} = R(\tau^{\star}) \quad \text{where} \quad \tau^{\star} = \arg\max_{\tau}\, R(\tau) \quad \text{s.t.}\ P(\tau) \geq P_{\min}^{(k)}$$
 
 Report this per policy, per modality, and per language. A global recall number hides
 the gaps where the model is weakest. Roblox explicitly tracks per-policy and
@@ -21,7 +27,11 @@ per-language recall because uneven multilingual quality hides behind aggregate m
 
 ## Prevalence and the audit sample
 
-Harm prevalence is not constant. Adversarial campaigns, news cycles, and platform
+Prevalence is the fraction of all content that is genuinely harmful:
+$\text{prevalence} = (\text{TP}+\text{FN})/N$ where $N$ is total content
+volume. When prevalence is 0.1 percent, a classifier that flags nothing achieves
+99.9 percent accuracy; precision-recall metrics are used precisely because they
+are not inflated by the large negative mass. Harm prevalence is not constant. Adversarial campaigns, news cycles, and platform
 growth all shift the base rate. Track the flag rate per policy over time on a random
 audit sample.
 
@@ -38,8 +48,12 @@ indicate a coordinated campaign or a model regression.
 
 ## False-block rate and the appeals proxy
 
-The false-positive rate on skewed data is not meaningful in isolation. What matters
-is the **false-block rate on real users**, which you estimate from two sources:
+The standard $\text{FPR} = \text{FP}/(\text{FP}+\text{TN})$ is not actionable
+in isolation on skewed data. The more useful number is the **false-block rate**:
+the fraction of removed content that was benign,
+$\text{FBR} = \text{FP}/(\text{TP}+\text{FP}) = 1 - \text{precision}$ on the
+removed set. It directly measures how often the system harms legitimate users.
+You estimate it from two sources:
 
 1. **Appeal-overturn rate.** Of content removed by the automated system that a user
    appealed, what fraction was restored by a reviewer? A restored item is a confirmed

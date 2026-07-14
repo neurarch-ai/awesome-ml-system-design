@@ -10,6 +10,9 @@ evaluation mistake for this problem. State both lenses early.
 Area Under the ROC Curve measures the probability that the model scores a random
 positive above a random negative. It is an aggregate rank-order metric.
 
+- **Input / output.** Takes model scores paired with binary click labels; returns
+  a scalar in $[0, 1]$: 0.5 is random, 1.0 is perfect rank-order separation.
+
 $$\text{AUC} = P(\hat{p}_{\text{click}} \gt \hat{p}_{\text{no-click}})$$
 
 **What AUC captures:** whether the model orders ads correctly. A higher AUC
@@ -24,6 +27,9 @@ This is the gap that makes AUC alone insufficient for ads.
 
 Log loss (cross-entropy) rewards the model for predicting the correct
 *probability*, not just the correct order.
+
+- **Input / output.** Takes predicted probabilities $\hat{p}_i$ and binary click
+  labels $y_i \in \{0, 1\}$; returns a positive scalar where lower is better.
 
 $$\mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \big[ y_i \log \hat{p}_i + (1 - y_i) \log(1 - \hat{p}_i) \big]$$
 
@@ -43,18 +49,23 @@ well-calibrated model. Illustrative.*
 
 Calibration measures whether predicted probabilities match observed rates.
 
-**Reliability curve (calibration plot).** Bin predictions by their confidence
-level, and in each bin plot the observed click rate vs the predicted rate. A
-perfectly calibrated model lies on the diagonal.
+**Reliability curve (calibration plot).** Plot the mean predicted probability on
+the x-axis against the observed click rate on the y-axis, across equal-width bins
+of predicted probability. Input: predicted probabilities and binary click labels.
+Output: a 2-D curve; a perfectly calibrated model lies on the diagonal.
 
 **Expected Calibration Error (ECE).** Summarizes the reliability curve into a
-scalar:
+scalar.
+
+- **Input / output.** Takes predicted probabilities bucketed into $B$ bins,
+  paired with binary click labels; returns a positive scalar in $[0, 1]$ where 0
+  is perfect calibration.
+- **How it is computed.**
 
 $$\text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} \big|\text{acc}(b) - \text{conf}(b)\big|$$
 
-where $B$ bins partition the predicted probability range, $n_b$ is the count in
-bin $b$, $\text{acc}(b)$ is the observed click rate in the bin, and
-$\text{conf}(b)$ is the mean predicted probability in the bin.
+where $n_b$ is the count in bin $b$, $\text{acc}(b)$ is the observed click rate,
+and $\text{conf}(b)$ is the mean predicted probability.
 
 ![Calibration reliability curve](assets/fig-calibration-reliability.png)
 
