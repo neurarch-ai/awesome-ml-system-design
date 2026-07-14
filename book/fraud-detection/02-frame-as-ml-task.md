@@ -48,6 +48,25 @@ flowchart TD
 | Both in parallel | you need high precision on known fraud AND want a safety net for novel attacks | either alone, which leaves one gap uncovered |
 | Graph anomaly (GraphBEAN, RGCN) | fraud is coordinated across accounts sharing devices, cards, or addresses | per-transaction models that treat each event in isolation |
 
+**Tools.** The supervised classifier is XGBoost or LightGBM (Microsoft) for tabular
+features, or a PyTorch / TensorFlow DNN when sparse embeddings help. Anomaly
+detection uses scikit-learn's Isolation Forest or a PyTorch autoencoder scored by
+reconstruction error, with imbalanced-learn on hand if any labeled resampling is
+needed. Graph anomaly methods (RGCN, GraphBEAN) are built on PyG (PyTorch Geometric)
+or DGL. Running both paths in parallel is an orchestration choice in the serving
+code, not a separate library.
+
+**Worked example.** A payments company has years of analyst-labeled fraud, so it
+leans on a supervised classifier (XGBoost) for high precision on known attack
+patterns and fast scoring. Because that model is blind to attacks it has never seen
+labeled, it runs an Isolation Forest anomaly detector in parallel as a first-pass
+layer feeding the human review queue, accepting the higher false-positive rate as the
+price of novelty coverage. When fraud turns out to be coordinated across accounts
+sharing devices and cards, it adds a graph anomaly model (GraphBEAN) that
+per-transaction models would miss entirely. Analyst verdicts on the review queue
+become the labels that train the next supervised model, so the two paths reinforce
+each other rather than competing.
+
 ## The input feature vector
 
 The model consumes a feature vector assembled at decision time from several

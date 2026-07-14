@@ -121,3 +121,23 @@ decision is made on live metrics measured against settled labels:
 | ROC-AUC | only as a secondary sanity check alongside PR-AUC | as the primary metric; it flatters models on rare positives |
 | Online blocked-fraud-dollars vs FP-rate | the final ship decision against settled labels | offline metrics alone, which do not reflect the live cost structure |
 | Time-based val split | always | random split, which leaks future label information |
+
+**Tools.** scikit-learn covers most of the offline metrics: average_precision_score
+for PR-AUC, precision_recall_curve to read precision at a fixed recall floor, and
+roc_auc_score for the secondary ROC sanity check. Cost at a threshold is a short
+sweep over the precision_recall_curve outputs weighted by the cost matrix (c_FP,
+c_FN). Time-based splitting is done with pandas or scikit-learn's TimeSeriesSplit,
+never a random shuffle. Online blocked-fraud-dollars and the settled-label
+false-positive rate come from the production logging and experimentation stack, joined
+to chargeback outcomes once the labels mature.
+
+**Worked example.** A payments company evaluates a fraud model at a base rate well
+under 5 percent, so it leads with PR-AUC (average precision) rather than ROC-AUC,
+which a near-random model can inflate through the huge true-negative mass. To justify
+the launch to stakeholders it reports precision at a fixed recall floor, answering how
+many good users get bothered to catch that share of fraud, then picks the shipping
+threshold by minimizing expected cost under the production c_FN to c_FP ratio rather
+than defaulting to 0.5. It never reports accuracy, which would reward always
+predicting legitimate. All offline numbers use a time-based split that respects the
+chargeback maturation window, and the real ship call is made online on blocked-fraud
+dollars against the settled-label false-positive rate.

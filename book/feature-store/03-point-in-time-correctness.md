@@ -88,3 +88,22 @@ where $n_c$ is the count of samples in category $c$, $\bar{y}_c$ is their mean
 label, $\bar{y}$ is the global mean, and $m$ is a smoothing constant. This is a
 data-preparation concern, not a feature-store concern, but it appears in the same
 conversation because both are forms of label leakage.
+
+**Tools.** As-of joins are exposed directly by Feast (`get_historical_features`) and
+Feathr (LinkedIn); the underlying bulk scan runs over a columnar offline store
+(BigQuery, Snowflake, or Parquet / Delta Lake) with Spark or the warehouse engine.
+Timestamped history is just keeping `(entity_id, event_time, value)` rows in that
+store rather than one row per entity. Log-and-replay writes each computed streaming
+feature value at compute time (to object storage or a Kafka topic) so it can be
+replayed rather than recomputed. Out-of-fold smoothed target encoding is a
+scikit-learn or category_encoders step in the training pipeline, not a store feature.
+
+**Worked example.** A marketplace builds a training set for a ranking model where
+clicks are labeled minutes after the event while item-popularity features update
+continuously. Joining on the latest value would leak future counts, so it uses an
+as-of join anchored on event time (Feast `get_historical_features`), which requires
+the offline store to keep full timestamped history instead of one row per entity. Its
+hourly-click aggregate is expensive to reconstruct exactly, so it logs each computed
+window value at compute time and replays it rather than recomputing from raw events.
+For a high-cardinality "item category CTR" feature it uses out-of-fold smoothed target
+encoding so the label does not leak through the encoding itself.

@@ -35,6 +35,23 @@ Illustrative.*
 | Bigtable | GCP shop; wide rows (many features per entity); p99 of 5-10ms acceptable | Redis for very large wide-row feature sets where memory cost dominates |
 | Pluggable (Feast) | team has mixed infrastructure or wants to swap backends as scale grows | committing to one backend early and re-architecting later |
 
+**Tools.** Redis serves in-memory sub-2ms batch key lookups; Cassandra (or
+ScyllaDB) is the disk-backed option for very large entity counts; DynamoDB on AWS
+and Bigtable on GCP are the managed key-value stores for teams avoiding cluster ops;
+Feast puts a pluggable API over any of them. The batch-get client (one round-trip
+for a user plus many item keys) is what each of these libraries is tuned for on the
+serving path.
+
+**Worked example.** A marketplace ranking service runs a 50ms request budget and
+allocates under 10ms to feature fetch. Its per-request working set (one user and a
+few hundred items) fits cluster memory, so Redis gives sub-2ms p99 and leaves the
+rest of the budget for model inference. When the catalog grows to hundreds of
+billions of entity-feature pairs that no longer fit memory, it moves the largest,
+latency-tolerant tables to Cassandra and accepts a higher P95 rather than paying for
+that much RAM. Running on AWS with a lean team, it puts a second feature group on
+DynamoDB to avoid operating a cluster, and keeps everything behind Feast so it can
+swap backends as scale grows instead of re-architecting later.
+
 ## Cost and size
 
 The cost of the online store has two primary drivers:

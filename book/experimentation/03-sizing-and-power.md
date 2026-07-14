@@ -93,6 +93,10 @@ experiment, then analyze the adjusted outcomes.
 | Increase traffic share | CUPED is not available and the metric variance is high | extending the experiment window indefinitely, which risks novelty effects |
 | Power at the joint level (beta star = beta / (G + 1) for G guardrails) | you require all G guardrail metrics to pass at power beta (Spotify pattern) | powering only the primary and then being surprised when guardrails are underpowered |
 
+**Tools.** The per-arm sample-size formula is packaged in statsmodels (statsmodels.stats.power, for example TTestIndPower.solve_power), so you solve for n, MDE, or power directly rather than coding the z-quantiles by hand. Baseline rate and per-user variance are estimated from historical logs with pandas or SQL, and duration is that n divided by daily exposed users, rounded up to a multiple of seven. CUPED is a short ordinary-least-squares residualization in statsmodels using the pre-period covariate; the joint-power correction for G guardrails is a hand-applied tightening of the target power fed back into the same solver.
+
+**Worked example.** A marketplace sizing a checkout experiment first declares the smallest lift worth shipping as its MDE, then solves for users per arm with statsmodels power given the historical variance, remembering that halving the MDE roughly quadruples the traffic and duration because n scales as one over MDE squared. A prior-week measurement of the same metric correlates around 0.7, so it applies CUPED to remove roughly half the variance, buying the same power with far fewer users instead of extending the window into novelty-effect territory. It communicates the target to stakeholders as a relative percent lift rather than an opaque absolute number, and because the launch also guards several metrics, it powers each at the tighter joint level rather than powering only the primary and being surprised when a guardrail comes back underpowered. Only when CUPED is unavailable and variance stays high does it raise traffic share rather than run indefinitely.
+
 ## The Spotify joint-power correction
 
 When you require G guardrail metrics to all pass alongside the primary, the

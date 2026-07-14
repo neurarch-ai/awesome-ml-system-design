@@ -180,3 +180,26 @@ most expensive: the chargeback amount plus network fees. Illustrative.*
 | Isolation Forest | first-pass anomaly detection for novel attacks with no labels | supervised only, which is blind to novel patterns it was never trained on |
 | GraphBEAN / autoencoder | bipartite or graph-structured data, novel fraud, no labels | supervised anomaly, which needs labels it does not have |
 | Ensemble (supervised + anomaly) | mature production system with both known and novel fraud | single model that covers only one threat mode |
+
+**Tools.** Gradient-boosted trees are XGBoost and LightGBM (Microsoft), with
+scikit-learn isotonic or Platt calibration on top and imbalanced-learn available for
+resampling when focal or class-weighted loss is not enough. Wide-and-Deep DNNs are
+built in PyTorch or TensorFlow with embedding tables for the sparse categoricals.
+RGCN and other GNNs use PyG (PyTorch Geometric) or DGL and run as batch jobs whose
+scores feed the online model. Graph-DB traversal uses a graph database such as
+JanusGraph, Neo4j, or Aerospike queried with Gremlin or Cypher at request time.
+Isolation Forest comes from scikit-learn; autoencoders and GraphBEAN-style bipartite
+models are built in PyTorch or PyG.
+
+**Worked example.** A payments company has hundreds of dense engineered features
+under regulatory audit, so gradient-boosted trees (LightGBM) are the workhorse
+baseline, calibrated post-training before the cost-optimal threshold is applied.
+High-cardinality device and merchant IDs would reward embeddings, but it only reaches
+for a Wide-and-Deep DNN once it has the scale to justify the extra memory and the
+recalibration the joint logit forces. Because it also sees ring fraud sharing devices
+and cards, it adds RGCN scores computed offline (PyG) as features rather than serving
+a GNN inline, and where it needs ring signal within the request budget it falls back
+to graph-DB traversal for a hops-to-fraud scalar. Isolation Forest and a GraphBEAN
+autoencoder cover novel unlabeled attacks, and the mature system ensembles the
+supervised and anomaly outputs so both known and novel fraud are covered rather than
+leaving one threat mode exposed.

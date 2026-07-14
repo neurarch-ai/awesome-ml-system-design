@@ -39,3 +39,21 @@ $$\text{Hits@k} = \frac{1}{|U|}\sum_{u \in U} \mathbf{1}\!\left[\text{a true fut
 The guardrail to state: an offline Hits@k gain must survive an online A/B on
 **acceptance rate** and coverage, because a model that only re-suggests popular hubs
 can win offline ranking while flooding people with unwanted invites.
+
+**Tools.** Hits@k, MRR, AUC, and AP over positive-versus-sampled-negative edges are
+computed with the ranking metrics in PyG (PyTorch Geometric), DGL, or TorchMetrics;
+scikit-learn's average_precision_score and roc_auc_score cover the edge-scoring case
+directly. Time-based splitting is a pandas or graph-library filter on edge timestamps
+(train on the graph as of T, evaluate on edges formed after). Online acceptance rate,
+coverage across the degree distribution, and downstream engagement come from the
+production experimentation stack joined to invitation outcomes.
+
+**Worked example.** A marketplace suggesting connections between members headlines
+Hits@k and MRR, since the product surfaces a short ranked list and AUC alone would not
+reflect that top-k shape. Because non-edges massively outnumber true future edges, it
+prefers AP over AUC offline, which would otherwise look high even for a weak model
+under that imbalance. Every offline number uses a time-based split (train on the graph
+as of T, evaluate on edges that formed after) so a random edge split cannot leak the
+future connection. The launch decision is made online on invitation acceptance rate
+and coverage, not invitations sent, because a model that only re-suggests popular hubs
+can win offline ranking while flooding people with unwanted invites.

@@ -53,3 +53,7 @@ Offline recall is necessary but not sufficient; a launch is decided online.
 The guardrail to state out loud: an offline recall gain must survive an online
 A/B against engagement **and** coverage before it ships, because retrieval that
 only resurfaces popular items can win recall and lose the product.
+
+**Tools.** End-to-end Recall@k is measured by loading the item vectors into a real ANN index (FAISS (Meta), ScaNN (Google), hnswlib, or Annoy (Spotify)) and querying at the k you actually forward, so the number reflects the approximate index rather than a brute-force ideal. TorchMetrics provides RetrievalRecall for the aggregation, and coverage or diversity is a short pandas groupby over the retrieved sets. The time-based split is a pandas or SQL cut on interaction timestamps, and the final online A/B leans on the platform's experiment stack.
+
+**Worked example.** A marketplace evaluating a new retrieval tower measures Recall@k at the few-hundred k it actually hands to ranking (not Recall@10), computed against a FAISS index so the metric includes approximate-search loss, and it does not headline precision because the retrieved set is mostly unjudged. It uses a time-based split, holding out future interactions, since a random split would leak the future and flatter the model. Before trusting the recall gain, it checks coverage and diversity, because a tower that just resurfaces popular items can lift recall while collapsing the catalog. The launch is gated on an online A/B that must clear on engagement and coverage together, not offline recall alone.

@@ -132,6 +132,10 @@ per-field extraction accuracy (all characters in the target field correct).
 | mIoU | semantic segmentation where per-class coverage matters | pixel accuracy, which is dominated by background |
 | Recall at k at the serving k | embedding retrieval quality | classification metrics, which do not measure ranked retrieval |
 
+**Tools.** scikit-learn computes precision, recall, F1, and precision-recall curves for the classification rows, and torchmetrics offers the same plus batched GPU implementations of mAP and mIoU. COCO-style mAP at IoU thresholds is standard through pycocotools, while segmentation mIoU and boundary IoU come from torchmetrics. Recall at k is measured against the same approximate-nearest-neighbor shortlist you serve, for example a FAISS (Meta) index.
+
+**Worked example.** A photo app picks a headline number per task instead of defaulting to accuracy. For its moderation gate, missing a violation is far costlier than an occasional false flag, so it reports per-class recall at a fixed precision floor (scikit-learn), which accuracy would hide on the rare harm class. For its long-tailed tagging taxonomy it macro-averages precision and recall so the head classes cannot mask a weak tail. When it adds a detector for small-region harms it switches to mAP at IoU (pycocotools), because accuracy does not measure localization. For a garment-cutout feature it reports mIoU rather than pixel accuracy that the background dominates, and for visual search it reports recall at the k it actually serves.
+
 ## Evaluation discipline
 
 Several practices separate a real evaluation from a flattering one:

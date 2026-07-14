@@ -122,6 +122,24 @@ are right.
 | Single shared DSL / unified API | multiple models, multiple teams, skew is already a problem | separate SQL and service code, which guarantees code skew at scale |
 | Pluggable backends (Feast) | no single technology mandate, different models need different stores | a fixed-backend platform, when the team cannot commit to one online store |
 
+**Tools.** Redis is the in-memory point-read online store; Cassandra (and ScyllaDB)
+are disk-backed wide-column stores for very large entity counts; DynamoDB on AWS and
+Bigtable on GCP are the managed cloud key-value options for teams that would rather
+not operate a cluster. The shared-definition layer is Feast (pluggable backends),
+Tecton, or Feathr (LinkedIn); the batch write path runs on Spark against a columnar
+offline store (BigQuery, Snowflake, Delta Lake), and the streaming write path on
+Kafka plus Flink.
+
+**Worked example.** A payments company scores fraud at checkout and needs a sub-2ms
+p99 lookup, and its active entity set (cards seen in a recent window) fits a memory
+budget, so it picks Redis over Cassandra for that online store. It runs on AWS with a
+small platform team and no appetite to operate a cluster, so for a second, larger,
+latency-tolerant feature set it uses DynamoDB rather than self-managed Cassandra.
+Because several models and teams now read the same features, it adopts one shared DSL
+(Feast) so the batch and streaming paths compile from a single definition and cannot
+drift, and Feast's pluggable backends let the Redis and DynamoDB stores coexist under
+one API rather than forcing a single-technology mandate.
+
 ## The feature registry
 
 The registry is the catalog layer above the stores. It records: feature name,

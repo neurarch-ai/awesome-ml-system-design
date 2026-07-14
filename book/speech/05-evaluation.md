@@ -163,3 +163,22 @@ high when each speaker's turns are captured in one dominant cluster.
 | False accepts per hour, FRR, EER | evaluating wake word on a DET curve | recall only, which ignores the temporal false-accept rate |
 | MOS from humans | evaluating TTS naturalness | spectrogram reconstruction loss, which correlates poorly with perceived quality |
 | DER plus purity and coverage | evaluating diarization | WER, which says nothing about speaker-turn accuracy |
+
+**Tools.** WER and CER are computed with jiwer (word and character edit-distance
+error rates); NeMo (NVIDIA) and ESPnet ship scoring scripts, and whisper (OpenAI)
+publishes the text normalizer that makes cross-system WER comparable. Streaming
+latency and RTF come from the toolkit's own inference timing. Wake word DET metrics
+(false accepts per hour, FRR, EER) are read off threshold sweeps built with
+scikit-learn's ROC and DET utilities over held-out ambient audio. Diarization DER,
+purity, and coverage come from pyannote.metrics or the md-eval and dscore scripts.
+TTS MOS needs a human-rating harness; PESQ (via the pesq package) and mel-cepstral
+distortion (pymcd) serve only as fast regression proxies.
+
+**Worked example.** A voice-assistant maker evaluates each task on its own gate. For
+dictation it leads with WER sliced by accent and noise plus endpoint latency and
+RTF, since a clean aggregate WER can still cut users off mid-sentence. Its wake word
+model is gated on false accepts per hour and EER on a DET curve, not recall, because
+the trigger listens continuously and a per-trial rate hides the real nuisance count.
+For multi-speaker meeting notes it reports DER with purity and coverage to separate
+missed speech from speaker confusion. Its spoken replies ship only on human MOS, with
+PESQ used as a cheap regression check between releases and never as the release gate.

@@ -46,6 +46,22 @@ window cutoffs. To support point-in-time training, the value $a_i(T)$ must be
 logged at the time it is computed and stored with a timestamp; recomputing it from
 raw events requires replaying the full event history with the correct decay.
 
+**Tools.** Daily and hourly batch tiers are warehouse or Spark jobs on a scheduler
+(Airflow or Dagster) that write timestamped rows to the offline store and
+materialize the latest value to the online store. The streaming near-real-time tier
+uses an event bus (Kafka or Kinesis) plus a stream processor (Flink, Samza, or Spark
+Streaming) to push fresh values within seconds. Request-time computation is plain
+code on the serving path with no store involved.
+
+**Worked example.** A marketplace assigns each feature to the least-strict tier it
+can tolerate. A user's 30-day purchase count barely moves within a day, so it lives
+on a daily batch job and costs almost nothing. A "trending over the last few hours"
+rank would degrade with 24-hour staleness, so it moves up to an hourly batch. The
+current-session click count would change meaningfully with even a minute of lag, so
+it runs on a streaming pipeline (Kafka plus Flink). Device and time-of-day depend on
+the request itself and cannot be precomputed for every context, so they are computed
+request-time on the serving path.
+
 ## Freshness SLA monitoring
 
 Each feature should have a declared freshness SLA, and the platform should monitor
@@ -92,3 +108,22 @@ The recomputation path is error-prone; the log-replay path is not.
 | Log-replay (train on serve-time logs) | the platform logs exact feature values at serving time; this is the most reliable training source | recomputing features offline and hoping they match serve-time values |
 | Incremental backfill | the new feature is a minor variant of an existing one; only a recent window is needed | full recompute, which is expensive when history is years deep |
 | Validate with parity after any backfill | always | skipping validation, which is how backfill skew goes undetected until online degradation |
+
+**Tools.** A full historical recompute runs the feature definition over all past raw
+data with Spark or the warehouse engine and writes timestamped rows to the offline
+store. Log-replay reads serve-time feature logs (persisted to object storage or a
+Kafka topic) and rebuilds training data from exactly what the model saw. An
+incremental backfill reuses stored snapshots and only recomputes a recent window. The
+parity check is a Spark or SQL diff between backfilled values and the retained
+serve-time logs.
+
+**Worked example.** A bank introduces a feature that was never in production and has
+no serve-time logs for it, so it has no choice but a full historical recompute,
+applying the definition with proper event timestamps so the backfilled rows match
+what the live pipeline would have written. For an existing feature that already logs
+exact values at serving time, it prefers log-replay and trains directly on those logs
+rather than recomputing offline and hoping the numbers match. When a later change is
+only a minor variant over a recent window, an incremental backfill is cheaper than
+recomputing years of history. Whichever path it takes, it validates with the parity
+metric afterward, since that is how backfill skew is caught before it surfaces as
+online degradation.

@@ -104,6 +104,10 @@ or an A/B against engagement and reformulation rate, not on offline NDCG alone."
 | A/B on engagement + reformulation | the final ship decision | offline NDCG as the ship gate; it can lie |
 | Time-based split | any offline ranking eval | random split, which leaks the future |
 
+**Tools.** NDCG at k and MRR come from scikit-learn (ndcg_score) or the TREC-style evaluators trec_eval and pytrec_eval. Interleaving and A/B tests run through an in-house experiment platform rather than a single library, with significance testing via scipy.stats or statsmodels. The time-based split is a data-partition discipline: hold out future interactions rather than sampling at random.
+
+**Worked example.** A search product decides what to gate a launch on. For its graded informational queries it reports NDCG at the k it renders (pytrec_eval), since precision at k treats all positions equally where NDCG is both graded and position-weighted. For navigational queries with a single right answer it adds MRR as a sanity check on how far down that answer lands. To compare two rankers online it first runs an interleaving experiment, which needs less traffic than a full A/B split for the same statistical power, but the ship decision stays an A/B test on engagement and query-reformulation rate, because offline NDCG can lie. Throughout, it evaluates on a time-based split so held-out future clicks never leak into the behavioral features.
+
 The guardrail to state out loud: an offline NDCG gain must survive an online
 interleaving or A/B test against engagement and reformulation rate before it ships.
 NDCG is computed against labels that are themselves biased clicks plus a thin

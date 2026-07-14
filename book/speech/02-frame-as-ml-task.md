@@ -59,3 +59,22 @@ latency envelope, and the metric that gates release.
 Proposing one model for all of them is the classic red flag. Each has a different
 causality requirement, a different latency budget, and a different metric that
 determines whether it ships.
+
+**Tools.** Streaming ASR (RNN-T / CTC) is covered by NeMo (NVIDIA) and WeNet, which
+ship streaming Conformer-RNN-T and CTC models; Kaldi is the classic toolkit. Batch
+ASR (Conformer seq2seq) is served by whisper (OpenAI) and by Conformer recipes in
+ESPnet and SpeechBrain. torchaudio supplies the shared log-mel frontend for all of
+them. Wake word detectors use openWakeWord or Porcupine, tens-of-kilobyte always-on
+models. Speaker diarization uses pyannote.audio; speaker verification and ID use
+embedding models from SpeechBrain or NeMo (NVIDIA) scored by cosine. TTS uses Coqui
+TTS or ESPnet-TTS paired with a neural vocoder.
+
+**Worked example.** A voice-assistant maker building a smart speaker refuses one
+model for everything. The device needs an always-on trigger under a battery budget,
+so a tiny wake word detector (openWakeWord) runs on the low-power core and is gated
+by false accepts per hour, not WER. Once triggered, live commands need partials
+under 300 ms, so streaming ASR (RNN-T via NeMo) is chosen over a batch Conformer
+seq2seq, trading a little accuracy for endpoint latency. Voicemail transcription,
+where accuracy beats latency, routes instead to a batch model (whisper) scored on
+WER sliced by accent. Multi-speaker meeting notes go to diarization (pyannote.audio)
+on DER, and spoken replies go to TTS (Coqui TTS) gated on MOS.

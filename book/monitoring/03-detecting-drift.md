@@ -72,6 +72,10 @@ the categories as bins, but chi-square gives a proper statistical test.
 | Chi-square test | categorical features (counts per category) | KS, which requires a continuous CDF; one-size tests misfire on categorical data |
 | MMD (Maximum Mean Discrepancy) | multivariate joint shift that per-feature tests miss; rare in practice | per-feature tests, when you can afford the computational cost of MMD |
 
+**Tools.** Evidently runs PSI, KS, and chi-square drift tests out of the box, and whylogs logs the feature profiles those statistics run over. Alibi Detect provides KS, chi-square, and MMD detectors, and scipy.stats gives KS and chi-square directly. PSI and KL are a short computation over binned histograms once the reference and current profiles exist.
+
+**Worked example.** A marketplace monitors its ranking features against a healthy baseline. For an ordinal price feature it uses PSI with the field-rule thresholds (Evidently) because it wants a symmetric, window-agnostic check that does not depend on which window it calls the reference. When it specifically needs a directional read, how much harder current data is to encode under the training reference, it switches to KL. For a continuous feature where it would rather have a p-value than a fixed threshold it runs the KS test (scipy), and for a categorical placement feature it uses chi-square instead, since KS needs a continuous CDF. It reserves MMD (Alibi Detect) for the rare case where a joint multivariate shift slips past every per-feature test.
+
 ## What drift detection does not tell you
 
 PSI and KS answer "did the distribution move?" They do not answer "does it
