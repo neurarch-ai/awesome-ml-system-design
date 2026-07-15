@@ -46,5 +46,6 @@ Parakeet) can attend over the full audio and spend more compute.
 - **Meta** [SeamlessM4T: a foundational multimodal model for speech translation](https://ai.meta.com/blog/seamless-m4t/): Unified model for ASR, speech translation, and text translation across approximately 100 languages. *(who it serves)*
 
 - **NVIDIA** [NeMo Parakeet ASR Models](https://developer.nvidia.com/blog/pushing-the-boundaries-of-speech-recognition-with-nemo-parakeet-asr-models/): GPU-optimized Conformer ASR family for high-throughput, low-WER production transcription. Optimized for transcription-farm economics, not just WER. *(deployment)*
+- **NVIDIA** [Canary](https://developer.nvidia.com/blog/new-standard-for-speech-recognition-and-translation-from-the-nvidia-nemo-canary-model/): NeMo Canary, a multilingual model doing both ASR and speech-to-text translation in one encoder-decoder, which has topped the Hugging Face Open ASR leaderboard. The complement to the RNN-T Parakeet line: Canary for multilingual accuracy and translation, Parakeet for raw transcription throughput. *(deployment)*
 
 - **PyTorch** [Forced Alignment with Wav2Vec2](https://docs.pytorch.org/audio/stable/tutorials/forced_alignment_tutorial.html): CTC trellis backtracking to align a known transcript to audio timestamps. Used for caption timing, TTS data preparation, and karaoke-style highlighting. *(deployment)*
