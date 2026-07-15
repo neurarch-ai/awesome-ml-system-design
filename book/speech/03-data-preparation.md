@@ -34,7 +34,7 @@ The silence gap is faint. Illustrative.*
 
 ## Labeling: transcribed audio is expensive
 
-Manually transcribed audio costs roughly $10 to $30 per hour of audio depending on
+Manually transcribed audio costs roughly \$10 to \$30 per hour of audio depending on
 quality tier, and hundreds of hours are needed per language for a decent baseline.
 Two strategies dominate when labeled data is scarce.
 

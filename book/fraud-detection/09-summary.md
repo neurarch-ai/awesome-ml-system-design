@@ -63,7 +63,7 @@ flowchart TD
    it? What metric would you look at first, and why?
 
 2. Walk through the cost-optimal threshold formula. If blocking a good user
-   costs $10 and a missed fraud costs $200, what threshold would you set on a
+   costs \$10 and a missed fraud costs \$200, what threshold would you set on a
    calibrated model? What changes if the model is uncalibrated?
 
 3. Your training pipeline includes transactions from the last 90 days with their
