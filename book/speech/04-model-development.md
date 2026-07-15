@@ -183,6 +183,10 @@ alignment, and the mismatch between how much future audio the model saw in
 training versus how much it gets at serving. A model trained full-context and
 served causally can look perfect offline and fall apart live.
 
+![Reading training curves: four diagnostics](assets/fig-training-diagnostics.png)
+
+*Four shapes a training run takes: healthy convergence (train and val fall together), overfitting (val turns up, early-stop there), learning rate too high (loss oscillates or diverges), and underfitting (loss stays high and flat). Illustrative.*
+
 | Problem | Symptom | Fix |
 |---|---|---|
 | Streaming vs full-context mismatch | trained with the whole utterance but served frame-by-frame, or evaluated full-context and deployed streaming | train with the same lookahead and chunked/causal masking the serving path uses |

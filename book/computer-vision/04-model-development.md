@@ -153,6 +153,10 @@ A CV model rarely fails on the backbone choice. It fails on the preprocessing th
 differs between train and serve, on the imbalance between objects and background,
 and on augmentations that quietly corrupt the label.
 
+![Reading training curves: four diagnostics](assets/fig-training-diagnostics.png)
+
+*Four shapes a training run takes: healthy convergence (train and val fall together), overfitting (val turns up, early-stop there), learning rate too high (loss oscillates or diverges), and underfitting (loss stays high and flat). Illustrative.*
+
 | Problem | Symptom | Fix |
 |---|---|---|
 | Foreground/background imbalance in detection | the model predicts mostly background, with low recall on small objects | use focal loss or hard-negative mining, and balance the sampling of positive anchors |
