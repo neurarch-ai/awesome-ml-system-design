@@ -61,9 +61,9 @@ Regret is the gap between the cumulative reward the policy earned and the
 cumulative reward an oracle (knowing all true arm values) would have earned.
 Over $T$ rounds:
 
-$$\text{Regret}(T) = \sum_{t=1}^{T}\bigl(\mu^* - \mu_{a_t}\bigr), \quad \mu^* = \max_a\, \mu_a$$
+$$\text{Regret}(T) = \sum_{t=1}^{T}\bigl(\mu^{\ast} - \mu_{a_t}\bigr), \quad \mu^{\ast} = \max_a\, \mu_a$$
 
-where $\mu^*$ is the mean reward of the best arm and $\mu_{a_t}$ is the mean
+where $\mu^{\ast}$ is the mean reward of the best arm and $\mu_{a_t}$ is the mean
 reward of the arm chosen at round $t$. Lower cumulative regret over time means the policy learned faster and paid
 a smaller cost for exploration.
 

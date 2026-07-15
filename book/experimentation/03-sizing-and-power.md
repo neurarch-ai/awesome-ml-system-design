@@ -116,7 +116,7 @@ When you require G guardrail metrics to all pass alongside the primary, the
 joint false-negative rate rises. Spotify corrects by targeting tighter power per
 metric:
 
-$$\beta^{*} = \frac{\beta}{G + 1}$$
+$$\beta^{\ast} = \frac{\beta}{G + 1}$$
 
 False-positive rates are not adjusted across guardrails, because requiring all
 of them to pass does not compound alpha the way independent tests would.

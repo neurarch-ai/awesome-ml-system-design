@@ -35,11 +35,11 @@ $$F_1 = \frac{2 \cdot P \cdot R}{P + R}$$
 
 ### Detection: mAP at IoU thresholds
 
-A predicted bounding box $\hat{B}$ is matched to a ground-truth box $B^*$ using
+A predicted bounding box $\hat{B}$ is matched to a ground-truth box $B^{\ast}$ using
 **intersection-over-union (IoU)**, which measures spatial overlap and returns a
 number in [0, 1]:
 
-$$\text{IoU} = \frac{\text{area}(\hat{B} \cap B^*)}{\text{area}(\hat{B} \cup B^*)}$$
+$$\text{IoU} = \frac{\text{area}(\hat{B} \cap B^{\ast})}{\text{area}(\hat{B} \cup B^{\ast})}$$
 
 The intersection is the overlap rectangle; the union is the two areas minus that
 overlap, so a non-overlapping pair scores 0 and a perfect match scores 1.

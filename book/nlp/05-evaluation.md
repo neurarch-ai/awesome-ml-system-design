@@ -59,10 +59,10 @@ interview mistake.
 
 **NER and extraction:** span-level F1, not token-level accuracy. The model
 produces a set of (start, end, entity-type) spans from text; the metric scores
-that set against the gold span set $S^*$ and returns a number in [0, 1]. Let
+that set against the gold span set $S^{\ast}$ and returns a number in [0, 1]. Let
 $\hat{S}$ be the predicted spans:
 
-$$P_{\text{span}} = \frac{|\hat{S} \cap S^*|}{|\hat{S}|}, \quad R_{\text{span}} = \frac{|\hat{S} \cap S^*|}{|S^*|}, \quad F_1^{\text{span}} = \frac{2\,P_{\text{span}}\,R_{\text{span}}}{P_{\text{span}} + R_{\text{span}}}$$
+$$P_{\text{span}} = \frac{|\hat{S} \cap S^{\ast}|}{|\hat{S}|}, \quad R_{\text{span}} = \frac{|\hat{S} \cap S^{\ast}|}{|S^{\ast}|}, \quad F_1^{\text{span}} = \frac{2\,P_{\text{span}}\,R_{\text{span}}}{P_{\text{span}} + R_{\text{span}}}$$
 
 A predicted span counts as a true positive only if both its boundary and its
 entity type match a gold span exactly (strict match). Partial-match F1 (boundary
@@ -104,10 +104,10 @@ this reason.
 
 **Entity resolution:** pairwise precision and recall. The model produces a set
 $\hat{E}$ of predicted synonym pairs; the metric scores it against a gold set
-$E^*$ of known-synonym pairs on a held-out test split, returning numbers in
+$E^{\ast}$ of known-synonym pairs on a held-out test split, returning numbers in
 [0, 1]:
 
-$$P_{\text{pair}} = \frac{|\hat{E} \cap E^*|}{|\hat{E}|}, \qquad R_{\text{pair}} = \frac{|\hat{E} \cap E^*|}{|E^*|}$$
+$$P_{\text{pair}} = \frac{|\hat{E} \cap E^{\ast}|}{|\hat{E}|}, \qquad R_{\text{pair}} = \frac{|\hat{E} \cap E^{\ast}|}{|E^{\ast}|}$$
 
 ## Calibration: turning a score into a probability
 

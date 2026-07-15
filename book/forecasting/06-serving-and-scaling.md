@@ -14,11 +14,11 @@ The constraint that replaces latency is **throughput within the weekly cadence**
 
 ## The forecast-then-optimize pattern
 
-The forecast is not the product; it is the input to the **optimizer**. For replenishment, the canonical optimizer is the newsvendor model: stock to the quantile $q^*$ set by the critical fractile,
+The forecast is not the product; it is the input to the **optimizer**. For replenishment, the canonical optimizer is the newsvendor model: stock to the quantile $q^{\ast}$ set by the critical fractile,
 
-$$q^* = F^{-1}\!\!\left(\frac{c_u}{c_u + c_o}\right)$$
+$$q^{\ast} = F^{-1}\!\!\left(\frac{c_u}{c_u + c_o}\right)$$
 
-where $c_u$ is the underage cost (lost sale, churn) and $c_o$ is the overage cost (holding cost, waste). For a 3:1 underage-to-overage ratio, $q^* = F^{-1}(0.75)$: stock to the P75 of forecasted demand. A more general optimizer (Zalando uses gradient-free Monte Carlo over a full replenishment policy) consumes the entire demand distribution, not just one quantile, and also folds in lead-time uncertainty and current stock state.
+where $c_u$ is the underage cost (lost sale, churn) and $c_o$ is the overage cost (holding cost, waste). For a 3:1 underage-to-overage ratio, $q^{\ast} = F^{-1}(0.75)$: stock to the P75 of forecasted demand. A more general optimizer (Zalando uses gradient-free Monte Carlo over a full replenishment policy) consumes the entire demand distribution, not just one quantile, and also folds in lead-time uncertainty and current stock state.
 
 Two things candidates miss: the optimizer needs the **distribution** (not the mean), and the metric that ultimately matters is the **downstream decision cost** (realized stockouts and waste), not the forecast error. Where feasible, evaluate model changes against the downstream cost on a held-out period.
 
