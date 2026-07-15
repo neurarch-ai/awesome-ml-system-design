@@ -126,6 +126,24 @@ Training uses contrastive or proxy-metric losses that pull matching image pairs
 together and push non-matching pairs apart. Cosine similarity between two
 embeddings is then a meaningful semantic similarity score.
 
+## Vision foundation models: segment, detect, and embed zero-shot
+
+The biggest recent shift in CV is that you often no longer train a task model from
+scratch: large pretrained vision foundation models solve many tasks zero-shot or
+serve as a frozen backbone. The reference points:
+
+- **Segment Anything (SAM, Meta, 2023, [arXiv:2304.02643](https://arxiv.org/abs/2304.02643); SAM 2 adds video, 2024, [arXiv:2408.00714](https://arxiv.org/abs/2408.00714)).** A promptable segmentation model: give it a point, box, or mask prompt and it returns a segmentation mask for any object, with no per-class training. Use it for annotation acceleration, interactive selection, and as a class-agnostic mask proposer.
+- **DINOv2 (Meta, 2023, [arXiv:2304.07193](https://arxiv.org/abs/2304.07193)).** A self-supervised ViT that produces strong general-purpose image features with no labels, so you can attach a light head (linear probe, segmentation, depth) and get competitive results with little task data. The modern default frozen backbone when labels are scarce.
+- **Open-vocabulary detection (Grounding DINO, 2023, [arXiv:2303.05499](https://arxiv.org/abs/2303.05499); YOLO-World, 2024, [arXiv:2401.17270](https://arxiv.org/abs/2401.17270)).** Detect objects described by a text prompt rather than a fixed label set, so a new category needs a phrase, not a labeled dataset.
+- **Real-time detectors keep advancing** (the YOLO line through YOLOv8 to v11 from Ultralytics, and RT-DETR), and CLIP (OpenAI, 2021) remains the open-vocabulary classification and image-text retrieval backbone.
+
+When to still train your own: a foundation model is the fast baseline and the
+annotation accelerator, but a tuned task-specific model (a detector fine-tuned on
+your labeled data) usually still wins on a narrow production task with a fixed label
+set and a tight latency budget, because the general model pays for breadth you do not
+need. Reach for the foundation model first (especially for cold-start, few labels, or
+open-vocabulary needs), then specialize if the metric or latency demands it.
+
 ## When to use which backbone and head
 
 | Reach for | When | Instead of |
