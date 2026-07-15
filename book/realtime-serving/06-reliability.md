@@ -100,3 +100,21 @@ average looks fine.
 | Training-serving skew | Model serves fine but degrades over time | Log served features and compare to training distribution | Logging cost and storage |
 
 **Details worth naming.** Two rows look similar but need opposite responses. "Tail latency over budget" with a healthy p50 is almost always a queueing effect, not a slow model: requests pile up behind a full batch or a GC pause, so the fix is on the batch window and replica count, not the forward pass. "GPU lanes idle under load" is the inverse, throughput left on the table, where a larger batch or window helps; pushing both knobs at once is a contradiction, so read p50-vs-p99 first to know which regime you are in. The cold-start row is why autoscaling reactively on a traffic spike still spikes p99: a freshly booted replica must load weights and warm caches before its first forward pass is representative, so readiness probes must gate traffic until a synthetic warm-up request has returned, and the pre-warm cost is the price of not serving cold. On the serving frameworks themselves (Triton Inference Server from NVIDIA, TorchServe from Meta), the same batch-window knob that fills idle GPU lanes is the one that inflates tail latency, so it is tuned against the SLA, never maximized.
+
+## Implementation and training pitfalls
+
+The capacity table above covers throughput and latency regimes. The failures
+below are configuration and lifecycle bugs: a timeout set wrong, a health check
+that lies, a warm-up that never ran. Each one turns a healthy model into an
+outage without the model ever changing.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Timeout longer than the caller's budget | threads pile up waiting on a slow hop and the caller breaches its own SLA | set each hop's timeout strictly inside its caller's budget, fallback rather than wait |
+| Retry storm without backoff | retries amplify load on an already-struggling replica and deepen the incident | cap retries, add jittered backoff, gate behind the circuit breaker |
+| Missing model warm-up | the first requests after a deploy or scale-out hit cold weights and JIT, so p99 spikes | gate the readiness probe on a synthetic warm-up inference before taking traffic |
+| Health check on the wrong signal | the load balancer keeps a deadlocked replica in rotation because /health returns 200 while inference hangs | make the health check exercise a real inference path, not just process liveness |
+| Padding waste in dynamic batches | mixed sequence lengths padded to the batch max inflate compute and tail latency | bucket requests by length and cap the batch window, use pad-aware batching |
+| Thundering herd on cache expiry | a hot key expires and every replica recomputes it at once | single-flight request coalescing, jittered TTLs, serve-stale-while-revalidate |
+| Batch-dependent nondeterminism | the same input returns slightly different scores depending on who it batched with | fix the reduction order or pin deterministic kernels where scores must be stable |
+| Model / feature version skew | a new model expects a feature the online store has not backfilled | deploy model and feature together, validate feature schema at load, fail closed to the fallback |

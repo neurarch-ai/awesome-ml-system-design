@@ -149,3 +149,23 @@ two-tower model (Microsoft, 2013), and in-batch sampled softmax with logQ
 correction entered wide practice through the YouTube deep recommender (Google,
 2016), which is where the sampling-bias correction for popularity-skewed catalogs
 was popularized.
+
+## Implementation and training pitfalls
+
+A two-tower retriever can train cleanly and still return poor candidates, because
+the failure usually lives in the negatives, in how popularity is corrected, or in
+the gap between the trained space and the served approximate-nearest-neighbor index.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| False negatives from batch composition | a user's own engaged items land in-batch and get scored as negatives, so recall drops on look-alikes | user-level masking (drop same-user items from the denominator), not merely a larger batch |
+| Popularity bias in in-batch negatives | head items are over-penalized and the embedding space is skewed | subtract the logQ sampling term from the item logit, at training time only |
+| logQ applied at serving | scores are double-corrected and no longer rank correctly | apply the logQ term to training logits only, never at inference |
+| Embedding collapse | all vectors converge, everything looks similar, recall hits a floor | tune temperature, add mined hard negatives, normalize, and check for too-small tau or too-high learning rate |
+| Train vs ANN recall gap | exact dot-product recall is good offline but the online ANN retrieval misses | tune ANN parameters, measure ANN recall against exact search, and rebuild the index on the trained space |
+| Stale item index | a freshly trained tower is served against old cached vectors | re-embed and rebuild the item index whenever the item tower retrains, and version the embedding space |
+| Reflexive tower weight sharing | shared weights underfit because user and item feature distributions differ | keep the towers separate, sharing only the output space through the dot-product loss |
+| Too few negatives | the loss saturates early and separation is weak | increase batch size, or add a small tuned fraction of hard negatives once the easy loss plateaus |
+
+The through-line: retrieval quality is decided by negative composition and index
+fidelity as much as by the encoder, so audit both before touching the architecture.

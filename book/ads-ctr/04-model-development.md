@@ -212,3 +212,31 @@ refits hourly on fresh data (cheap). This is what Pinterest (Platt) and LinkedIn
 **Tools.** scikit-learn provides the logistic-regression baseline, and LightGBM (Microsoft) or XGBoost supply the GBDT half of the GBDT-plus-LR recipe. DeepCTR ships Wide and Deep, DeepFM, and DCN implementations, while DLRM with large sharded embedding tables is served by TorchRec (Meta). Post-hoc calibration uses scikit-learn: logistic calibration for Platt scaling and IsotonicRegression for the non-parametric monotone map.
 
 **Worked example.** An ad network steps up its CTR stack as scale grows. It starts with logistic regression (scikit-learn) for a calibrated, interpretable baseline, and while the id space is moderate it gets tree-discovered crosses cheaply from GBDT plus an LR head (LightGBM). As user and ad ids climb into the billions the trees blow past memory, so it moves to embedding-based deep models: DeepFM (DeepCTR) when it wants automatic pairwise crosses without hand-built features, DCN V2 when explicit high-degree crosses matter, and DLRM (TorchRec) when sharded embedding tables and pairwise dot products carry most of the signal. Because negative sampling distorts the raw head, it refits a fast Platt-scaling layer (scikit-learn) on fresh held-out data rather than retraining the whole DNN each time calibration drifts.
+
+## Implementation and training pitfalls
+
+A CTR model rarely fails on its architecture. It fails on the label pipeline and
+the raw score, because the pCTR feeds bidding and pacing, where a biased probability
+costs money directly rather than just moving a ranking.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Negative down-sampling not corrected | AUC looks fine but pCTR is systematically too high, so bids and pacing are wrong | apply the sampling-rate intercept correction (King-Zeng) before fitting Platt or isotonic |
+| Position bias baked into labels | model learns "top slot equals high CTR" and re-ranks by slot rather than relevance | add position as a training feature, fix it to a constant at serving, or train with an examination model |
+| Delayed feedback | recent windows label late-arriving clicks or conversions as negatives, so pCTR is biased low | use a delayed-feedback loss or a wait-window with importance weighting for attributed-late positives |
+| Embedding hashing collisions | rare ids share a row, gradients get noisy, tail pCTR is unstable | enlarge the hash space, use multi-hash, or give sub-threshold ids a shared out-of-vocabulary row |
+| Calibration drift between retrains | threshold and bidding meaning shift as the raw logit scale moves after each retrain | refit the cheap Platt or isotonic layer hourly on fresh data, decoupled from the daily DNN retrain |
+| Train/serve feature skew | offline AUC is good but online CTR is lower for the same inputs | compute features from one shared definition, log serving-time features, and replay them for training |
+| Logging-policy feedback loop | the model only sees what it already ranked high, so the tail is never explored | log propensities, add a small exploration slice, and train with importance weighting |
+
+```mermaid
+flowchart TD
+  A["pCTR biased vs actual CTR"] --> B{"did you down-sample negatives?"}
+  B -->|yes| C["apply sampling-rate correction<br/>before calibration"]
+  B -->|no| D{"same bias offline and online?"}
+  D -->|online only| E["train/serve skew:<br/>check feature parity"]
+  D -->|both| F["recalibrate (Platt / isotonic)<br/>on a fresh holdout"]
+```
+
+The through-line: the probability is the product, so distrust any pCTR until
+sampling correction, calibration, and train/serve parity have all been verified.

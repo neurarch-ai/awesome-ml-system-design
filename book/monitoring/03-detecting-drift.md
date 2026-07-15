@@ -150,3 +150,35 @@ a feature naturally swings by PSI 0.15 every weekend, a threshold of 0.10 will
 page on-call every Monday. Uber's D3 system uses a Prophet time-series model
 to learn the expected range for each monitor so that seasonal swings do not
 generate false alarms.
+
+## Implementation and training pitfalls
+
+Drift detection fails less on the statistic than on operating it: a broken pipeline
+reads as a sharp shift, seasonal swings page on-call, and a store of feature tests
+guarantees that something always looks drifted even when the model is fine.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Broken pipeline read as drift | sudden PSI spike, retraining does not help | run layer-1 data-health checks (nulls, schema, ranges) before drift tests |
+| Binning artifacts | PSI unstable, empty bins produce infinities | fixed quantile bins from the reference, add an epsilon or floor the bin counts |
+| Seasonal false alarms | on-call paged every weekend | learn the expected range per feature (Prophet-style), threshold on deviation not raw PSI |
+| Multiple-testing alarm storm | hundreds of features, something always drifts | correct for the number of monitors, alert on prediction and label drift first |
+| Stale reference window | everything looks drifted after an intended product change | refresh the baseline after intended shifts, compare against a recent healthy window |
+| Small-sample noise | short windows swing the statistic wildly | enforce a minimum sample size per window before scoring drift |
+| Drift without impact | an input moves but accuracy is flat | weight by feature importance, prioritize output and performance signals over every input |
+| Label lag hides regression | metrics look fine because labels are not in yet | use proxy signals (confidence, agreement) while labels mature |
+
+The through-line from the two sections above: a drift alert answers "did it move?",
+not "does it matter?", so triage the pipeline and the feature's impact before
+retraining to chase a number.
+
+```mermaid
+flowchart TD
+  A["drift alert fires"] --> B{data-health checks pass?<br/>(nulls, schema, ranges)}
+  B -- no --> C["broken pipeline:<br/>fix upstream, do not retrain"]
+  B -- yes --> D{seasonal swing<br/>within learned range?}
+  D -- yes --> E["expected variation:<br/>widen threshold, no action"]
+  D -- no --> F{prediction or performance<br/>decay followed?}
+  F -- no --> G["drift without impact:<br/>likely noise, watch"]
+  F -- yes --> H["real shift:<br/>recalibrate or retrain"]
+```

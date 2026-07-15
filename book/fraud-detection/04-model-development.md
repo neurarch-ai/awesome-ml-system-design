@@ -221,3 +221,25 @@ to graph-DB traversal for a hops-to-fraud scalar. Isolation Forest and a GraphBE
 autoencoder cover novel unlabeled attacks, and the mature system ensembles the
 supervised and anomaly outputs so both known and novel fraud are covered rather than
 leaving one threat mode exposed.
+
+## Implementation and training pitfalls
+
+Fraud models fail most often on label timing and evaluation setup, not the choice of
+algorithm: labels mature slowly, blocked transactions never get a true outcome, and
+the same entity leaking across the split makes an offline number look far better than
+production ever will.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Label maturity (delayed chargebacks) | recent transactions marked legitimate are actually pending fraud | enforce a performance-window cutoff, exclude transactions too recent to be fully matured |
+| Feature velocity leakage | a count or velocity feature includes the event being scored | compute aggregates strictly before the event timestamp |
+| Selection bias and feedback loop | blocked transactions never get a true label, the model forgets that pattern | hold out a small unblocked control, use reject inference or counterfactual logging |
+| Class imbalance | model predicts everything legitimate | class weights or focal loss, then recalibrate after any resampling |
+| Miscalibration after downsampling | ranking fine but probabilities biased high | isotonic or Platt on a held-out set, or correct the intercept for the sampling rate |
+| Adversarial concept drift | precision decays as fraudsters adapt | frequent retraining, monitor score drift, keep anomaly detectors for novel attacks |
+| Entity leakage across split | same card or device in train and test inflates metrics | split by entity (card, device, account) and by time, never random rows |
+| Threshold drift | fixed cutoff, alert volume swings with the base rate | re-derive the cost-optimal threshold on recent data, monitor the review-queue load |
+
+The through-line: an offline PR-AUC that looks too good in fraud usually means an
+immature label window or an entity that leaked across the split, so distrust it until
+both are ruled out.

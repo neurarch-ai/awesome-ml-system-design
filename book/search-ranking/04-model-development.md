@@ -221,3 +221,31 @@ handle more features automatically but need more data and are harder to debug.
 **Tools.** Lexical BM25 runs on Elasticsearch or OpenSearch (both over the Lucene engine) or the lightweight rank-bm25 library. The dense dual-encoder is built with sentence-transformers and indexed for ANN with FAISS (Meta) or an HNSW library such as hnswlib, and reciprocal rank fusion is a few lines over the two ranked lists. For learning-to-rank, LightGBM (Microsoft) and XGBoost both ship LambdaMART objectives, TensorFlow Ranking covers pairwise and listwise losses, and the deep rankers (DLRM, DCN V2) come from TorchRec (Meta) or DeepCTR.
 
 **Worked example.** A marketplace search product wires up its funnel by matching each arm to its failure mode. Exact product codes and brand names are where lexical scoring is unbeatable, so it keeps a BM25 arm (OpenSearch); paraphrase and synonym queries are where lexical drifts, so it adds a dense dual-encoder (sentence-transformers) indexed in FAISS, then fuses the two with reciprocal rank fusion because neither arm is optional. For the final ranker, its reported metric is position-weighted NDCG and top-slot order dominates, so it trains LambdaMART (LightGBM) rather than a pointwise regressor that spends capacity list-deep. Pairwise RankNet stays in reach as a simpler loss when relative order is all that matters. It only moves to a deep ranker (TorchRec) once it has many sparse categorical features and can afford the extra training and serving complexity that a tree ensemble avoids.
+
+## Implementation and training pitfalls
+
+Most search-quality regressions trace to one of two places: a candidate that never
+entered the funnel (a retrieval miss the ranker cannot fix) or click labels that
+encode position rather than relevance. Separate the two before touching the model.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| ANN recall ceiling | ranker looks broken but the relevant doc never entered the candidate set | measure retrieval recall@k separately from ranking; raise HNSW ef or IVF nprobe |
+| In-batch false negatives | a doc relevant to query i sits as another query's positive in the batch and is punished as a negative | dedupe near-duplicates per batch, mask known-positive collisions, add hard negatives |
+| Score-scale fusion bug | summing raw BM25 and cosine lets one arm dominate the merged list | fuse on rank with RRF, or normalize each arm before combining |
+| Tokenizer / truncation skew | offline doc embeddings use different max length or normalization than the online query tower | pin the same tokenizer, max length, and normalization on both towers; version the encoder |
+| Position bias in click labels | LTR trained on clicks learns slot position, not relevance | debias with a position feature or IPS, and keep a human-graded relevance eval set |
+| Index staleness | doc content changes but the offline vector still reflects the old text | re-embed on content change, track index freshness, schedule reindex |
+| Vocabulary gap left to one arm | dense-only misses exact codes; lexical-only misses paraphrases | keep both arms and fuse; do not retire lexical for a single dense model |
+| Eval leakage | offline NDCG inflated because the eval split shares queries or time with training | split by time, hold out queries, strip target text from indexed fields |
+
+When quality drops, decide whether it is a retrieval or a ranking problem first:
+
+```mermaid
+flowchart TD
+  A["quality regression"] --> B{is the relevant doc<br/>in the candidate set?}
+  B -->|no| C["retrieval miss:<br/>fix recall, index freshness, ANN ef"]
+  B -->|yes| D{does it rank<br/>near the top?}
+  D -->|no| E["ranking issue:<br/>position bias, fusion scale, skew"]
+  D -->|yes| F["presentation / eval:<br/>check labels and split"]
+```

@@ -156,3 +156,20 @@ where $W$ is a window of future interactions, not just t+1.
 **Tools.** All three encoders (GRU4Rec, SASRec, BERT4Rec) ship as tuned, comparable implementations in RecBole, and Transformers4Rec (NVIDIA) provides production-oriented SASRec and BERT4Rec on top of Hugging Face Transformers. Rolling your own is a short PyTorch (Meta) or TensorFlow (Google) model: an embedding table plus a GRU or a causal self-attention block. Sampled softmax and in-batch negatives are standard loss utilities in both frameworks, and the all-action window loss is a small change to the target construction rather than a new library.
 
 **Worked example.** A streaming service modeling next-item intent starts with GRU4Rec from RecBole as a cheap baseline for short viewing sessions under twenty events. As histories lengthen and cross-position dependencies start to matter, it moves to SASRec, whose causal self-attention parallelizes at training time yet applies directly at serving because the last-position vector only attended over the past. It considers BERT4Rec only once it has enough data and needs one model to serve several surfaces, accepting the extra masking complexity for bidirectional context. To keep a once-daily batch embedding from going stale, it swaps the next-item target for an all-action window loss (PinnerFormer style), and trains throughout with in-batch negatives rather than an infeasible full-catalog softmax.
+
+## Implementation and training pitfalls
+
+Sequence models are unusually easy to leak: a single off-by-one in the mask or a
+random train/test split lets the model peek at the future, and offline metrics
+soar while online performance does not move. Audit the temporal boundary first.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Sequence leakage / lookahead | offline hit-rate is suspiciously high; the input window includes items at or after the target | keep only items strictly before the target, split by time, verify the causal boundary |
+| Padding / masking bug | pad positions are attended over, or the causal mask lets position t see t+1 | zero pads and future positions in the attention mask and unit-test it on a toy sequence |
+| BERT4Rec train/inference mask mismatch | trained with random masks but served without a mask token at the predict position | insert the mask token at the target position at inference, matching how training built it |
+| Random split instead of temporal | shuffling breaks chronology and leaks later behavior into training | split by time, evaluate next-item on the chronologically last event per user |
+| In-batch false negatives / popularity bias | another user's true next item is punished as a negative; head items over-penalized | popularity-corrected (logQ) sampling, dedupe, mix in uniform negatives |
+| Embedding staleness at serving | a batch-computed user vector drifts between refreshes | shorten refresh, use an all-action window loss, or stream-update fast-moving users |
+| Position table length mismatch | histories longer than the trained max position error or wrap | truncate to the max length keeping the most recent items, or extend the positional table |
+| Trivial repeat prediction | model just re-predicts the item the user most recently touched | mask the just-seen item or evaluate on genuinely novel next-items |

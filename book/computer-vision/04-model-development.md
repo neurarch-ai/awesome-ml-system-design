@@ -146,3 +146,24 @@ set-prediction transformer detector DETR (Meta, 2020).
 **Tools.** timm carries pretrained ResNet, EfficientNet, Swin, and ViT backbones behind one interface, and torchvision (Meta) ships ResNet plus detection reference models. For detection and instance heads reach for Detectron2 (Meta) or Ultralytics YOLO; for the U-Net encoder-decoder segmentation head, segmentation-models-pytorch. Swin, ViT, and CLIP encoders come from Hugging Face Transformers or OpenCLIP, and the embedding head is served through an approximate-nearest-neighbor index such as FAISS (Meta).
 
 **Worked example.** A photo app tags user uploads with a multi-label classification head on a ResNet-50 trunk (timm), since a transformer would need more labels to pay off at that data scale. When one high-volume batch job makes cost per image the binding constraint, it swaps in an EfficientNet trunk for better accuracy per FLOP. For a "find similar photos" feature over an open, growing library, a fixed class list does not fit, so it uses a CLIP backbone plus an embedding head indexed in FAISS rather than a classifier. If it later needs to flag a small harmful region, it adds a Swin plus detection head whose hierarchical feature maps a plain ViT lacks. Once several of these heads coexist, it shares the one backbone instead of paying to serve a separate model per task.
+
+## Implementation and training pitfalls
+
+A CV model rarely fails on the backbone choice. It fails on the preprocessing that
+differs between train and serve, on the imbalance between objects and background,
+and on augmentations that quietly corrupt the label.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Foreground/background imbalance in detection | the model predicts mostly background, with low recall on small objects | use focal loss or hard-negative mining, and balance the sampling of positive anchors |
+| Train/serve preprocessing mismatch | offline mAP is good but production is worse from a different resize, normalization, or channel order | pin one preprocessing (resize, mean and std, RGB vs BGR) shared by training and serving |
+| Frozen-backbone BatchNorm in fine-tuning | validation accuracy is stuck or unstable when fine-tuning on a new domain | freeze the BatchNorm running statistics, or use GroupNorm when the batch is small or the domain shifts |
+| Augmentation that changes the label | flips or crops break orientation-sensitive or boundary labels, producing noisy gradients | apply only label-preserving augmentations, and transform boxes and masks together with the image |
+| Resolution mismatch train vs inference | small objects vanish at serving resolution and detection recall drops | train and serve at a consistent resolution, or use multi-scale training and an FPN |
+| NMS threshold miscalibrated | duplicate boxes survive, or true positives are suppressed in crowded scenes | tune the IoU threshold to scene density, and consider soft-NMS for heavily overlapping instances |
+| Overfitting a small labeled set | train loss goes near zero while validation mAP or mIoU plateaus low | freeze more of the backbone, add stronger augmentation, start from a pretrained trunk, and stop early |
+| Label noise in masks and boxes | the mIoU ceiling sits below expectations with inconsistent boundaries | audit annotation consistency, relax the boundary IoU, and reconcile rater disagreements |
+
+The through-line: most surprising CV regressions trace to the pixels the model
+never saw the same way twice, so lock preprocessing and label handling before
+blaming the architecture.

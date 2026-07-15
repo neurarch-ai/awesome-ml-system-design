@@ -158,3 +158,24 @@ tagging as a joint label-sequence prediction rather than independent per-token c
 **Tools.** Hugging Face Transformers ships DistilBERT, MiniLM, BERT-base, and the T5 and BART seq2seq backbones with classification and token-classification heads ready to fine-tune. The bi-encoder for entity resolution comes from sentence-transformers, and its output is matched through an approximate-nearest-neighbor index such as FAISS (Meta). Class-weighted cross-entropy is a loss argument in PyTorch (Meta); the LLM label factory runs offline, prompting a large model once per training example and distilling into the small encoder.
 
 **Worked example.** A support platform routes tickets at high QPS under a tight latency budget, so it fine-tunes a distilled encoder (DistilBERT via Transformers) rather than calling an LLM inline millions of times a day. To pull the product name and order date out of each ticket, it adds a token-tagging NER head on the same encoder instead of one label per document. To map free-text product mentions onto its canonical catalog it uses a bi-encoder (sentence-transformers) plus a FAISS lookup, which scales as the taxonomy grows where a class-per-product classifier would not. Because spam is well under one percent of traffic, it weights the positive class in cross-entropy so the majority class does not dominate the gradient. And when a brand-new label has no data yet, it prompts an LLM offline to bootstrap weak labels and distills them into the encoder rather than serving the LLM on the inline path.
+
+## Implementation and training pitfalls
+
+NLP fine-tuning fails less on the architecture than on text plumbing and small-data
+discipline: a tokenizer mismatch, a truncated label span, duplicated text leaking
+across the split, or noisy labels quietly cap accuracy long before the model does.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Train/serve tokenizer mismatch | offline strong, online predictions are garbage | pin the exact tokenizer and vocab with the model, verify identical preprocessing on both paths |
+| Sequence truncation | long documents lose the label-bearing span | truncate from the less informative end or chunk-and-pool, raise max length where the budget allows |
+| Duplicate and near-duplicate leakage | eval inflated, the same text appears in train and test | dedup across splits, split by document or author rather than random rows |
+| Label noise | validation accuracy plateaus below expectation | audit a sample, use confident-learning to surface mislabels, clean or down-weight them |
+| Fine-tuning overfit on small data | train loss near zero, validation loss rising fast | freeze lower layers, low LR with warmup, early stopping, fewer epochs |
+| Class imbalance | a rare class (abuse, spam) is never predicted | class-weighted cross-entropy, tune the threshold per class |
+| Domain and vocabulary shift | accuracy drops on new slang or product names | continue pre-training on in-domain text, refresh the training data |
+| Miscalibrated softmax | confident but wrong probabilities | temperature scaling on a held-out set before thresholding |
+
+The through-line: when a fine-tuned encoder scores far above the baseline, suspect
+duplicate leakage or a tokenizer that differs from serving before believing the
+model got that much better.

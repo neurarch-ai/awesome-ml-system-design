@@ -98,3 +98,23 @@ using pre-experiment data) comes from Microsoft (2013).
 **Tools.** The two-sample t-test and its confidence interval are one call in SciPy (scipy.stats.ttest_ind) or statsmodels; clustering to the diversion unit is a groupby aggregation in pandas before the test. CUPED is a short hand-rolled regression adjustment (estimate theta by ordinary least squares in statsmodels, then residualize), and Bonferroni or FDR correction is one call in statsmodels (multipletests). For heterogeneous treatment effects beyond the average, EconML (Microsoft) and CausalML (Uber) fit uplift models; sequential and always-valid p-value methods (mSPRT, group-sequential boundaries) come from dedicated confidence-sequence libraries.
 
 **Worked example.** A fintech testing a new onboarding flow diverts by user but logs events per request, so it first aggregates to one row per user in pandas and runs the t-test in SciPy, avoiding the false winners that request-level rows manufacture. A prior-week covariate correlates around 0.7 with the outcome, so it applies CUPED to tighten the interval rather than running the experiment longer. Because it wants to catch a guardrail breach early, it analyzes the guardrail with a sequential mSPRT method while keeping the primary metric on a committed fixed horizon looked at once, never mixing daily peeking with a fixed threshold. It plots the daily treatment-effect curve and waits for it to stabilize over one to two weeks to rule out a novelty spike, and applies an FDR correction from statsmodels before trusting any secondary metric.
+
+## Implementation and training pitfalls
+
+Beyond the conceptual traps, most wrong readings come from how the analysis
+pipeline is built: the variance estimator, the covariate, the filters, and the
+window. These are the implementation details that silently bias a clean design.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Variance not clustered at the diversion unit | request-level rows treated as independent, so intervals are too narrow and false winners appear | aggregate to one row per diversion unit, or use a clustered or delta-method variance estimator |
+| Ratio-metric variance computed naively | the CI is wrong for metrics like clicks over impressions, so the test is over- or under-powered | use the delta method (or bootstrap) for the variance of a ratio of per-user sums |
+| CUPED covariate from the experiment period | a covariate contaminated by treatment biases the effect estimate | use strictly pre-experiment covariates and verify the adjustment is mean-zero in both arms |
+| Triggered vs intent-to-treat confusion | the effect is diluted by users who never hit the change, or biased if triggering happens after randomization | define the trigger before randomization and analyze the triggered population consistently across arms |
+| Asymmetric bot or outlier filtering | a filter removes more rows from one arm and biases the difference | apply identical filtering rules to both arms and set winsorization thresholds before unblinding |
+| Day-of-week and seasonality truncation | the effect is read mid-week without covering a full cycle, so the estimate is unstable | run whole-week multiples and plot the daily effect curve for stability |
+| Significant but below the MDE | a statistically distinguishable effect is too small to matter yet gets shipped | compare the confidence interval against the MDE, not just against zero |
+| Missing-data imputation differs across arms | asymmetric handling of nulls shifts the arm means | impute with one rule applied identically, or analyze completers under a pre-declared policy |
+
+The through-line: a trustworthy design can still produce a wrong answer if the
+estimator, the covariate, and the filters are not identical and honest across arms.

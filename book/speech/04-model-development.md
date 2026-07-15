@@ -175,3 +175,21 @@ You cannot win both simultaneously. You pick an operating point on the DET
 This lets stage 1 be tiny (a few megabytes or less), while the expensive
 verification fires only rarely. Amazon Alexa and Apple Hey Siri both use this
 two-stage shape.
+
+## Implementation and training pitfalls
+
+Speech models break most often at the seams: the feature front-end, the
+alignment, and the mismatch between how much future audio the model saw in
+training versus how much it gets at serving. A model trained full-context and
+served causally can look perfect offline and fall apart live.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Streaming vs full-context mismatch | trained with the whole utterance but served frame-by-frame, or evaluated full-context and deployed streaming | train with the same lookahead and chunked/causal masking the serving path uses |
+| CTC blank collapse | model emits mostly blanks, or repeated labels merge incorrectly | balance the blank prior, tune the blank penalty, keep a blank between equal labels in the collapse |
+| RNN-T lookahead skew | encoder trained with future frames it will not have at inference | match the limited right context between training and streaming inference |
+| Feature front-end mismatch | log-mel stats, mel-bin count, or sample rate differ between train and serve | freeze the front-end (sample rate, mel bins, CMVN stats) and apply it identically at serve |
+| Seq2seq hallucination on silence | decoder emits text during non-speech or loops on itself | gate with VAD before decode, add a repetition penalty and a no-speech threshold |
+| Partial-hypothesis instability | streaming partials flip as more audio arrives, flickering on screen | commit with a confidence gate or short delay, and measure partial finality |
+| WER inflated by text normalization | numbers, casing, and punctuation counted as errors | apply consistent inverse text normalization to hypothesis and reference before scoring |
+| Wake-word operating-point drift | false-accept and false-reject rates shift across devices and noise | pick the DET operating point per environment, keep the two-stage verifier, retrain on hard negatives |

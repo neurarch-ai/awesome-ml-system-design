@@ -174,3 +174,32 @@ learning grows much more slowly over time.*
 **Tools.** Epsilon-greedy, UCB (LinUCB), and other contextual-bandit policies ship in Vowpal Wabbit and in River for online learning; Thompson sampling over Beta posteriors is a few lines on NumPy or SciPy. Neural-linear and other deep contextual bandits are built in PyTorch (Meta), a learned encoder feeding a linear uncertainty head. The cold-start representation towers (content-and-metadata, hybrid ID-plus-content) are two-tower models in TensorFlow Recommenders (Google) or TorchRec (Meta), and a popularity fallback is a simple precomputed ranking served from a cache.
 
 **Worked example.** A marketplace surfacing freshly uploaded listings begins with epsilon-greedy because its uniform explore branch gives clean propensities for off-policy eval, but the flat tax wastes impressions on obviously-bad listings, so it moves to Thompson sampling for directed, sampled exploration that still logs clean stochastic propensities. Once the catalog reaches millions of items where per-arm posteriors do not scale, it switches to a neural-linear contextual bandit so a never-seen listing gets an uncertainty estimate from its features rather than its (nonexistent) history. For the representation, it runs a content-and-metadata tower for day-zero retrievability and blends it as a hybrid ID-plus-content vector so one model spans cold and warm listings. On a zero-signal first request it falls back to a popularity floor, accepting that this is a safe default rather than a discovery mechanism.
+
+## Implementation and training pitfalls
+
+A bandit fails less on the reward model than on the exploration plumbing: the
+propensities you log, whether exploration keeps firing, and whether the offline
+estimates you trust are actually unbiased.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Missing or wrong propensity logging | off-policy evaluation is impossible or biased, so policies cannot be compared offline | log the action propensity at decision time for every impression |
+| Deterministic UCB argmax | the chosen propensity is 1, so replay-based off-policy estimators break | add a small epsilon perturbation to recover a stochastic propensity |
+| Exploration collapse | the policy stops exploring, uncertain arms are never shown, and regret plateaus | keep an exploration floor (epsilon floor or prior variance) and check that uncertainty is not underestimated |
+| Cold-start feedback loop | popular gets more popular, fresh items starve, and the catalog homogenizes | drive exploration from content-feature uncertainty and keep popularity as a floor, not a driver |
+| Reward attribution delay | delayed conversions are logged as failures, so posteriors turn pessimistic | apply a wait-window before writing the reward, or model delayed feedback explicitly |
+| Uncertainty miscalibration (neural-linear) | the bonus is too small or too large, causing under- or over-exploration | recompute the covariance or posterior on a schedule and calibrate the bonus scale |
+| Per-arm posteriors at scale | millions of raw arms and no posterior for never-seen items | share a parametric reward model (LinUCB or neural-linear) so features supply the uncertainty |
+| High-variance off-policy estimate | the importance-weighted estimate is dominated by a few large weights, so offline decisions are noisy | clip or self-normalize the importance weights (capped IPS, SNIPS), or use a doubly-robust estimator |
+
+```mermaid
+flowchart TD
+  A["new items get no traffic"] --> B{"is exploration propensity logged?"}
+  B -->|no| C["log the propensity:<br/>off-policy eval needs it"]
+  B -->|yes| D{"does exploration still fire?"}
+  D -->|no| E["exploration collapse:<br/>add epsilon floor / widen prior"]
+  D -->|yes| F["cold-start feedback loop:<br/>explore from content features,<br/>popularity as floor only"]
+```
+
+The through-line: in a bandit the exploration accounting is the model, so a wrong
+propensity or a collapsed explore rate corrupts every downstream decision.

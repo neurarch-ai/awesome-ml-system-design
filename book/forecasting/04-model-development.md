@@ -109,3 +109,24 @@ grows long or the covariate structure gets rich enough that the GBT plateaus. Fo
 coherence across the SKU to category to region hierarchy, reconcile the leaf
 forecasts with MinT (hierarchicalforecast) rather than trusting bottom-up sums when
 leaf noise is high.
+
+## Implementation and training pitfalls
+
+Forecasting models fail less on the algorithm than on how time is handled around
+them: features that peek past the forecast origin, validation that shuffles the
+future into the past, and scaling statistics fit on data the model should not have
+seen yet.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Forecast horizon leakage | eval strong, live accuracy drops at longer horizons | build lags and rolling stats only from data available at the forecast origin, respect the horizon gap |
+| Per-series normalization leakage | validation error looks great, generalization poor | fit each series scaler on the train window only and apply it forward |
+| Random train/val split | optimistic error, model has effectively seen the future | rolling-origin (time-series) cross-validation |
+| Quantile crossing | P90 forecast falls below P50 for some points | fit monotone quantile heads or sort the predicted quantiles post-hoc |
+| Intermittent, zero-inflated demand | RMSE minimized by predicting near zero everywhere | use a count likelihood (negative binomial) or Croston-style handling and evaluate with pinball, not RMSE |
+| Concept drift, regime change | accuracy drops after a promotion or price change | include promo, price, and holiday covariates, retrain on recent windows, track error by segment |
+| Hierarchy incoherence | store forecasts do not sum to the region forecast | reconcile with MinT rather than trusting bottom-up sums |
+| New-item cold start | no history, the global model emits garbage | fall back to attribute-based analogs or category priors until history accrues |
+
+The through-line: a forecast that scores well under a random split is almost always
+leaking the future, so validate on a rolling origin before trusting any number.

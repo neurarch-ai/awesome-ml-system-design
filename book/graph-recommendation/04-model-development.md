@@ -118,3 +118,35 @@ Welling, 2017) and GAT (2018).
 > real dimensions in the live
 > [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo): see where
 > neighbor sampling, aggregation, and the pairwise scoring head attach.
+
+## Implementation and training pitfalls
+
+Graph link-prediction models fail in ways specific to the graph: the split leaks
+edges through message passing, depth collapses embeddings, and lazy negative
+sampling makes an offline AUC look nearly perfect while live recall stays poor.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Edge leakage in the split | AUC near perfect offline, live recall poor | remove test edges before message passing, split edges by time rather than randomly |
+| Neighbor explosion | memory and latency blow up on high-degree nodes | fixed-size neighbor sampling (GraphSAGE), cap the fan-out per hop |
+| Over-smoothing | deeper GNN makes node embeddings collapse to indistinguishable | keep depth to 2 or 3 layers, add residual or jumping-knowledge connections |
+| Hard-negative collapse | training loss stalls, model cannot separate close pairs | mix random and mined hard negatives, curriculum from easy to hard |
+| Degree and popularity bias | recommendations dominated by hub nodes | degree-normalized aggregation, down-weight hubs the way Adamic-Adar does |
+| Transductive cold start | a new node has no embedding at serving time | use an inductive model (GraphSAGE) that embeds from features and neighborhood |
+| Trivial-negative sampling | offline metric high, ranks obvious non-edges | sample negatives from plausible candidates, not the whole node set |
+| Stale neighborhood at serving | a precomputed embedding misses recent edges | refresh embeddings on a cadence matched to graph churn, or recompute for active nodes |
+
+The through-line: any link-prediction AUC near the ceiling almost always means test
+edges leaked into message passing or the negatives were trivial, so distrust it until
+the split and the sampler are both audited.
+
+```mermaid
+flowchart TD
+  A["offline AUC suspiciously high"] --> B{test edges removed<br/>before message passing?}
+  B -- no --> C["edge leakage:<br/>rebuild split, mask test edges"]
+  B -- yes --> D{negatives sampled from<br/>plausible candidates?}
+  D -- no --> E["trivial negatives:<br/>mine hard negatives"]
+  D -- yes --> F{new nodes need<br/>embeddings at serve time?}
+  F -- yes --> G["use inductive GNN,<br/>not node2vec"]
+  F -- no --> H["metric likely trustworthy"]
+```

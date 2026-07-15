@@ -201,3 +201,23 @@ text-contrastive row is Sentence-BERT (UKP Darmstadt, 2019).
 **Tools.** InfoNCE dual-encoder training is a few lines in PyTorch (Meta) or TensorFlow Recommenders (Google), both of which ship in-batch-negative and sampled-softmax (logQ) helpers; sentence-transformers is the standard for SimCSE and other text contrastive setups. Triplet and margin losses with hard-negative miners come ready-made in pytorch-metric-learning. Graph encoders are implemented in PyTorch Geometric and DGL (GraphSAGE aggregators, LightGCN propagation), and RecBole packages LightGCN as a tuned collaborative-filtering baseline.
 
 **Worked example.** A marketplace building user-to-item retrieval starts with a two-tower dual-encoder trained under InfoNCE in TensorFlow Recommenders, because there are many candidates per anchor and one side (items) precomputes cleanly against an ANN index; it skips triplet loss since it has no triplet miner. It uses in-batch negatives for free, adds the logQ correction at training time because the catalog is popularity-skewed, and layers in a small tuned fraction of mined hard negatives only once the easy loss saturates. Because new items with rich features arrive constantly, the item tower moves to a GraphSAGE-style inductive encoder in PyTorch Geometric rather than a transductive LightGCN that would leave fresh items vectorless until retrain. For a separate text-only surface with no engagement signal, it drops in a sentence-transformers SimCSE encoder.
+
+## Implementation and training pitfalls
+
+Contrastive training fails quietly: the loss keeps dropping while the geometry
+degrades. Most of the trouble comes from the negatives, the temperature, and the
+choice of encoder for entities that arrive cold.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Embedding collapse | all vectors converge, cosine sits near one everywhere, and downstream recall floors | tune the temperature, normalize, add hard negatives, and lower the learning rate |
+| Temperature miscalibration | too small overfits the hardest (often false) negatives; too large gives flat gradients | tune the temperature on a validation retrieval metric, not on the loss value alone |
+| False negatives from in-batch sampling | true positives are labeled negative, so the model pushes related items apart | mask same-entity items, or de-duplicate near-identical items within a batch |
+| Popularity bias in negatives | head items are unfairly pushed down and the geometry is skewed | subtract the logQ correction from the logit, at training time only, never at serving |
+| Triplet mining stall | most triplets already satisfy the margin, gradients go near zero, and training plateaus | use semi-hard or hard triplet mining, raise the margin, or switch to InfoNCE |
+| Too many hard negatives too early | the loss spikes and training destabilizes from false negatives in the mined set | keep mostly in-batch negatives, add a small hard fraction only after the easy loss saturates, and ramp slowly |
+| Dimension chosen in isolation | the memory and latency bill balloons, or recall underfits | tune the dimension against the downstream ANN consumer, and quantize before chasing a higher dimension |
+| Transductive encoder on fresh entities | new items or users have no vector until the next retrain, so cold recall is zero | use an inductive encoder (GraphSAGE-style) or content features for cold entities |
+
+The through-line: a falling contrastive loss is not evidence of a good space, so
+judge the encoder on retrieval metrics and negative quality, not on the loss curve.

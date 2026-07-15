@@ -138,3 +138,34 @@ per-policy score calibration uses Platt scaling (Platt, 1999).
 **Tools.** Text encoders (BERT, ModernBERT) fine-tune with Hugging Face Transformers; image models (EfficientNet, ViT) come from timm (PyTorch Image Models) or torchvision. Self-supervised speech models (wav2vec2, WavLM) ship in fairseq (Meta) and Hugging Face, and knowledge distillation to a small student is a standard PyTorch (Meta) training loop. Joint vision-language fusion uses OpenCLIP or Hugging Face CLIP checkpoints, and the near-free hash front-end runs on perceptual hashing such as PDQ (Meta) or imagehash. Per-policy threshold scans and Platt or isotonic calibration are one call each in scikit-learn (precision_recall_curve, CalibratedClassifierCV).
 
 **Worked example.** A social app moderating uploads runs a funnel rather than one model. A PDQ perceptual-hash lookup auto-actions known-bad re-uploads at near-zero cost; novel text goes to a fine-tuned ModernBERT (chosen over plain BERT because posts often exceed 512 tokens and arrive obfuscated) behind a Unicode-normalization front-end, and novel images hit EfficientNet-B0 at ingest because a large ViT would blow the per-hour compute budget. Only ambiguous caption-plus-image cases escalate to a CLIP-style joint model, gated so it never runs on everything. Live voice chat gets a distilled WavLM student to fit the sub-100ms streaming budget. Each policy trains with class-weighted BCE and gets its own threshold from a PR-curve scan, with the CSAM floor forced near-perfect while spam sits lower.
+
+## Implementation and training pitfalls
+
+Moderation models fail in ways that map directly to escaped harm or wrongful
+removals: a threshold set on the wrong scale, an adversary who evades the encoder,
+or a label loop that never sees its own misses.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Threshold set on uncalibrated logits | the precision floor is silently violated after each retrain as the logit scale moves | recalibrate (Platt or isotonic) after every retrain and set thresholds on calibrated probabilities |
+| Severe class imbalance | the model outputs near-zero for everything and recall collapses | use class-weighted BCE or focal loss, tune the weight on a calibration holdout, then recalibrate |
+| Adversarial obfuscation | homoglyph, zero-width, and Unicode tricks slip past the text model | add a normalization front-end (Unicode NFKC, homoglyph mapping, zero-width stripping) before the encoder |
+| Distillation label drift | the audio or student model inherits and amplifies the teacher's errors | validate the student against human labels, refresh teacher labels, and monitor student-teacher agreement |
+| Concept drift in harm patterns | recall decays as adversaries evolve and the fixed threshold no longer holds | retrain on fresh appeals and confirmed misses on a schedule, and monitor per-policy PR by cohort |
+| Cross-modal harm missed by OR of unimodal | image and text are each benign but harmful together, so both models pass | route ambiguous cases to a joint image-text model instead of OR-ing unimodal scores |
+| Human-review label feedback loop | the model only relabels what it already flagged, so blind spots persist | sample below-threshold traffic for review and feed confirmed misses back into training |
+| Video keyframe undersampling | harm in unsampled frames is missed, leaving a recall gap on video | sample on scene change and escalate suspicious segments to denser frame analysis |
+
+```mermaid
+flowchart TD
+  A["a known violation got through"] --> B{"was it a re-upload?"}
+  B -->|yes| C["hash gate miss:<br/>refresh the perceptual-hash bank"]
+  B -->|no| D{"benign in each modality alone?"}
+  D -->|yes| E["cross-modal miss:<br/>route to the joint image-text model"]
+  D -->|no| F{"threshold set on calibrated p?"}
+  F -->|no| G["recalibrate after retrain,<br/>reset the per-policy floor"]
+  F -->|yes| H["concept drift:<br/>retrain on fresh false-negatives"]
+```
+
+The through-line: the threshold only means what the calibration and the funnel let
+it mean, so verify both before trusting any per-policy operating point.

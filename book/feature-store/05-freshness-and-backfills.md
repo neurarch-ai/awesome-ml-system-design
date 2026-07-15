@@ -151,3 +151,23 @@ only a minor variant over a recent window, an incremental backfill is cheaper th
 recomputing years of history. Whichever path it takes, it validates with the parity
 metric afterward, since that is how backfill skew is caught before it surfaces as
 online degradation.
+
+## Implementation and training pitfalls
+
+Feature stores rarely fail on the modeling side; they fail on time and skew, where a
+training set is built from information that did not exist at prediction time, or the
+backfilled rows do not match what the live pipeline writes.
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Point-in-time leakage | offline eval strong, collapses online | as-of join on event time, never join-on-latest |
+| Backfill skew | backfilled values diverge from what the live pipeline wrote | prefer log-replay when serve-time logs exist, otherwise recompute and validate with the parity metric |
+| Late-arriving events | a backfilled aggregate keeps changing as more history lands | freeze feature values at a completeness watermark, mark rows below the cutoff as unusable |
+| Stale online store (TTL misfit) | model reads a value the batch job never refreshed | set TTL per freshness tier, alert when the online write timestamp is older than the SLA |
+| Train/serve definition drift | one feature computed two ways in warehouse and stream | one shared transformation definition, verify parity on sampled live requests |
+| Hot-key entity skew | a few entities dominate read and write load | key-level caching and rate limiting, pre-aggregate the high-traffic entities |
+| Silent schema evolution | a renamed column or new categorical value breaks the join quietly | version feature definitions and validate schema on every materialization |
+
+The through-line matches the point-in-time discipline from section 3: any offline
+number that looks too good is usually leakage or backfill skew, so distrust it until
+the parity check has ruled both out.
