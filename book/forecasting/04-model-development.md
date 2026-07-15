@@ -10,6 +10,26 @@ Reaching for a Transformer before benchmarking a simpler baseline is a red flag.
 
 **Deep learning (DeepAR, N-BEATS, TFT, PatchTST).** Global neural models that emit distributions natively. DeepAR parameterizes a likelihood (negative binomial for counts) and samples paths. TFT emits quantiles via a multi-horizon quantile head with attention over covariates. N-BEATS is a pure time-series model without covariates, based on residual stacks of basis expansions. PatchTST splits the series into patch tokens before a Transformer, which lets it handle long horizons cheaply and channel-independently. These earn their keep at **large scale, long horizons, or rich covariate structures**, but do not reliably beat a well-tuned global GBT on short-horizon tabular demand. The cost in training, serving, and iteration speed is real; justify it explicitly.
 
+**Time-series foundation models (the zero-shot option, 2024 onward).** The newest
+family is pretrained forecasting models, the time-series analog of an LLM: train one
+large model on billions of time points across many domains, then forecast a new
+series **zero-shot** (with no per-series training) or after light fine-tuning. The
+reference points are TimesFM (Google, a decoder-only patched transformer, Das et al.,
+[arXiv:2310.10688](https://arxiv.org/abs/2310.10688)), Chronos (Amazon, which
+tokenizes scaled-and-quantized values and trains a language-model-style cross-entropy
+objective, Ansari et al., [arXiv:2403.07815](https://arxiv.org/abs/2403.07815)),
+Moirai (Salesforce, a universal any-frequency encoder, Woo et al.,
+[arXiv:2402.02592](https://arxiv.org/abs/2402.02592)) and its mixture-of-experts
+successor Moirai-MoE ([arXiv:2410.10469](https://arxiv.org/abs/2410.10469)), plus the
+hosted TimeGPT (Nixtla). They shine as a **strong instant baseline and for cold-start
+series** with little history, since they bring prior knowledge from pretraining. Where
+they do not yet win: a well-tuned global GBT on your own large, covariate-rich panel
+usually still beats a zero-shot foundation model, because the GBT is trained on
+exactly your distribution and can consume your promotions and price features, which
+most current foundation models handle weakly. Treat a foundation model as the new
+"what does an off-the-shelf model get before I build anything" bar, not an automatic
+replacement for a fitted model.
+
 ## Producing the probabilistic output
 
 A probabilistic forecast is the output the decision layer needs. There are three practical paths to get there.
