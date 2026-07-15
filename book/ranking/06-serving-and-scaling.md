@@ -93,4 +93,15 @@ computation is amortized over the full candidate batch.
 | Training behind distribution drift | Online metric decays week-over-week | Increase retrain frequency; incremental checkpoint warm-start | Compute and infra cost |
 | Lightweight ranker needed early in funnel | Full ranker too expensive on raw retrieval output | Insert an XGBoost lightweight stage between retrieval and full ranker | Funnel adds a stage; lightweight stage needs its own labels |
 
-**Details worth naming.** The "hash collisions to compress rare ids" fix is the hashing trick of Weinberger et al. (2009): map a large id vocabulary into a fixed number of buckets with a hash function so table size is bounded by buckets, not distinct ids. Collisions add a little noise for infrequent ids but bound memory and remove the need for a lookup dictionary at serve time. The lightweight early-funnel stage is typically an XGBoost (Chen and Guestrin, 2016) model precisely because a shallow GBDT scores thousands of survivors in well under a millisecond, keeping the expensive neural ranker on the few hundred that reach it. Note the two memory rows attack different limits: embedding-table memory is a capacity limit (server OOM), while embedding-lookup memory bandwidth is a throughput limit (int8 quantization roughly quarters the bytes moved per lookup), so profile which one is actually binding before spending on the wrong fix.
+**Details worth naming.** The "hash collisions to compress rare ids" fix is the hashing trick of Weinberger et al. (2009) (feed each id through a hash function and use the result to pick an embedding row, instead of keeping a giant id-to-row dictionary): map a large id vocabulary into a fixed number of buckets with a hash function so table size is bounded by buckets, not distinct ids. Collisions add a little noise for infrequent ids but bound memory and remove the need for a lookup dictionary at serve time.
+
+In code the whole trick is one modulo:
+
+```python
+def hash_bucket(item_id, n_buckets):
+    h = 0
+    for ch in str(item_id):
+        h = (h * 31 + ord(ch)) % (2**32)   # simple deterministic string hash
+    return h % n_buckets                   # fold any id into a fixed row range
+# hash_bucket("v_1120", 1000)  ->  759   (an index in [0, 999], stable across runs)
+``` The lightweight early-funnel stage is typically an XGBoost (Chen and Guestrin, 2016) model precisely because a shallow GBDT scores thousands of survivors in well under a millisecond, keeping the expensive neural ranker on the few hundred that reach it. Note the two memory rows attack different limits: embedding-table memory is a capacity limit (server OOM), while embedding-lookup memory bandwidth is a throughput limit (int8 quantization roughly quarters the bytes moved per lookup), so profile which one is actually binding before spending on the wrong fix.

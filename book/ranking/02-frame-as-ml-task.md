@@ -33,7 +33,8 @@ There are three ways to frame learning to rank, and the choice matters because
 it decides what the loss function penalizes.
 
 **Pointwise.** Predict a score or label for each item independently, using binary
-cross-entropy or regression. Simple and fast. The model never sees two items
+cross-entropy (the standard loss for yes/no labels, which rewards putting high
+probability on the true outcome) or regression. Simple and fast. The model never sees two items
 together, so it cannot directly optimize that item A ranks above item B; it just
 tries to get each item's score right. Most large-scale rankers start here because
 it scales to billions of training examples.

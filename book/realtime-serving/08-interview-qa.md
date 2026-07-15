@@ -84,7 +84,13 @@ quality.
 is about 20 ms, right?**
 A: No, tail latency compounds. If a request passes through N roughly independent
 hops in sequence, the chance it dodges every hop's slow tail is about
-(0.99)^N, so the end-to-end p99 drifts well past any single hop's p99. Fan-out is
+(0.99)^N, so the end-to-end p99 drifts well past any single hop's p99.
+
+```python
+def chain_p99_dodge(single_p99_dodge, n_hops):   # prob of dodging every hop's tail
+    return single_p99_dodge ** n_hops
+# chain_p99_dodge(0.99, 5) -> 0.9509900498999999  (5 hops: only ~95% dodge all tails)
+``` Fan-out is
 worse than a chain: a request that must wait on the slowest of K parallel feature
 shards sees the maximum of K tails, so scattering wider makes it more likely one
 shard lands in a tail. The mechanisms that fight this are hedged (backup) requests

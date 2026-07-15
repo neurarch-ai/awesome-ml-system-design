@@ -41,6 +41,15 @@ GBT models grow separate trees per quantile head; TFT adds quantile output heads
 
 **Conformal prediction.** A distribution-free calibration wrapper on any point model. Train the point model, compute residuals on a held-out calibration set, and widen intervals to achieve nominal empirical coverage. Cheap honest intervals for a model that is already in production.
 
+```python
+def conformal_interval(cal_residuals, point_pred, alpha=0.1):  # split conformal, 1-alpha coverage
+    import numpy as np
+    r = np.abs(np.asarray(cal_residuals, float))   # errors on a held-out calibration set
+    q = np.quantile(r, 1 - alpha)                  # the (1-alpha) empirical error quantile
+    return point_pred - q, point_pred + q          # symmetric calibrated interval
+# conformal_interval([1, -2, 3, -1, 2], 10, 0.1) -> (7.4, 12.6)
+```
+
 ## Hierarchical reconciliation
 
 Forecasting each level independently (item, store, region, national) produces incoherent numbers: the item-level forecasts will not sum to the store total, and the business cannot act on levels that contradict each other. There are three reconciliation strategies:
@@ -48,6 +57,12 @@ Forecasting each level independently (item, store, region, national) produces in
 - **Bottom-up.** Forecast the most granular level (item-store) and sum upward. Coherent by construction. Propagates leaf noise upward.
 - **Top-down.** Forecast the aggregate, split by historical proportions. Stable aggregate but misses leaf dynamics.
 - **Optimal reconciliation (MinT).** Forecast all levels independently, then project the entire set onto the coherent subspace using a trace-minimizing step derived from the estimated residual covariance matrix. Provably reduces total error by incorporating signal from every level. Amazon's hierarchical forecasting paper embeds this step as a differentiable layer, enabling end-to-end learning that emits coherent probabilistic forecasts without a post-hoc reconcile step.
+
+Concretely, MinT takes the stacked base forecasts $\hat{y}$ (all levels), the summing matrix $S$ (which rows sum up the hierarchy), and the residual covariance $W$, and returns the coherent set $\tilde{y}$:
+
+$$\tilde{y} = S\,(S^\top W^{-1} S)^{-1} S^\top W^{-1}\,\hat{y}$$
+
+This is a covariance-weighted least-squares projection: levels whose residuals are small and reliable (low variance in $W$) pull the reconciled numbers toward themselves, and noisy levels are trusted less. Bottom-up and top-down are the special cases where all trust is placed on a single level.
 
 ## When to use which model family and output
 

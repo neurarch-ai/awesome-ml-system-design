@@ -25,8 +25,10 @@ flowchart LR
 Two clarifications that always come up:
 
 - **Why not score all items from this vector at serving time?** For retrieval you
-  can: precompute item embeddings offline and do an ANN lookup, exactly as in the
-  two-tower chapter. For ranking over a few hundred pre-retrieved candidates,
+  can: precompute item embeddings (learned numeric vectors that place similar
+  items near each other) offline and do an ANN lookup (approximate
+  nearest-neighbor search, which finds the closest vectors fast without scanning
+  them all), exactly as in the two-tower chapter. For ranking over a few hundred pre-retrieved candidates,
   scoring each against the user vector directly is fine; the candidate set is
   small enough.
 - **Does the encoder run online?** Yes. Unlike the item tower in candidate
@@ -36,11 +38,13 @@ Two clarifications that always come up:
 
 ## Choosing the right ML category
 
-This is a **self-supervised sequence modeling** problem. We do not need
+This is a **self-supervised sequence modeling** problem (the labels come free
+from the data itself, no manual annotation). We do not need
 explicit negative labels; the next item in the sequence is the positive
 signal, and the rest of the catalog serves as implicit negatives via a
 sampled-softmax or in-batch negative strategy. The backbone choice (recurrent
-network vs self-attention transformer vs bidirectional masked model) is about how
+network vs self-attention transformer (a layer where each item looks at every
+other item to decide what matters) vs bidirectional masked model) is about how
 the encoder weighs past items, not about whether the problem is supervised.
 
 **When to use which framing.**

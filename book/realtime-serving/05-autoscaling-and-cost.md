@@ -2,8 +2,9 @@
 
 ## Horizontal scaling
 
-A stateless model server scales horizontally: many identical replicas behind a
-load balancer, no per-user state, traffic spread across them. Adding a replica
+A stateless model server scales horizontally (add more identical replicas rather
+than a single bigger machine): many identical replicas behind a load balancer, no
+per-user state, traffic spread across them. Adding a replica
 does not require migrating state; removing one does not lose data. The serving
 fleet can grow and shrink freely as long as replicas are truly stateless (the
 model weights are read-only, loaded from the registry).
@@ -46,8 +47,9 @@ Two mitigations:
 1. **Readiness probe.** Do not route traffic to a replica until it reports ready.
    The model server's warm-up pass (synthetic requests at startup) moves the cold
    cost off the critical path.
-2. **Headroom.** Keep spare capacity running so you are not autoscaling in
-   response to a spike that has already arrived. The formula for how much headroom
+2. **Headroom.** Keep spare capacity running so you are not autoscaling
+   (automatically adding or removing replicas as load changes) in response to a
+   spike that has already arrived. The formula for how much headroom
    to maintain:
 
 $$N_{\text{provisioned}} \;=\; \left\lceil (1 + h) \cdot \frac{\lambda_{\text{peak}}}{\mu} \right\rceil, \qquad h \;\gtrsim\; \frac{T_{\text{coldstart}}}{T_{\text{scale-interval}}}$$
@@ -78,7 +80,20 @@ The economics of serving differ sharply between CPU and GPU:
 
 $$\text{Cost}_{\text{CPU}}(\lambda) \;\approx\; \frac{\lambda}{\mu_{\text{CPU}}} \cdot p_{\text{CPU}}$$
 
+```python
+def cost_cpu(lam, mu_cpu, price_cpu):   # ~ (lambda/mu) replicas * price per replica
+    return (lam / mu_cpu) * price_cpu
+# cost_cpu(50000, 100, 0.05) -> 25.0  (cost rises straight with load)
+```
+
 $$\text{Cost}_{\text{GPU}}(\lambda) \;\approx\; N_{\text{GPU}} \cdot p_{\text{GPU}}, \quad N_{\text{GPU}} = \left\lceil \frac{\lambda}{\mu_{\text{GPU}}} \right\rceil$$
+
+```python
+import math
+def cost_gpu(lam, mu_gpu, price_gpu):   # ceil(lambda/mu) whole GPUs * price per GPU
+    return math.ceil(lam / mu_gpu) * price_gpu
+# cost_gpu(50000, 5000, 2.0) -> 20.0  (high base, shallow marginal cost per request)
+```
 
 ![CPU vs GPU cost curve](assets/fig-cpu-vs-gpu-cost.png)
 
@@ -106,6 +121,12 @@ nearline, serve results from a fast store.
 Shadow and blue-green carry their own capacity cost:
 
 $$\text{Cost}_{\text{deploy}} \;=\; \text{Cost}_{\text{prod}} \cdot (1 + f_{\text{mirror}}), \quad f_{\text{mirror}} \;\in\; [0, 1]$$
+
+```python
+def deploy_cost(cost_prod, f_mirror):   # f_mirror = fraction of traffic mirrored
+    return cost_prod * (1 + f_mirror)
+# deploy_cost(100.0, 1.0) -> 200.0  (a full shadow mirror doubles inference cost)
+```
 
 A full shadow mirror doubles inference cost. Size the shadow phase to be as short
 as credible, and consider running it at sampled traffic rather than full volume

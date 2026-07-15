@@ -23,7 +23,8 @@ flowchart LR
   IE --> DOT
 ```
 
-The **item embeddings do not depend on the user**, so we compute all 100 million
+The **item embeddings** (dense vectors of numbers that place similar users and items
+near each other in the same space) **do not depend on the user**, so we compute all 100 million
 of them offline, once, and index them. At request time we only run the **user
 tower** (one forward pass) and look up the nearest item embeddings. Online cost
 drops from "score 100M items" to "one embedding plus a nearest-neighbor lookup."
@@ -31,11 +32,14 @@ drops from "score 100M items" to "one embedding plus a nearest-neighbor lookup."
 ## Choosing the right ML category
 
 This is a **representation-learning / metric-learning** problem: we learn
-embeddings such that a simple similarity (dot product or cosine) reflects
-engagement. It is not a classification problem (we are not labeling items) and not
+embeddings such that a simple similarity (dot product, the sum of the two vectors'
+elementwise products, or cosine, that same product after scaling away vector length)
+reflects engagement. It is not a classification problem (we are not labeling items) and not
 a regression problem (we do not need a calibrated score here, only a good
 ranking). Framing it as "learn embeddings whose dot product ranks well" is what
-lets us push similarity search onto a fast approximate-nearest-neighbor index.
+lets us push similarity search onto a fast approximate-nearest-neighbor index (ANN:
+a structure that finds the closest vectors without checking every one, trading a
+little accuracy for a large speedup).
 
 **When to use which framing.**
 

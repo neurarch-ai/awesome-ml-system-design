@@ -60,6 +60,17 @@ examples above negative examples across all thresholds.
 
 $$\text{AUC} = \Pr\!\left(\hat{p}(x^+) \gt \hat{p}(x^-)\right)$$
 
+In code it is the fraction of positive/negative pairs the model orders correctly:
+
+```python
+def auc(scores, labels):
+    pos = [s for s, y in zip(scores, labels) if y == 1]   # scored positives
+    neg = [s for s, y in zip(scores, labels) if y == 0]   # scored negatives
+    wins = sum(sp > sn for sp in pos for sn in neg)        # correctly ordered pairs
+    return wins / (len(pos) * len(neg))                    # fraction over all +/- pairs
+# auc([0.9, 0.5, 0.4, 0.3], [1, 0, 1, 0])  ->  0.75
+```
+
 It is threshold-free and easy to compute over billions of rows, which makes it
 the standard offline metric for binary classification objectives (click vs.
 no-click) at scale. AUC does not require balanced classes, which matters when
@@ -78,6 +89,14 @@ logloss captures sharpness of the probability estimates.
 - **How it is computed.**
 
 $$\mathcal{L} = -\frac{1}{N} \sum_{i=1}^{N} \left[ y_i \log \hat{p}_i + (1 - y_i) \log (1 - \hat{p}_i) \right]$$
+
+```python
+import numpy as np
+def logloss(p, y):
+    p = np.clip(p, 1e-15, 1 - 1e-15)                      # avoid log(0)
+    return -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+# logloss(np.array([0.9, 0.2, 0.7]), np.array([1, 0, 1]))  ->  0.2284
+```
 
 A model can gain AUC while its logloss worsens if it is shifting confident
 scores in the right direction but over- or under-estimating magnitudes.
@@ -101,6 +120,20 @@ $$\text{ECE} = \sum_{b=1}^{M} \frac{n_b}{N} \left| \text{acc}(b) - \text{conf}(b
 where $n_b$ is the count in bin $b$, $\text{acc}(b)$ is the fraction of actual
 positives in that bin, and $\text{conf}(b)$ is the mean predicted probability.
 ECE summarizes the area between the reliability curve and the diagonal.
+
+```python
+import numpy as np
+def ece(p, y, M=10):
+    p, y = np.asarray(p), np.asarray(y)
+    edges = np.linspace(0, 1, M + 1)                 # M equal-width probability bins
+    total = 0.0
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = (p > lo) & (p <= hi)                      # predictions falling in this bin
+        if m.sum():                                  # weight gap by bin's share of data
+            total += m.sum() / len(p) * abs(y[m].mean() - p[m].mean())
+    return total
+# ece([0.2, 0.3, 0.8, 0.9], [0, 1, 1, 1])  ->  0.3
+```
 
 Training on downsampled negatives and stratified samples distorts calibration,
 so apply a post-hoc step (Platt scaling or isotonic regression) and monitor ECE

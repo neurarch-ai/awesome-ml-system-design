@@ -103,7 +103,15 @@ human noticing an incident.
 **Define the rollback trigger before you deploy, not during an incident.** Is it
 p99 latency exceeding the budget? Error rate above a threshold? An engagement
 drop outside the canary's confidence interval? Wire the trigger into the rollout
-controller so that reverting takes seconds.
+controller so that reverting takes seconds. Concretely, the trigger is a boolean
+the controller polls on every health scrape:
+
+```python
+def should_rollback(p99_ms, error_rate, p99_budget_ms, err_budget):
+    # any single breach flips the pointer back to the last known-good version
+    return p99_ms > p99_budget_ms or error_rate > err_budget
+# should_rollback(58, 0.002, 50, 0.01) -> True  (p99 over the 50 ms budget, revert)
+```
 
 ## When to use which
 

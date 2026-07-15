@@ -20,7 +20,8 @@ over a fixed label set.
 **Architecture:** a pre-trained encoder (BERT-family) computes a contextualized
 representation for the whole text (usually the `[CLS]` token output), and a
 linear softmax (or sigmoid for multi-label) head converts it to label
-probabilities. The encoder is fine-tuned end-to-end on labeled examples.
+probabilities. The encoder is fine-tuned end-to-end on labeled examples
+(fine-tuning: continuing to train a pre-trained model on your own labeled data).
 
 ```mermaid
 flowchart LR

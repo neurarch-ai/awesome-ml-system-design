@@ -43,7 +43,8 @@ some background noise.
 stays on the device until the trigger fires. Dictation audio can go to the cloud
 under consent.
 
-**Candidate:** Accuracy bar: WER on what test set? Does the product care more
+**Candidate:** Accuracy bar: WER (word error rate, the share of words the
+transcript gets wrong) on what test set? Does the product care more
 about proper nouns and numbers than raw WER suggests?
 
 **Interviewer:** Proper nouns matter a lot. Names and addresses are where users
@@ -58,9 +59,10 @@ signal in the first few minutes.
 
 **Functional scope:**
 
-- Streaming ASR: emits partial and final hypotheses while the user speaks and
+- Streaming ASR (automatic speech recognition, turning audio into text): emits
+  partial and final hypotheses while the user speaks and
   finalizes within roughly 300 ms of the endpoint.
-- Batch ASR with diarization: full-context transcription of uploaded recordings,
+- Batch ASR with diarization (labeling who spoke when): full-context transcription of uploaded recordings,
   punctuated, with speaker-turn labels. Latency is minutes, not milliseconds.
 - Always-on wake word: tiny on-device detector, loose threshold to avoid false
   rejects, cloud verification to kill false accepts.

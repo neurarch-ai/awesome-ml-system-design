@@ -6,7 +6,8 @@ For a tabular fraud problem with hundreds of engineered features, gradient-
 boosted trees (XGBoost, LightGBM) are the first model to reach for. They handle
 mixed feature types naturally, give feature importance for free, produce
 well-calibrated probability estimates with isotonic regression or Platt scaling
-applied post-training, and train fast enough for daily or even hourly retraining
+(post-hoc methods that remap raw model scores into true probabilities) applied
+post-training, and train fast enough for daily or even hourly retraining
 cycles. Capital One's AML program uses a random forest to triage suspicious-activity
 alerts, prioritizing cases for investigation across hundreds of features under
 regulatory scrutiny where explainability is a hard requirement. The message: trees
@@ -151,6 +152,17 @@ with a 0.5 threshold is almost always wrong in fraud.
 For the full expected-cost curve across all thresholds:
 
 $$L(\tau) = c_{\text{FP}} \cdot \text{FP}(\tau) + c_{\text{FN}} \cdot \text{FN}(\tau), \qquad \tau^{\star} = \arg\min_{\tau} L(\tau)$$
+
+```python
+def expected_cost(labels, scores, tau, c_fp, c_fn):   # labels 0/1, scores in [0, 1]
+    import numpy as np
+    labels, scores = np.asarray(labels), np.asarray(scores)
+    pred = scores >= tau                              # block when score at or above threshold
+    fp = int(((pred == 1) & (labels == 0)).sum())     # false positives: blocked good users
+    fn = int(((pred == 0) & (labels == 1)).sum())     # false negatives: missed fraud
+    return c_fp * fp + c_fn * fn                       # total expected cost at this threshold
+# expected_cost([1,0,1,0], [0.9,0.6,0.2,0.1], 0.5, 1, 20) -> 1*1 + 20*1 = 21
+```
 
 The figure below shows this curve for symmetric and asymmetric cost ratios, and
 the shift in optimal threshold.

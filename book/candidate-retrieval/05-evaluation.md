@@ -12,6 +12,18 @@ sorts.
 
 $$\text{Recall@k} = \frac{1}{|U|}\sum_{u \in U} \frac{|\text{retrieved}_k(u) \cap \text{relevant}(u)|}{|\text{relevant}(u)|}$$
 
+```python
+import numpy as np
+def recall_at_k(retrieved, relevant, k):
+    # retrieved: item ids in predicted-rank order for one user; relevant: that user's truly relevant ids
+    hits = len(set(retrieved[:k]) & set(relevant))    # relevant items that appear in the top k
+    return hits / len(relevant) if relevant else 0.0  # per-user recall
+def mean_recall_at_k(retrieved_per_user, relevant_per_user, k):
+    per_user = [recall_at_k(r, rel, k) for r, rel in zip(retrieved_per_user, relevant_per_user)]
+    return float(np.mean(per_user))                   # average over all users, as in the formula
+# mean_recall_at_k([[5, 2, 9, 1]], [{2, 7, 1}], k=3)  ->  0.3333333333333333  (only item 2 hits in top-3)
+```
+
 The subtlety is the choice of k. Recall rises with k and eventually flattens;
 you must evaluate at the k you actually hand downstream (a few hundred to a couple
 thousand), not at k=10, or you optimize the wrong operating point.
@@ -38,6 +50,20 @@ Offline recall is necessary but not sufficient; a launch is decided online.
   changes what ranking even sees.
 - **Coverage and diversity.** Does retrieval surface the long tail, or collapse to
   popular items? A recall win that shrinks catalog coverage often loses long-term.
+
+Catalog coverage has a one-line form: the fraction of the catalog that shows up
+across all users' retrieved sets.
+
+```python
+def coverage(retrieved_per_user, catalog_size):
+    # retrieved_per_user: list of retrieved-item-id lists, one per user
+    shown = set()
+    for items in retrieved_per_user:
+        shown.update(items)               # collect every distinct item retrieval ever surfaces
+    return len(shown) / catalog_size      # fraction of the catalog that reaches at least one user
+# coverage([[1, 2], [2, 3]], catalog_size=10)  ->  0.3   (items {1, 2, 3} of 10 surfaced)
+```
+
 - **New-item retrievability.** The fraction of fresh items retrieved within
   minutes, tied directly to the freshness requirement.
 

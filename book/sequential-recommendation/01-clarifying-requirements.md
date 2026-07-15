@@ -20,7 +20,7 @@ or the last 10,000?
 tens to a few hundred events per user in the recent window.
 
 **Candidate:** How fresh must the user state be? Does the feed need to react to
-the user's last action in the same session?
+the user's last action in the same session (one continuous visit, before the user leaves and comes back)?
 **Interviewer:** Yes. That is actually the whole point. If someone watches three
 cooking videos, the very next refresh should reflect that, not tomorrow's batch.
 

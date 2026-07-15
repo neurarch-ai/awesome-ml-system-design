@@ -3,9 +3,10 @@
 Before drawing anything, pin down what the system must do. Here is a typical
 exchange. Notice that each question either removes work or changes the design.
 
-**Candidate:** Which cold-start problem dominates: item-side (lots of new
-supply, as in a UGC platform or marketplace) or user-side (lots of new
-signups, as after a viral campaign)?
+**Candidate:** Which cold-start problem (serving useful recommendations for
+brand-new users or items that have no interaction history yet) dominates:
+item-side (lots of new supply, as in a UGC platform or marketplace) or
+user-side (lots of new signups, as after a viral campaign)?
 
 **Interviewer:** Both matter. Item side is heavier; we ingest thousands of
 new listings per day. User signups spike occasionally.
@@ -59,7 +60,9 @@ Three consequences fall out immediately, and stating them early is most of
 the signal in this question:
 
 - **Cold start is a representation problem.** A model that keys off learned
-  ID embeddings has nothing to say about a brand-new entity. The fix is to
+  ID embeddings (compact learned vectors that place each entity as a point in
+  a shared space, so similar entities sit close together) has nothing to say
+  about a brand-new entity. The fix is to
   build item and user representations from content and context, so a fresh
   entity inherits a location in embedding space from things it resembles
   rather than starting at a random vector.

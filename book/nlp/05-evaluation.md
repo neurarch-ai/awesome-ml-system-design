@@ -41,6 +41,12 @@ that accuracy ignores, and returns a number in [0, 1]:
 
 $$F_1^{\text{macro}} = \frac{1}{C}\sum_{c=1}^{C} F_1^{(c)}$$
 
+```python
+def macro_f1(per_class_f1):              # one F1 value per class
+    return sum(per_class_f1) / len(per_class_f1)   # unweighted mean, every class equal
+# macro_f1([0.8, 0.4, 0.9]) -> 0.7000000000000001
+```
+
 ![Per-class F1 under class imbalance](assets/fig-class-imbalance-f1.png)
 
 *Left panel: accuracy looks nearly identical across both classes but F1 on the
@@ -64,6 +70,17 @@ $\hat{S}$ be the predicted spans:
 
 $$P_{\text{span}} = \frac{|\hat{S} \cap S^{\ast}|}{|\hat{S}|}, \quad R_{\text{span}} = \frac{|\hat{S} \cap S^{\ast}|}{|S^{\ast}|}, \quad F_1^{\text{span}} = \frac{2\,P_{\text{span}}\,R_{\text{span}}}{P_{\text{span}} + R_{\text{span}}}$$
 
+```python
+def span_f1(pred_spans, gold_spans):     # each span is a (start, end, type) tuple
+    pred, gold = set(pred_spans), set(gold_spans)
+    tp = len(pred & gold)                # exact matches: boundary AND type
+    p = tp / len(pred) if pred else 0.0  # precision over predicted spans
+    r = tp / len(gold) if gold else 0.0  # recall over gold spans
+    if p + r == 0: return 0.0
+    return 2 * p * r / (p + r)           # harmonic mean
+# span_f1([(0,2,'LOC'),(5,6,'DATE')], [(0,2,'LOC'),(5,6,'ORG')]) -> 0.5
+```
+
 A predicted span counts as a true positive only if both its boundary and its
 entity type match a gold span exactly (strict match). Partial-match F1 (boundary
 correct, type wrong) is reported separately to diagnose taxonomy confusion vs
@@ -81,7 +98,25 @@ $$\text{BLEU} = \text{BP} \cdot \left(\prod_{n=1}^{N} p_n\right)^{1/N}$$
 where $\text{BP} = \min(1,\, e^{1 - r/c})$ penalizes hypotheses shorter than
 the reference ($c$ is hypothesis length in words, $r$ is reference length) and
 $p_n$ is the fraction of hypothesis n-grams that appear in the reference, clipped
-to the reference count. BLEU is fast and cheap to compute, but it misses meaning:
+to the reference count.
+
+```python
+import math
+from collections import Counter
+def bleu(hyp, ref, max_n=2):                 # hyp, ref are token lists; n-gram means n consecutive tokens
+    w, log_p = 1.0 / max_n, 0.0
+    for n in range(1, max_n + 1):
+        h = Counter(tuple(hyp[i:i+n]) for i in range(len(hyp)-n+1))
+        g = Counter(tuple(ref[i:i+n]) for i in range(len(ref)-n+1))
+        overlap = sum(min(c, g[k]) for k, c in h.items())    # clip to reference count
+        total = max(sum(h.values()), 1)
+        log_p += w * math.log(overlap / total) if overlap else float('-inf')
+    bp = min(1.0, math.exp(1 - len(ref)/len(hyp))) if hyp else 0.0  # brevity penalty
+    return bp * math.exp(log_p) if log_p != float('-inf') else 0.0  # BP * geometric mean of p_n
+# bleu("the cat sat".split(), "the cat sat".split(), max_n=2) -> 1.0
+```
+
+BLEU is fast and cheap to compute, but it misses meaning:
 a correct paraphrase with different word choice scores poorly. **COMET** measures
 translation quality using a cross-lingual neural model (typically an XLM-R
 backbone) fine-tuned on human adequacy and fluency ratings; it takes the source
@@ -99,6 +134,13 @@ four times as much as recall:
 
 $$F_{0.5} = \frac{(1 + 0.5^2)\,P \cdot R}{0.5^2 \cdot P + R} = \frac{1.25\,P \cdot R}{0.25\,P + R}$$
 
+```python
+def f_beta(p, r, beta):                   # beta<1 weights precision more than recall
+    b2 = beta * beta
+    return (1 + b2) * p * r / (b2 * p + r)
+# f_beta(p=0.8, r=0.5, beta=0.5) -> 1.25*0.8*0.5/(0.25*0.8+0.5) = 0.5/0.7 = 0.7142857142857143
+```
+
 Grammarly's GECToR reports $F_{0.5}$ on CoNLL-2014 and BEA-2019 benchmarks for
 this reason.
 
@@ -109,15 +151,37 @@ $E^{\ast}$ of known-synonym pairs on a held-out test split, returning numbers in
 
 $$P_{\text{pair}} = \frac{|\hat{E} \cap E^{\ast}|}{|\hat{E}|}, \qquad R_{\text{pair}} = \frac{|\hat{E} \cap E^{\ast}|}{|E^{\ast}|}$$
 
+```python
+def pairwise_pr(pred_pairs, gold_pairs):        # sets of (a, b) synonym pairs
+    pred = {frozenset(p) for p in pred_pairs}   # frozenset makes (a,b) == (b,a)
+    gold = {frozenset(g) for g in gold_pairs}
+    tp = len(pred & gold)                       # correctly predicted synonym pairs
+    p = tp / len(pred) if pred else 0.0
+    r = tp / len(gold) if gold else 0.0
+    return p, r
+# pairwise_pr([('a','b'),('a','c')], [('a','b'),('b','d')]) -> (0.5, 0.5)
+```
+
 ## Calibration: turning a score into a probability
 
-A raw model logit is not a probability you can threshold on. After fine-tuning, a
+A raw model logit (the unnormalized score a network emits before softmax) is not a
+probability you can threshold on. After fine-tuning, a
 classifier is often over-confident on high scores and under-confident near the
 boundary, which means the raw score does not behave like a true probability.
 **Temperature scaling** fits a single scalar $T \gt 0$ to the logits on a held-out
 calibration set:
 
 $$p_{\theta}(c \mid x) = \text{softmax}\!\left(\frac{z_c}{T}\right)$$
+
+```python
+import numpy as np
+def temperature_softmax(logits, T):          # logits vector, temperature T > 0
+    z = np.asarray(logits) / T               # divide every logit by T
+    z = z - z.max()                          # shift for numerical stability
+    e = np.exp(z)
+    return e / e.sum()                        # calibrated probabilities
+# temperature_softmax([2.0, 1.0, 0.1], T=2.0).round(3) -> array([0.502, 0.304, 0.194])
+```
 
 When $T \gt 1$, the distribution softens (less confident); when $T \lt 1$, it
 sharpens. Temperature scaling is cheap (one hyperparameter) and rarely hurts

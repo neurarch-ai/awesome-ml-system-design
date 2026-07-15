@@ -23,7 +23,8 @@ creative id, placement id. There are hundreds of millions of distinct values per
 field. Two strategies handle this scale:
 
 **Row-per-id embedding tables.** Pre-allocate one row in a learnable matrix for
-each known id. Works when the id space is bounded and stable (e.g., a fixed set
+each known id (an embedding is a learned dense vector that stands in for a raw
+categorical id, so the model can do arithmetic on ids). Works when the id space is bounded and stable (e.g., a fixed set
 of placements). Impossible for user ids and ad ids that grow continuously.
 
 **Feature hashing into a fixed-size table.** Hash each id value to a bucket
@@ -105,11 +106,23 @@ Concretely:
 Mitigations to name:
 
 - **Exploration traffic.** Deliberately show a small fraction of ads
-  off-policy (epsilon-greedy or Thompson sampling) to gather unbiased labels.
+  off-policy (epsilon-greedy or Thompson sampling, both simple randomized
+  exploration policies that sometimes show a non-top ad on purpose) to gather
+  unbiased labels.
   This is exactly what Instacart calls their "hold-back" dataset.
 - **Inverse-propensity weighting (IPW).** Weight each training example by the
-  inverse probability the old policy showed the ad. Upweights rare ads,
+  inverse probability the old policy showed the ad (the propensity is that
+  showing probability, logged at serving time). Upweights rare ads,
   downweights over-served ads.
+
+```python
+import numpy as np
+def ipw_weights(propensities):
+    # propensity = probability the OLD policy chose to show this ad (logged online)
+    p = np.asarray(propensities, float)
+    return 1.0 / p                    # small p (rarely shown) -> large training weight
+# ipw_weights([0.5, 0.1, 0.8]).tolist() -> [2.0, 10.0, 1.25]
+```
 - **Position feature at train time.** Include slot position as a feature during
   training; neutralize it (set to a fixed value) at serving, so the model does
   not learn to predict position instead of relevance.

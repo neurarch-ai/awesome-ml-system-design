@@ -28,6 +28,54 @@ def hits_at_k(ranked_labels, k):
 # hits_at_k([[0,1,0],[0,0,1]], 2) -> 0.5  (member 1 hits at rank 2, member 2's positive is at rank 3)
 ```
 
+MRR (mean reciprocal rank) rewards ranking the first true edge high, not just inside
+top-k:
+
+```python
+def mrr(ranked_labels):
+    # ranked_labels: per member, a 0/1 list of candidates sorted by score, best first
+    rr = []
+    for labels in ranked_labels:
+        r = 0.0
+        for rank, lab in enumerate(labels, start=1):  # ranks are 1-based
+            if lab:
+                r = 1.0 / rank                         # reciprocal rank of the first hit
+                break
+        rr.append(r)
+    return sum(rr) / len(rr)                            # average over members
+# mrr([[0,1,0],[0,0,1]]) -> (1/2 + 1/3)/2 = 0.41666666666666663
+```
+
+AUC is the chance a true edge outscores a sampled non-edge (ties count as half):
+
+```python
+def auc(pos_scores, neg_scores):
+    # pos_scores: scores of true edges;  neg_scores: scores of sampled non-edges
+    wins = 0.0
+    for p in pos_scores:
+        for n in neg_scores:
+            if p > n: wins += 1.0
+            elif p == n: wins += 0.5
+    return wins / (len(pos_scores) * len(neg_scores))   # fraction of pos>neg pairs
+# auc([0.9, 0.6], [0.5, 0.7, 0.2]) -> 5 of 6 pairs won = 0.8333333333333334
+```
+
+AP (average precision) averages the precision measured at each true edge in the
+ranking, and is more informative than AUC under heavy non-edge imbalance:
+
+```python
+def average_precision(labels):
+    # labels: 0/1 list for one member, sorted by score, best first
+    hits = 0
+    total = 0.0
+    for i, lab in enumerate(labels, start=1):
+        if lab:
+            hits += 1
+            total += hits / i        # precision at this true-edge position
+    return total / hits if hits else 0.0
+# average_precision([1,0,1,0]) -> (1/1 + 2/3)/2 = 0.8333333333333333
+```
+
 ## Online metrics
 
 - **Invitation acceptance rate**, not invitations sent. The product wins on
@@ -38,6 +86,17 @@ def hits_at_k(ranked_labels, k):
 - **Coverage and fairness.** Does the system only suggest hub nodes and dense
   communities, starving new or peripheral members? Track suggestion coverage across
   the degree distribution.
+
+```python
+def coverage(rec_lists, catalog):
+    # rec_lists: the recommended-id lists shown to members
+    # catalog: set of all member ids that could be suggested
+    shown = set()
+    for recs in rec_lists:
+        shown.update(recs)
+    return len(shown & catalog) / len(catalog)   # fraction of the catalog ever shown
+# coverage([[1,2],[2,3]], {1,2,3,4}) -> 3 of 4 members shown = 0.75
+```
 
 ## When to use which metric
 

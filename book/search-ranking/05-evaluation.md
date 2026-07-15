@@ -20,6 +20,16 @@ $$\text{DCG}@K = \sum_{i=1}^{K} \frac{rel_i}{\log_2(i+1)}, \qquad \text{NDCG}@K 
 
 where $\text{IDCG}@K$ is the DCG of the ideal re-ordering of those same documents.
 
+```python
+import math
+def ndcg_at_k(rels, k):   # rels: graded relevance in the returned order (higher = more relevant)
+    def dcg(xs):
+        return sum(r / math.log2(i + 2) for i, r in enumerate(xs))   # i + 2 because ranks are 1-based
+    ideal = sorted(rels, reverse=True)                               # the best possible ordering of these labels
+    return dcg(rels[:k]) / dcg(ideal[:k])                            # normalize so a perfect order scores 1.0
+# ndcg_at_k([3, 2, 3, 0, 1, 2], 6) -> 0.961  (a good but not perfect ranking)
+```
+
 Why NDCG and not accuracy or precision? Because the metric must be (1) graded
 (match the four-point relevance scale) and (2) position-weighted (reflect that
 positions 1 and 2 are worth far more than positions 9 and 10). Accuracy and

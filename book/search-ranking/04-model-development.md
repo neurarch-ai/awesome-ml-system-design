@@ -32,6 +32,15 @@ controls length normalization. BM25 runs over an inverted index: at query time t
 index maps each query term to its posting list (the sorted list of documents
 containing it), and BM25 scores documents by merging those lists.
 
+```python
+import math
+def bm25_term(tf, df, N, dl, avgdl, k1=1.2, b=0.75):   # tf: term freq in doc; df: docs with term; N: corpus size; dl: doc length
+    idf = math.log((N - df + 0.5) / (df + 0.5) + 1)     # rarer terms (small df) score higher
+    tf_part = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * dl / avgdl))   # term freq saturates, longer docs discounted
+    return idf * tf_part                                 # a document's BM25 score sums this over the query terms
+# bm25_term(3, 100, 1_000_000, 90, 100) -> 14.782...  (rare term, appears 3x in a slightly-short doc)
+```
+
 BM25 is unbeatable on **exact-term and rare-term queries** (a product code, a
 specific brand name) and is extremely fast. Its weakness is the vocabulary gap: it
 cannot match "laptop" to "notebook computer" because the terms do not overlap.
@@ -56,7 +65,8 @@ flowchart TD
   DEMB --> SIM
 ```
 
-Document embeddings are precomputed offline and indexed with ANN (HNSW or IVF).
+Document embeddings are precomputed offline and indexed with ANN (HNSW or IVF, two
+index structures that make approximate nearest-neighbor lookup fast).
 At query time only the query tower runs; the rest is a nearest-neighbor lookup.
 The key difference from BM25: semantic retrieval closes the vocabulary gap but
 can drift on exact strings and rare proper nouns, which is exactly where BM25 is
@@ -67,11 +77,23 @@ strong.
 *BM25 leads on exact-term and rare-term queries; dense retrieval leads on
 paraphrases and natural-language queries. Neither arm is optional. Illustrative.*
 
-The dual-encoder trains with in-batch negatives and an InfoNCE-style loss. For a
+The dual-encoder trains with in-batch negatives (using the other documents in the
+same training batch as the wrong answers, so no separate negative sampling is
+needed) and an InfoNCE-style loss. For a
 batch of $B$ (query, document) pairs, the loss asks the model to score each query
 most similar to its own document:
 
 $$L_{\text{tower}} = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{\exp\!\left(\text{sim}(q_i, d_i)/\tau\right)}{\sum_{j=1}^{B} \exp\!\left(\text{sim}(q_i, d_j)/\tau\right)}$$
+
+```python
+import numpy as np
+def info_nce(sims, tau=0.2):   # sims[i][j]: similarity of query i to doc j; the diagonal holds the true (q, d) pairs
+    logits = np.array(sims) / tau
+    logits = logits - logits.max(axis=1, keepdims=True)      # subtract row max for numerical stability before exp
+    p = np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True)   # softmax over each query's candidate docs
+    return float(-np.mean(np.log(np.diag(p))))               # reward making each query most similar to its own doc
+# info_nce([[0.8, 0.4], [0.3, 0.7]]) -> 0.127  (both queries already prefer their own doc, so the loss is small)
+```
 
 Temperature $\tau$ sharpens the contrast. The same false-negative and popularity
 risks as recommendation retrieval apply here; see the
@@ -119,6 +141,12 @@ independently of the other candidates:
 
 $$L_{\text{point}} = \sum_{i} \left(f(x_i) - y_i\right)^{2}$$
 
+```python
+def pointwise_loss(scores, labels):   # squared error between the predicted score and the graded relevance label
+    return sum((s - y) ** 2 for s, y in zip(scores, labels))
+# pointwise_loss([2.5, 0.0, 1.0], [3, 0, 1]) -> 0.25  (each candidate scored on its own, order ignored)
+```
+
 Simple, but it optimizes the wrong thing: the metric is about *order* and is
 position-weighted. Pointwise spends capacity getting absolute scores right deep in
 the list where it does not matter.
@@ -128,6 +156,18 @@ which should rank higher. The loss on pair $(i, j)$ where document $i$ is more
 relevant than document $j$:
 
 $$L_{\text{pair}} = \sum_{(i,j):\, rel_i \gt rel_j} \log\!\left(1 + e^{-(s_i - s_j)}\right)$$
+
+```python
+import math
+def pairwise_loss(scores, labels):   # sum over ordered pairs where doc i is more relevant than doc j
+    total = 0.0
+    for i in range(len(scores)):
+        for j in range(len(scores)):
+            if labels[i] > labels[j]:                   # i should rank above j
+                total += math.log(1 + math.exp(-(scores[i] - scores[j])))   # penalty shrinks as s_i beats s_j
+    return total
+# pairwise_loss([2.0, 1.0], [1, 0]) -> 0.313  (one correctly-ordered pair, small residual loss)
+```
 
 This matches the task: ranking is fundamentally about relative order. Pairwise is
 the workhorse and the right default for most ranking problems.
@@ -139,7 +179,9 @@ the metric:
 
 $$\lambda_{ij} = \frac{\partial L_{\text{pair}}}{\partial s_i} \cdot |\Delta \text{NDCG}_{ij}|$$
 
-The model is a gradient-boosted tree ensemble over hand-crafted ranking features.
+The model is a gradient-boosted tree ensemble (many small decision trees added one
+after another, each new tree correcting the errors left by the ones before it) over
+hand-crafted ranking features.
 LambdaMART is the senior default when the metric is NDCG and you want the loss
 aligned with what you actually report.
 

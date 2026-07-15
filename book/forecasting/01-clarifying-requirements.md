@@ -8,7 +8,7 @@ Before designing anything, pin down what the system must do. Every question belo
 
 **Interviewer:** Inventory replenishment for a marketplace: millions of SKUs across thousands of stores. The planner decides how much to order and when.
 
-**Candidate:** Then the forecast needs to be a distribution, not a mean. A replenishment optimizer stocks to a quantile set by the service-level target. If I give you only the mean, safety stock is uncomputable and you stock out roughly half the time. Is that the frame you want?
+**Candidate:** Then the forecast needs to be a distribution, not a mean. A replenishment optimizer stocks to a quantile (the demand level below which a given fraction of outcomes fall; the P90 is exceeded only about 10 percent of the time) set by the service-level target. If I give you only the mean, safety stock is uncomputable and you stock out roughly half the time. Is that the frame you want?
 
 **Interviewer:** Yes. Probabilistic output is required. Continue.
 
@@ -20,7 +20,7 @@ Before designing anything, pin down what the system must do. Every question belo
 
 **Interviewer:** About 5 million SKUs times a few thousand stores, so potentially billions of series at the most granular level, though many have sparse history.
 
-**Candidate:** At that scale, fitting one model per series is infeasible. We need a global model that learns across all series and borrows strength. I will come back to which family suits this, but the scale already rules out classical per-series models. What covariates are available, and are they known in the future?
+**Candidate:** At that scale, fitting one model per series is infeasible. We need a global model (one model trained jointly across all series, instead of a separate model fit to each series) that learns across all series and borrows strength. I will come back to which family suits this, but the scale already rules out classical per-series models. What covariates (external input variables such as price, promotions, or holidays that help explain demand) are available, and are they known in the future?
 
 **Interviewer:** Calendar and holidays are known. Planned promotions and prices are known a few weeks out. Weather is available but it is itself a forecast.
 
@@ -40,4 +40,4 @@ Three consequences fall out of this immediately:
 
 - **The output must be a distribution.** The 3:1 underage-to-overage cost ratio sets the critical-fractile stocking quantile at P75 (c_u / (c_u + c_o) = 3/4); the business also named a 90 percent service-level target as a separate specification. Either way, a single point estimate is a broken input to the optimizer and is not acceptable.
 - **The scale rules out one model per series.** At millions of series, a global model that shares weights across all series is the only tractable path. Classical per-series methods (ARIMA, ETS) are a fast baseline for small-scale validation, not the production path.
-- **Evaluation must be a rolling-origin backtest, scored on proper metrics.** Random train/test splits leak future demand. MAPE is undefined on zero-demand SKUs, which are common. The correct gate is MASE and pinball/WQL on a walk-forward backtest at the 12-week horizon, plus coverage checks to confirm the P90 is actually exceeded about 10 percent of the time.
+- **Evaluation must be a rolling-origin backtest (backtesting is walk-forward testing on historical data: train up to a cutoff date, forecast forward, then slide the cutoff and repeat), scored on proper metrics.** Random train/test splits leak future demand. MAPE is undefined on zero-demand SKUs, which are common. The correct gate is MASE and pinball/WQL on a walk-forward backtest at the 12-week horizon, plus coverage checks to confirm the P90 is actually exceeded about 10 percent of the time.

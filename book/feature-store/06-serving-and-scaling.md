@@ -89,6 +89,16 @@ Two details worth pinning down. First, the batch-materialization burst hurts mos
 when it competes with live reads on the same nodes: rate-limiting the write path (a
 token bucket on the materialization job) or pipelining it in smaller chunks keeps
 tail read latency stable, at the cost of a longer total materialization window.
+
+```python
+def allow(tokens, capacity, refill, elapsed, cost=1):
+    # refill tokens for time passed, capped at capacity, then try to spend `cost`
+    tokens = min(capacity, tokens + refill * elapsed)
+    if tokens >= cost:
+        return True, tokens - cost              # write proceeds
+    return False, tokens                        # throttled: pause, retry later
+# allow(0.0, 100.0, 50.0, 1.0) -> (True, 49.0)   (1s of refill at 50/s allows 1 write)
+```
 Second, "silent" feature staleness is usually invisible because the online store
 still returns a value, just an old one; the fix is to store a per-feature
 `event_timestamp` alongside the value and alert when now minus that timestamp exceeds

@@ -93,9 +93,10 @@ a stochastic propensity.
 
 ## Thompson sampling
 
-Maintain a posterior distribution over each arm's reward. At each timestep,
-draw one sample from each arm's posterior and choose the arm whose sample
-is highest. For a binary reward (click or no click), the natural posterior
+Maintain a posterior distribution (the updated belief about an arm's reward
+after combining the prior with the data observed so far) over each arm's
+reward. At each timestep, draw one sample from each arm's posterior and choose
+the arm whose sample is highest. For a binary reward (click or no click), the natural posterior
 is Beta:
 
 $$\tilde{\mu}_a \sim \text{Beta}\!\left( \alpha_0 + s_a,\ \beta_0 + f_a \right), \qquad a_t = \text{arg max}_a \, \tilde{\mu}_a$$

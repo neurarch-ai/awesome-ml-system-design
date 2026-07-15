@@ -53,10 +53,13 @@ the signal in the interview:
   the survivors with a richer model (ranking). Those two stages have different
   objectives, different models, and different latency budgets.
 
-- **Retrieval needs two arms, not one.** Lexical matching (BM25 over an inverted
-  index) is fast and unbeatable on exact-term and rare-term queries, but it cannot
-  match "laptop" to "notebook computer." Semantic matching (a dual-encoder plus
-  ANN search) closes that vocabulary gap but drifts on rare terms and exact
+- **Retrieval needs two arms, not one.** Lexical matching (BM25, a fast keyword-overlap scoring formula, over an inverted
+  index, a lookup table from each word to the documents that contain it) is fast
+  and unbeatable on exact-term and rare-term queries, but it cannot
+  match "laptop" to "notebook computer." Semantic matching (a dual-encoder, a model
+  that maps query and document into the same vector space, plus ANN search,
+  approximate nearest-neighbor lookup that finds close vectors without scanning all
+  of them) closes that vocabulary gap but drifts on rare terms and exact
   strings. Neither arm is optional; the design unions them.
 
 - **The dominant label problem is position bias, not multi-task engagement.**

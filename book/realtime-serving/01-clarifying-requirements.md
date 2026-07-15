@@ -9,8 +9,9 @@ embedding tables, or an LLM?
 candidates in a recommendation pipeline. Large embedding tables, a few dense
 layers on top.
 
-**Candidate:** What is the p99 latency target for the whole prediction call,
-including feature fetch?
+**Candidate:** What is the p99 latency target (the latency that 99 percent of
+requests come in under, i.e. the slow-tail experience) for the whole prediction
+call, including feature fetch?
 **Interviewer:** About 50 ms end-to-end at p99. The feature store adds some of
 that; you decide how to split it.
 
@@ -18,7 +19,8 @@ that; you decide how to split it.
 near-line scoring that writes to a cache?
 **Interviewer:** Online, synchronous. The caller blocks on this response.
 
-**Candidate:** What is the expected QPS, and is traffic steady or spiky?
+**Candidate:** What is the expected QPS (queries per second), and is traffic
+steady or spiky?
 **Interviewer:** Peak around 50 000 QPS, with a strong diurnal curve and
 occasional launch spikes up to 3x the normal peak.
 

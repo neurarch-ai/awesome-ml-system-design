@@ -47,6 +47,16 @@ KL divergence is the directed parent of PSI:
 
 $$D_{\text{KL}}(P \parallel Q) = \sum_{i} P_i \ln \frac{P_i}{Q_i}$$
 
+```python
+import numpy as np
+def kl_divergence(p, q):
+    # p, q: probability vectors over the same bins (each sums to 1)
+    p, q = np.asarray(p, float), np.asarray(q, float)
+    p, q = np.clip(p, 1e-12, None), np.clip(q, 1e-12, None)  # avoid log(0)
+    return float(np.sum(p * np.log(p / q)))                  # directed: extra cost of coding P with Q
+# kl_divergence([0.5, 0.5], [0.5, 0.5]) -> 0.0 (identical distributions)
+```
+
 PSI is just the symmetric version:
 
 $$\text{PSI} = D_{\text{KL}}(P \parallel Q) + D_{\text{KL}}(Q \parallel P)$$
@@ -63,7 +73,19 @@ cumulative distribution functions:
 
 $$\text{KS} = \max_x \left| F_{\text{ref}}(x) - F_{\text{cur}}(x) \right|$$
 
-It is non-parametric: no assumption about the shape of either distribution.
+```python
+import numpy as np
+def ks_statistic(ref, cur):
+    # ref, cur: 1D samples; compare their empirical CDFs (step functions)
+    ref, cur = np.sort(ref), np.sort(cur)
+    grid = np.concatenate([ref, cur])                        # evaluate both CDFs at every observed point
+    cdf_ref = np.searchsorted(ref, grid, side='right') / len(ref)
+    cdf_cur = np.searchsorted(cur, grid, side='right') / len(cur)
+    return float(np.max(np.abs(cdf_ref - cdf_cur)))          # largest vertical gap between the CDFs
+# ks_statistic([0, 1, 2, 3], [0, 1, 2, 3]) -> 0.0 (identical) ; ks_statistic([0,0,0,0], [1,1,1,1]) -> 1.0 (disjoint)
+```
+
+It is non-parametric (it assumes no particular distribution shape): no assumption about the shape of either distribution.
 It returns a p-value, so the decision threshold is statistical significance
 rather than a field-rule number.
 
@@ -73,6 +95,20 @@ For categorical features, the chi-square test measures whether the observed
 cell counts in the current window differ from those expected under the
 reference distribution. PSI also applies to categorical features if you use
 the categories as bins, but chi-square gives a proper statistical test.
+
+Concretely, it sums the squared gap between observed and expected counts,
+scaled by the expected count in each category:
+
+```python
+import numpy as np
+def chi_square(observed, reference_probs):
+    # observed: counts per category in the current window
+    # reference_probs: expected share per category from the reference (sums to 1)
+    observed = np.asarray(observed, float)
+    expected = np.asarray(reference_probs, float) * observed.sum()  # expected counts under reference
+    return float(np.sum((observed - expected) ** 2 / expected))     # Pearson chi-square statistic
+# chi_square([30, 30, 40], [0.5, 0.3, 0.2]) -> 28.0 (expected [50, 30, 20]; the first category is short)
+```
 
 ## When to use which
 

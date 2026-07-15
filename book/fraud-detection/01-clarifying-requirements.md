@@ -3,8 +3,9 @@
 Before designing anything, pin down what the system must do. Here is a typical
 exchange between a candidate and an interviewer. Notice that every question
 either removes work or changes the design, and that the first few exchanges
-already reveal the two dominant constraints: extreme imbalance and asymmetric
-costs.
+already reveal the two dominant constraints: extreme imbalance (fraud is a tiny
+fraction of all transactions, so the two classes are wildly unequal) and
+asymmetric costs (the two kinds of mistake do not cost the same amount).
 
 **Candidate:** What kind of fraud are we detecting, and what actions can the
 system take?
@@ -23,7 +24,8 @@ positive is blocking a legitimate customer; a false negative is letting fraud
 through.
 
 **Interviewer:** A false positive means a lost sale, a support call, and
-potential churn. A false negative is a realized loss: the chargeback amount
+potential churn. A false negative is a realized loss: the chargeback (the card
+network reverses the payment and pulls the funds back from the merchant) amount
 plus network fees. The chargeback is typically an order of magnitude more
 expensive than the friction of a declined good transaction.
 
@@ -60,14 +62,17 @@ question.
 1. **Extreme class imbalance kills accuracy.** At a 0.2 percent base rate, a
    model that predicts "never fraud" scores 99.8 percent accuracy and catches
    zero fraud. Accuracy rewards ignoring the positive class. The right metric is
-   precision-recall and PR-AUC. This shapes every design choice downstream:
+   precision-recall and PR-AUC (the area under the precision-recall curve, one
+number for how well the model ranks fraud above legitimate). This shapes every
+design choice downstream:
    sampling, loss function, and evaluation.
 
 2. **Asymmetric costs set the threshold, not the default 0.5.** A missed fraud
    is roughly ten times more expensive than blocking a good customer. That ratio
    directly determines the optimal decision threshold: block when the estimated
    fraud probability exceeds $c_{\text{FP}} / (c_{\text{FP}} + c_{\text{FN}})$.
-   The threshold is a business decision derived from the cost matrix, not a
+   The threshold is a business decision derived from the cost matrix (a small
+   table of the dollar cost of each correct and incorrect decision), not a
    modeling default.
 
 3. **Label delay means training is always stale.** The most recent transactions

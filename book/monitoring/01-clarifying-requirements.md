@@ -9,7 +9,8 @@ a retrieval model?
 **Interviewer:** A recommendation ranker. It scores a few hundred candidates
 and returns a ranked feed for each user.
 
-**Candidate:** How fast do labels arrive? Do we learn the outcome seconds
+**Candidate:** How fast do labels (the true outcomes we later learn, e.g.
+whether the user clicked) arrive? Do we learn the outcome seconds
 after serving, or days later?
 **Interviewer:** The primary signal is click-through. Clicks arrive within
 seconds of the impression. Downstream engagement signals like long-term
@@ -51,7 +52,8 @@ Three consequences fall out immediately:
   silent decay. The serving process was healthy; the predictions were not.
   This is the central distinction between ML monitoring and service monitoring.
 
-- **The monitoring loop has two speeds.** Drift checks on the feature log run
+- **The monitoring loop has two speeds.** Drift checks (has the live data
+  distribution drifted away from what the model trained on?) on the feature log run
   immediately, no labels needed. Performance metrics (AUC, calibration) run
   once outcomes join back, which is fast for clicks but slow for retention.
   A good design uses the fast signals as an early warning and the slow ones as

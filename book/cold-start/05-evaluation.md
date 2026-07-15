@@ -24,6 +24,16 @@ The cost: replay burns most of the log. Because the new policy only matches
 a fraction of logged actions, most events are discarded. You need a large
 volume of uniformly-random traffic to get a low-variance estimate.
 
+```python
+import numpy as np
+def replay_value(logged_actions, new_actions, rewards):
+    # unbiased on a uniformly-random log: keep only rounds where the new policy agrees with what was served
+    match = np.asarray(logged_actions) == np.asarray(new_actions)
+    r = np.asarray(rewards, float)[match]                # rewards of the matched rounds only
+    return float(r.mean()) if match.any() else 0.0      # average reward over the kept rounds
+# replay_value([1, 0, 2, 1], [1, 2, 2, 0], [1, 0, 0, 1]) -> 0.5
+```
+
 **Inverse propensity scoring (IPS)** reuses any logged traffic where
 propensities are known and nonzero, not just uniform random traffic. It takes
 as input a log of events $(x_i, a_i, r_i)_{i=1}^n$ with known logging
@@ -40,6 +50,15 @@ old log. IPS is unbiased if every action had nonzero logging probability,
 but the variance explodes when the ratio is large (the new policy assigns
 high probability to actions the old policy rarely took).
 
+```python
+import numpy as np
+def ips(pi_new, pi_log, rewards):
+    pi_new, pi_log, rewards = np.asarray(pi_new, float), np.asarray(pi_log, float), np.asarray(rewards, float)
+    w = pi_new / pi_log                 # importance ratio: how much more the new policy favored each logged action
+    return float((w * rewards).mean())  # average the reweighted rewards
+# ips([0.5, 0.25, 0.5], [0.25, 0.5, 0.5], [1, 0, 1]) -> 1.0
+```
+
 **Doubly-robust (DR)** adds a learned reward model $\hat{r}$ as a baseline
 and importance-weights only its residual:
 
@@ -49,6 +68,17 @@ The estimate stays consistent if either the reward model or the propensities
 are correct (but not if both are wrong). Instacart uses IPS and doubly-robust
 together before any A/B, specifically to hedge against a bad reward model
 or inaccurate propensities.
+
+```python
+import numpy as np
+def doubly_robust(pi_new, pi_log, rewards, r_hat_logged, r_hat_policy):
+    pi_new, pi_log = np.asarray(pi_new, float), np.asarray(pi_log, float)
+    rewards, r_hat_logged, r_hat_policy = np.asarray(rewards, float), np.asarray(r_hat_logged, float), np.asarray(r_hat_policy, float)
+    w = pi_new / pi_log                               # importance ratio per logged event
+    correction = w * (rewards - r_hat_logged)         # importance-weight only the model's residual, not the raw reward
+    return float((r_hat_policy + correction).mean())  # model baseline plus the corrected residual
+# doubly_robust([0.5, 0.25], [0.25, 0.5], [1, 0], [0.5, 0.25], [0.5, 0.25]) -> 0.8125
+```
 
 **Hard requirement from all three:** the propensities logged at serve time
 must exactly match the policy that ran. A mismatch silently corrupts every
@@ -66,6 +96,15 @@ $$\text{Regret}(T) = \sum_{t=1}^{T}\bigl(\mu^{\ast} - \mu_{a_t}\bigr), \quad \mu
 where $\mu^{\ast}$ is the mean reward of the best arm and $\mu_{a_t}$ is the mean
 reward of the arm chosen at round $t$. Lower cumulative regret over time means the policy learned faster and paid
 a smaller cost for exploration.
+
+```python
+import numpy as np
+def regret(mu, chosen):
+    mu = np.asarray(mu, float)      # true mean reward of each arm
+    gap = mu.max() - mu             # per-arm shortfall vs the best arm (what the oracle would pull)
+    return float(gap[chosen].sum())  # total regret summed over the chosen sequence
+# regret([0.25, 0.5, 0.75], [0, 2, 1, 2, 0]) -> 1.25
+```
 
 - **Linear regret:** the policy never learns; the exploration cost compounds
   indefinitely (epsilon-greedy with a fixed epsilon on a stationary problem

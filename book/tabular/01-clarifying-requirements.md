@@ -34,8 +34,9 @@ the people we approved?
 
 **Interviewer:** Only for approvals. Rejected applicants disappear from the label.
 
-**Candidate:** That is the reject-inference problem. We will need to address it or
-the model is only valid on the approved region of feature space.
+**Candidate:** That is the reject-inference problem (the challenge of learning about
+applicants you declined, since you never see how they would have repaid). We will need
+to address it or the model is only valid on the approved region of feature space.
 
 **Interviewer:** Correct. How you handle that is part of the design.
 
@@ -46,7 +47,9 @@ adverse-action reason?
 the top reasons in plain language, and we cannot use protected attributes.
 
 **Candidate:** That constrains the model family toward something explainable, such
-as a monotone-constrained gradient-boosted tree with SHAP reason codes. A deep net
+as a monotone-constrained gradient-boosted tree (a tree ensemble forced so that, say,
+higher income can never raise predicted risk) with SHAP reason codes (a method that
+splits each prediction into a signed per-feature contribution). A deep net
 would struggle to satisfy the adverse-action requirement.
 
 **Interviewer:** Good. What about latency and volume?
@@ -75,7 +78,9 @@ of the signal in this question.
 
 **The probability is the product, not the ranking.** Because the score multiplies
 directly into a limit formula and a price, calibration is a first-class
-requirement, not a post-hoc nicety. An AUC of 0.93 that is badly miscalibrated on
+requirement, not a post-hoc nicety. An AUC of 0.93 (AUC being a ranking score from 0.5
+for random to 1.0 for perfect, measuring only whether risky applicants score above safe
+ones) that is badly miscalibrated on
 the tails will mis-price risk at scale, even if the ranking looks clean. Say this
 before you draw a single box.
 

@@ -10,10 +10,13 @@ engineering constraint.
 We may want pCVR later, but for now focus on pCTR.
 
 **Candidate:** Who consumes the score, and how?
-**Interviewer:** An auction. We compute eCPM as bid times pCTR and rank ads by
-eCPM. The top ad wins and is charged second-price.
+**Interviewer:** An auction. We compute eCPM (effective cost per thousand impressions, the
+expected revenue of a slot) as bid times pCTR and rank ads by
+eCPM. The top ad wins and is charged second-price (the winner pays just above
+the runner-up's value, not its own full bid).
 
-**Candidate:** That means calibration is load-bearing, not cosmetic. A score that
+**Candidate:** That means calibration (predicted probabilities matching the real
+observed click rates) is load-bearing, not cosmetic. A score that
 is off by 20 percent does not reorder a few ads; it mis-prices every auction it
 touches. Is that a fair statement?
 **Interviewer:** Exactly right. Calibration is a non-negotiable output.
@@ -49,7 +52,8 @@ signal the interviewer is looking for:
 
 - **Calibration is the primary output constraint, not ranking quality.** The
   auction multiplies pCTR into a bid and derives a second-price charge from the
-  result. A model with great AUC but drifted calibration silently mis-prices every
+  result. A model with great AUC (a rank-order quality score, 0.5 random and 1.0
+  perfect ordering) but drifted calibration silently mis-prices every
   slot, at every QPS. Say this before you name a single model family.
 - **The feature space is dominated by sparse embedding tables, not by MLP
   parameters.** Hundreds of millions of user and ad ids, each needing a learned

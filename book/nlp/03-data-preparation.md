@@ -2,8 +2,9 @@
 
 ## Tokenization: the interface between text and model
 
-Every NLP model consumes numbers, not characters. Tokenization converts raw text
-into a sequence of integer IDs the model can embed.
+Every NLP model consumes numbers, not characters. Tokenization (splitting text
+into the units a model reads) converts raw text into a sequence of integer IDs
+the model can embed (map each ID to a learned vector of numbers).
 
 Modern systems use **subword tokenization** (WordPiece for BERT, BPE for GPT-family,
 SentencePiece for multilingual models). Subword tokenization handles
@@ -57,6 +58,17 @@ expensive to label. Three techniques work here:
   probabilistic soft labels. This bootstraps a training set without paying
   annotators to hand-label millions of messages.
 
+  A minimal label model just averages the votes that fired (a real one weights
+  each function by its estimated accuracy, but the idea is the same):
+
+```python
+def soft_label(votes):                # one vote per labeling function: 1, 0, or None (abstain)
+    fired = [v for v in votes if v is not None]   # drop abstentions
+    if not fired: return 0.5                       # no signal -> maximally uncertain
+    return sum(fired) / len(fired)                 # fraction voting positive
+# soft_label([1, 1, None, 0]) -> 2/3 = 0.6666666666666666
+```
+
 - **LLM as annotator.** Prompt a large model to classify a sample of messages.
   Treat its output as a noisy label source and distill it into the small encoder.
   You pay the LLM once per training example at label time, not once per inference
@@ -65,6 +77,15 @@ expensive to label. Three techniques work here:
 - **Active learning.** Spend scarce human annotation budget where the model is
   least certain (low-confidence predictions) or where errors are most costly
   (near the safety-threshold band). Do not label randomly.
+
+  "Least certain" has a simple score: one minus the top predicted probability.
+  Send the highest-scoring (least confident) examples to human review first:
+
+```python
+def uncertainty(probs):               # predicted class probabilities for one example
+    return 1.0 - max(probs)           # higher -> less certain -> label this one first
+# uncertainty([0.55, 0.45]) -> 0.44999999999999996
+```
 
 **For field extraction (no labels):** weak supervision is again the bootstrap.
 Write heuristics or regexes that fire on known patterns (dates, order numbers),

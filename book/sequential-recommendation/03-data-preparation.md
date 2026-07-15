@@ -15,8 +15,9 @@ pairs by sliding a window forward one step at a time:
 | [item_1, item_2] | item_3 |
 | [item_1, ..., item_{L-1}] | item_L |
 
-Each pair is **causal**: the context contains only events that happened before the
-target. This is the key constraint that prevents leakage. A sequence model trained
+Each pair is **causal** (the model may only look backward in time, never at events
+that come after the one it is predicting): the context contains only events that
+happened before the target. This is the key constraint that prevents leakage. A sequence model trained
 on non-causal pairs learns to "see the future" during training and performs
 randomly at serving time where the future is genuinely unknown. The pair
 construction is just a forward-sliding window over the session:

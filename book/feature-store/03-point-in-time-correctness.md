@@ -100,7 +100,13 @@ encoding with Laplace smoothing:
 $$\tilde{y}_c = \frac{n_c \bar{y}_c + m \bar{y}}{n_c + m}$$
 
 where $n_c$ is the count of samples in category $c$, $\bar{y}_c$ is their mean
-label, $\bar{y}$ is the global mean, and $m$ is a smoothing constant. This is a
+label, $\bar{y}$ is the global mean, and $m$ is a smoothing constant.
+
+```python
+def smoothed_te(n_c, ybar_c, ybar, m):  # blend category mean toward global mean
+    return (n_c * ybar_c + m * ybar) / (n_c + m)
+# smoothed_te(10, 0.8, 0.5, 5) -> (10*0.8 + 5*0.5) / 15 = 0.7 (pulled from 0.8 toward 0.5)
+``` This is a
 data-preparation concern, not a feature-store concern, but it appears in the same
 conversation because both are forms of label leakage.
 

@@ -4,7 +4,8 @@
 
 You cannot measure model accuracy until you know the truth. And the truth often
 arrives much later than the prediction. This is the central constraint of ML
-monitoring, and it is non-negotiable: you cannot shorten the label delay by
+monitoring, and it is non-negotiable: you cannot shorten the label delay (the lag between
+making a prediction and learning its true outcome) by
 monitoring harder.
 
 ![Label delay by system type](assets/fig-label-delay.png)
@@ -22,7 +23,7 @@ window, the only signals available are the ones that need no labels.
 The strategy is to monitor what you can see now as a leading indicator of what
 you cannot see yet.
 
-**Input drift as a proxy.** If the feature distribution has shifted materially
+**Input drift as a proxy** (a stand-in signal you can measure now for the true quality you cannot yet see). If the feature distribution has shifted materially
 from the training reference, the model is scoring inputs unlike its training
 data. Accuracy has probably moved. Input drift is not proof of quality decay,
 but a sustained PSI breach is a warning to act before labels confirm it.
@@ -38,6 +39,15 @@ calibration (how well the predicted probabilities match observed frequencies)
 can shift before raw accuracy moves. Entropy of the score distribution is
 another proxy: a model that was confident and is now uncertain, or vice versa,
 has probably encountered a changed world.
+
+```python
+import numpy as np
+def entropy(probs):
+    # probs: a score/class distribution (sums to 1); measures uncertainty in nats
+    probs = np.clip(np.asarray(probs, float), 1e-12, None)  # avoid log(0)
+    return float(-np.sum(probs * np.log(probs)))            # higher = more uncertain
+# entropy([0.5, 0.5]) -> 0.6931471805599453 (ln 2, maximal spread over two outcomes)
+```
 
 **Business-metric proxies.** For a ranking model, coverage (fraction of the
 catalog retrieved) and diversity (distribution over item clusters) are

@@ -4,7 +4,8 @@
 
 The raw material is the interaction log turned into a graph: nodes are members,
 edges are accepted connections (and optionally weaker edges like profile views or
-shared group membership, as a heterogeneous graph). A **positive example** is an
+shared group membership, as a heterogeneous graph: one with several distinct node
+and edge types rather than a single type). A **positive example** is an
 edge that formed and was accepted. A row of training data is a member pair with a
 label.
 
@@ -37,7 +38,9 @@ Two data traps decide whether the model learns anything real:
 
 ## Negative sampling on graphs
 
-The single most important data decision. Options, from cheap to careful:
+Negative sampling means deliberately picking non-edges (pairs with no connection) to
+serve as the negative label, since the log only records positives. The single most
+important data decision. Options, from cheap to careful:
 
 - **Uniform random non-edges.** Cheap, but samples the power-law degree
   distribution, so hub nodes (celebrities, big pages) are over-represented as

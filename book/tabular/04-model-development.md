@@ -11,7 +11,22 @@ heterogeneous columns with missing values and non-smooth interactions. Illustrat
 values based on published benchmark results.*
 
 On heterogeneous tabular data, gradient-boosted decision trees (XGBoost, LightGBM,
-CatBoost) are the default choice and usually the winner. The reasons are structural:
+CatBoost) are the default choice and usually the winner. Gradient boosting means
+building many small trees in sequence, where each new tree is trained to correct the
+errors (residuals) left by the trees so far, and the final score is the sum of all of
+them:
+
+```mermaid
+flowchart LR
+  T1["tree 1<br/>fit on the target"] --> R1["residual<br/>(what tree 1 got wrong)"]
+  R1 --> T2["tree 2<br/>fit on residual"]
+  T2 --> R2["residual<br/>(still wrong)"]
+  R2 --> T3["tree 3<br/>fit on residual"]
+  T3 --> DOTS["... hundreds of trees"]
+  DOTS --> SUM["final score =<br/>sum of all trees"]
+```
+
+The reasons this family wins on tabular data are structural:
 
 - **Invariance to monotone transforms.** A tree does not care whether income is
   raw dollars or log-dollars; the split threshold moves, the tree is the same.
@@ -23,7 +38,9 @@ CatBoost) are the default choice and usually the winner. The reasons are structu
   risk." A neural net needs to learn this interaction from data with enough capacity.
 - **Fast training and interpretability.** A LightGBM model on millions of rows
   trains in minutes. SHAP attributions are exact for trees, fast to compute, and
-  produce defensible reason codes.
+  produce defensible reason codes. (SHAP is a method that splits a single prediction
+  into a signed contribution per feature, so you can say which inputs pushed the score
+  up or down.)
 
 Deep learning's structural advantage is learning representations from raw signal.
 On tabular data, the features are already meaningful columns, so that advantage
@@ -83,8 +100,9 @@ else must beat.
 
 The section that separates a senior answer from a mid-level one.
 
-A gradient-boosted model trained with log loss is often not calibrated out of the
-box, especially when class weights, sampling for imbalance, or regularization
+A gradient-boosted model trained with log loss (the standard probability-training
+objective that heavily penalizes confident wrong predictions) is often not calibrated
+out of the box, especially when class weights, sampling for imbalance, or regularization
 distort the score distribution. If the model is used for ranking only, this does
 not matter. If the score feeds a limit formula, a pricing rule, or an optimizer,
 a score of 0.05 must genuinely mean a 5 percent default rate in the population,
@@ -103,7 +121,25 @@ sliced by segment and vintage.*
 **Platt scaling.** Fit a logistic regression on the model's raw output score
 against the label on a held-out calibration set. Works well with a small
 calibration set; the mapping is a smooth, monotone sigmoid. The formula is
-$\hat{p} = \sigma(a \cdot f(x) + b)$ where $a, b$ are fitted on the holdout.
+$\hat{p} = \sigma(a \cdot f(x) + b)$ where $a, b$ are fitted on the holdout by
+minimizing log loss:
+
+```python
+import numpy as np
+def platt_fit(scores, labels, lr=0.1, steps=2000):
+    # fit p = sigmoid(a*score + b) by gradient descent on the holdout
+    s, y = np.asarray(scores, float), np.asarray(labels, float)
+    a, b = 1.0, 0.0
+    for _ in range(steps):
+        p = 1 / (1 + np.exp(-(a * s + b)))    # current predicted probability
+        ga = np.mean((p - y) * s)             # gradient of log loss wrt a
+        gb = np.mean(p - y)                    # gradient of log loss wrt b
+        a, b = a - lr * ga, b - lr * gb
+    return a, b
+raw = [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0]        # uncalibrated model scores
+y   = [0,     0,    0,   1,   1,   1]
+# platt_fit(raw, y) -> (5.406, -2.48)  (a > 0 sharpens; b shifts the midpoint)
+```
 
 **Isotonic regression.** A non-parametric step function fit on the holdout. More
 flexible: it can model non-linear miscalibration. Requires more calibration data
@@ -174,7 +210,8 @@ still active (not churned, not defaulted) at time $t$. It satisfies:
 
 $$S(t) = \exp\!\left(-\int_0^{t} \lambda(u)\, du\right), \qquad \lambda(t) = -\frac{d}{dt}\log S(t)$$
 
-where $\lambda(t)$ is the hazard rate. Read the survival curve at any horizon for
+where $\lambda(t)$ is the hazard rate (the instantaneous event rate at time $t$ among
+customers who have survived that long). Read the survival curve at any horizon for
 the current risk estimate; drive retention timing from the hazard peak.
 
 **Cox proportional hazards** models $\lambda(t | x) = \lambda_0(t) \exp(\beta^\top x)$.

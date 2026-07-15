@@ -24,6 +24,15 @@ neural model to beat matrix factorization on session-based recommendation, and
 it is still a sensible baseline for short sessions: simple, fast to train, and
 cheap to serve (the final hidden state is the user vector).
 
+Concretely, the hidden state $h_t$ is updated one item at a time and the final
+one becomes the user vector:
+
+$$h_t = \text{GRU}(h_{t-1}, x_t), \qquad u = h_L$$
+
+where $x_t$ is the embedding of the item at step $t$ and $h_{t-1}$ carries a
+summary of everything before it. Every earlier item reaches the output only
+through this one fixed-size $h$, which is exactly the bottleneck described next.
+
 The weakness is architectural: all of the past is compressed into one fixed-size
 hidden state. Long-range dependencies that require remembering an action from 50
 steps ago are hard for a GRU because the gradient path is long. It also cannot
@@ -34,8 +43,10 @@ on long histories.
 
 SASRec applies **causal (unidirectional) self-attention** to the sequence. Every
 position can attend directly to any earlier position; there is no bottleneck of
-passing state through a recurrent cell. The causal mask ensures that position t
-only sees positions 1 through t, preserving the autoregressive structure.
+passing state through a recurrent cell. The causal mask (a rule that blocks each position from attending
+to any later position) ensures that position t
+only sees positions 1 through t, preserving the autoregressive structure (predict
+the next step from earlier steps only, one step at a time).
 
 The user intent vector is the representation at the last position, which has
 attended over the entire history. This is the most commonly deployed
@@ -66,7 +77,8 @@ history.*
 
 ### BERT4Rec (Sun et al., 2019)
 
-BERT4Rec uses a **bidirectional Transformer** trained with a masked-item
+BERT4Rec uses a **bidirectional Transformer** (each position may look both
+backward and forward, not just at the past) trained with a masked-item
 prediction objective: randomly mask some items in the sequence and train the
 model to reconstruct them. Because it is bidirectional, every position can attend
 to both past and future positions during training. At inference, the target
@@ -83,7 +95,8 @@ pattern), since the masked objective is flexible.
 ## The loss
 
 All three families are trained with a variant of **cross-entropy over next-item
-prediction**: make the true next item score higher than all other items.
+prediction** (a loss that pushes up the predicted probability of the correct item
+and pushes down the rest): make the true next item score higher than all other items.
 
 At catalog scale (millions of items), computing a full softmax over every item
 per training step is too expensive. Production systems use sampled softmax: score
@@ -108,6 +121,16 @@ Two production refinements to the loss are worth naming:
   in spirit to the two-tower training described in the retrieval chapter. Cheap
   and scales with batch size; carries the same false-negative and popularity-bias
   risks.
+
+```python
+import numpy as np
+def in_batch_logits(U, V):   # U, V: (B, d) user vectors and their true-next-item vectors
+    # row i scores user i against every next-item in the batch; the diagonal is the positive pair
+    return U @ V.T           # (B, B); columns j != i are the B-1 free negatives for user i
+U = np.array([[1.0, 0.0], [0.0, 1.0]])
+V = np.array([[1.0, 0.0], [0.0, 1.0]])
+# in_batch_logits(U, V) -> [[1., 0.], [0., 1.]]   # diagonal (positives) high, off-diagonal (negatives) low
+```
 - **All-action loss (Pinterest PinnerFormer).** Instead of predicting only the
   immediate next item, train the model to predict a window of future actions. This
   makes a batch-computed embedding hold up much longer before going stale, nearly

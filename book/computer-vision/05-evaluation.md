@@ -26,12 +26,27 @@ For example: "at 90% precision, what is our recall on the nudity class?" That
 question maps directly to the product tradeoff (how many violations do we catch
 vs. how many legitimate photos do we wrongly flag).
 
+```python
+def precision_recall(tp, fp, fn):
+    precision = tp / (tp + fp)   # of everything flagged, the fraction truly positive
+    recall = tp / (tp + fn)      # of all true positives, the fraction we flagged
+    return precision, recall
+# precision_recall(80, 20, 40)  ->  (0.8, 0.6666666666666666)
+```
+
 For medical or screening use cases (diabetic retinopathy), the model classifies
 each image as positive or negative; **F1** scores those binary predictions against
 ground truth and returns a number in [0, 1]. It is the harmonic mean of precision
 and recall, punishing a collapse in either equally:
 
 $$F_1 = \frac{2 \cdot P \cdot R}{P + R}$$
+
+```python
+def f1(precision, recall):
+    if precision + recall == 0: return 0.0        # both zero: undefined, treat as 0
+    return 2 * precision * recall / (precision + recall)   # harmonic mean of P and R
+# f1(0.6, 0.4)  ->  0.48
+```
 
 ### Detection: mAP at IoU thresholds
 
@@ -64,6 +79,21 @@ $$\text{AP}^{(c)} = \int_0^1 P^{(c)}(r)\,dr, \qquad \text{mAP} = \frac{1}{C}\sum
 COCO-style mAP further averages over IoU thresholds from 0.5 to 0.95 in steps
 of 0.05, written mAP@[.5:.95].
 
+```python
+import numpy as np
+def average_precision(scores, labels, n_gt):   # per class, at one IoU threshold
+    order = np.argsort(scores)[::-1]            # rank predictions most-confident first
+    labels = np.asarray(labels)[order]          # 1 if the prediction is a true positive
+    tp, fp = np.cumsum(labels), np.cumsum(1 - labels)   # running TP / FP counts
+    rec, prec = tp / n_gt, tp / (tp + fp)       # recall and precision at each rank
+    mrec = np.concatenate([[0.0], rec, [1.0]])
+    mpre = np.concatenate([[0.0], prec, [0.0]])
+    mpre = np.maximum.accumulate(mpre[::-1])[::-1]      # monotonic precision envelope
+    i = np.where(mrec[1:] != mrec[:-1])[0]      # recall steps
+    return float(np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1]))   # area under PR curve
+# average_precision([.9, .8, .7, .6], [1, 0, 1, 1], n_gt=3)  ->  0.8333333333333333
+```
+
 ![Precision-recall curves and mAP](assets/fig-pr-map.png)
 
 *Each colored curve is one class. The shaded area under each curve is that
@@ -83,6 +113,20 @@ pixels for class $c$; mIoU averages IoU over all classes so a dominant class
 cannot hide weak ones:
 
 $$\text{mIoU} = \frac{1}{C} \sum_{c=1}^{C} \frac{\lvert A_c \cap B_c \rvert}{\lvert A_c \cup B_c \rvert}$$
+
+```python
+import numpy as np
+def miou(pred, target, n_classes):        # pred / target: per-pixel class-id arrays
+    pred, target = np.asarray(pred), np.asarray(target)
+    ious = []
+    for c in range(n_classes):
+        a, b = pred == c, target == c     # pixels predicted / labeled as class c
+        union = np.logical_or(a, b).sum()
+        if union == 0: continue           # class absent in both, skip so it does not skew
+        ious.append(np.logical_and(a, b).sum() / union)   # per-class IoU
+    return float(np.mean(ious))           # average over classes present
+# miou([0, 0, 1, 1, 1], [0, 1, 1, 1, 1], n_classes=2)  ->  0.625
+```
 
 **Boundary IoU** is a stricter variant that restricts evaluation to pixels within
 a narrow band around the predicted and ground-truth contours, useful when edge

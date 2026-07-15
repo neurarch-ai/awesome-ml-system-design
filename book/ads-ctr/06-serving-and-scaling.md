@@ -41,7 +41,8 @@ Three things determine whether this fits in the latency budget:
 
 1. **Cache hit rate.** Hot user ids and hot ad ids are re-requested thousands of
    times per second and should live in an L2 or L3 cache tier. Cold ids miss the
-   cache and hit storage; the fraction of cold lookups bounds your tail latency.
+   cache and hit storage; the fraction of cold lookups bounds your tail latency
+   (the slowest requests, usually measured at the 99th percentile, or p99).
 2. **Embedding dimension.** Smaller $d$ means smaller rows, faster reads, and
    better cache utilization. There is a model quality tradeoff.
 3. **Table sharding.** Tables that exceed a single machine's memory must be

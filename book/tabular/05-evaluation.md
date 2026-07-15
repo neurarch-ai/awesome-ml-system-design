@@ -22,6 +22,23 @@ whether the model separates positives from negatives across all thresholds.
 
 $$\text{AUC} = \Pr(\hat{p}(x^+) \gt \hat{p}(x^-))$$
 
+Equivalently, it is the average rank of the positive scores, normalized by the
+Mann-Whitney U identity so no threshold sweep is needed:
+
+```python
+import numpy as np
+def auc_roc(probs, labels):
+    probs, labels = np.asarray(probs, float), np.asarray(labels, float)
+    order = np.argsort(probs)                  # rank scores ascending
+    ranks = np.empty(len(probs), float)
+    ranks[order] = np.arange(1, len(probs) + 1)   # ranks 1..n (ties ignored for brevity)
+    n_pos = labels.sum()
+    n_neg = len(labels) - n_pos
+    # Mann-Whitney U: summed rank of positives minus the best-case minimum
+    return (ranks[labels == 1].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+# auc_roc([0.1, 0.4, 0.35, 0.8], [0, 0, 1, 1]) -> 0.75
+```
+
 For a credit model, AUC tells you whether higher scores predict higher default
 rates, not whether the absolute probability is right.
 

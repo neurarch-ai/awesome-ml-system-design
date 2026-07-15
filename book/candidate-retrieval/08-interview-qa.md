@@ -67,7 +67,8 @@ spaces drift apart and recall collapses. Coordinate the redeploy.
 **Q: You switched the loss from dot product to cosine, but the ANN index still
 scores with inner product. What breaks?**
 A: Recall silently collapses unless the index geometry matches the training
-geometry. Cosine similarity is inner product on L2-normalized vectors, so if the
+geometry. Cosine similarity is inner product on L2-normalized vectors (each scaled to length
+1, dividing by its L2 norm, the square root of the sum of its squared entries), so if the
 towers were trained with cosine you must normalize both the stored item vectors
 and the query vector before indexing, then an inner-product index gives the right
 ranking. If you normalize on one side only (or not at all), the index is now

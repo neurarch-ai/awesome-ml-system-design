@@ -9,10 +9,29 @@ model server from the application layer needs a **hard timeout**: if no
 response within, say, 45 ms on a 50 ms p99 budget, return a fallback rather
 than waiting.
 
-A **circuit breaker** goes one step further: if the error rate or timeout rate
-from a replica exceeds a threshold, stop sending it traffic for a cool-down
-period. This breaks the feedback loop where a struggling replica receives more
-retries, making it struggle more.
+A **circuit breaker** (a switch that "trips open" to stop calls to a failing
+dependency, like a household fuse) goes one step further: if the error rate or
+timeout rate from a replica exceeds a threshold, stop sending it traffic for a
+cool-down period. This breaks the feedback loop where a struggling replica
+receives more retries, making it struggle more.
+
+```python
+def circuit_open(error_count, total, threshold):   # trip when error rate exceeds threshold
+    if total == 0:
+        return False                                # no traffic yet, stay closed
+    return (error_count / total) > threshold
+# circuit_open(12, 20, 0.5) -> True  (60% errors > 50%, stop sending this replica traffic)
+```
+
+The state machine the breaker walks through:
+
+```mermaid
+stateDiagram-v2
+  closed --> open: error rate<br/>over threshold
+  open --> half_open: cool-down<br/>elapses
+  half_open --> closed: probe<br/>succeeds
+  half_open --> open: probe<br/>fails
+```
 
 The practical choice of timeout value: set it just inside the p99 budget so the
 slow-tail requests trip the timeout rather than breaching the SLA by a large
@@ -74,7 +93,7 @@ average looks fine.
 | GPU lanes idle under load | Hardware underutilized, QPS below capacity | Increase dynamic batch size or window | Adds batch wait latency |
 | Cold start on new replicas | Replicas take traffic before warming, p99 spikes during scale-out | Readiness probes, pre-warm synthetic requests, keep headroom | Idle capacity cost |
 | Autoscaling on wrong signal | Fleet scales late or thrashes on CPU spikes | Scale on queue depth, GPU utilization, or batch latency | Tuning and observability cost |
-| Embedding table too large for one replica | OOM errors, slow model loads | Shard tables across replicas, quantize (int8, 4-bit), host-memory tiering | Lookup latency, slight quality loss |
+| Embedding table too large for one replica | OOM errors, slow model loads | Shard tables across replicas, quantize (store weights in lower precision like int8 or 4-bit to shrink memory), host-memory tiering | Lookup latency, slight quality loss |
 | Deploy blast radius | A bad version hits 100% of traffic | Shadow then canary then gradual ramp | Slower, higher-cost rollouts |
 | Slow rollback | Incident drags on while old version is rebuilt | Registry pointer rollback, keep prior version warm | Cost of idle warm replica |
 | Feature fetch on the critical path | Latency before inference dominates | Cache hot keys, batch feature reads, co-locate the online store | Freshness vs latency |

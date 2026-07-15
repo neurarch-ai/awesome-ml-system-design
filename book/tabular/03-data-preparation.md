@@ -1,7 +1,9 @@
 # 3. Data preparation
 
 Data quality on tabular problems is where most projects live or die. Three issues
-dominate: target leakage, delayed and biased labels, and categorical encoding at
+dominate: target leakage (a feature that secretly encodes the answer, so the model
+looks great offline but collapses in production), delayed and biased labels, and
+categorical encoding at
 scale. Each is invisible in a naive offline split and each can silently destroy a
 model in production.
 
@@ -75,15 +77,37 @@ Three approaches, in increasing cost and cleanliness:
 
 | Reach for | When | Instead of |
 |---|---|---|
-| One-hot encoding | low-cardinality categoricals (product type, region, 5-50 values) | target encoding, which carries leakage risk |
-| Target encoding with cross-fitting | moderate cardinality (hundreds of values) and a clean train / holdout split to prevent leakage | one-hot, which blows up dimensionality at high cardinality |
+| One-hot encoding (one 0/1 column per category value) | low-cardinality categoricals (cardinality = the number of distinct values; product type, region, 5-50 values) | target encoding, which carries leakage risk |
+| Target encoding with cross-fitting (replace a category with its average label, computed on held-out folds) | moderate cardinality (hundreds of values) and a clean train / holdout split to prevent leakage | one-hot, which blows up dimensionality at high cardinality |
 | Learned embeddings | very high-cardinality IDs (millions of user, merchant, or item ids) | one-hot or target encoding, which cannot represent them compactly |
 | CatBoost native handling | mixed cardinality with missing values and a tree model | hand-crafted encoding, which the native handler avoids leaking |
 | Hashing | unbounded or rarely-seen IDs (raw text tokens, device identifiers) | a lookup table that grows without bound |
 
 Target encoding is the trap: encoding a category by its mean label leaks the label
 into the feature when done naively on the full dataset. Always fit the encoding on
-a separate fold (cross-fitting) or on a strict time-based split.
+a separate fold (cross-fitting) or on a strict time-based split. Cross-fitting means
+each row's encoding is the category mean computed only from rows in *other* folds, so
+a row can never see its own label:
+
+```python
+import numpy as np
+def target_encode_cv(categories, labels, n_folds=5):
+    # encode each category by the mean label computed ONLY on other folds (no leakage)
+    cats, y = np.asarray(categories), np.asarray(labels, float)
+    fold = np.arange(len(y)) % n_folds        # simple round-robin fold assignment
+    out = np.zeros(len(y))
+    prior = y.mean()                          # global mean as fallback for unseen cats
+    for f in range(n_folds):
+        tr = fold != f                        # everything outside this fold
+        for c in np.unique(cats):
+            in_c = (cats == c) & tr
+            mean_c = y[in_c].mean() if in_c.any() else prior
+            out[(cats == c) & (fold == f)] = mean_c   # apply to held-out fold only
+    return out
+cats = ['a', 'a', 'b', 'b', 'a', 'b', 'a', 'b', 'a', 'b']
+y    = [1,   0,   1,   1,   1,   0,   0,   1,   1,   0]
+# target_encode_cv(cats, y, n_folds=2) -> [0. 0.75 0.5 1. 0. 1. 0. 1. 0. 1.]
+```
 
 Hashing avoids a growing lookup table by folding any category into a fixed number
 of buckets with a stable hash; a sign bit lets colliding categories partly cancel:

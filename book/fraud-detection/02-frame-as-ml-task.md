@@ -6,8 +6,9 @@ The requirements describe two distinct problems that need two tools.
 
 **Supervised classification** applies when we have labeled fraud. The model
 learns to estimate $p(\text{fraud} \mid x)$ from historical (transaction,
-label) pairs, and that calibrated probability feeds the cost-sensitive
-threshold. Supervised models are accurate on known attack patterns and fast to
+label) pairs, and that calibrated probability (a score that means what it says:
+of transactions scored 0.05, about 5 percent truly turn out to be fraud) feeds
+the cost-sensitive threshold. Supervised models are accurate on known attack patterns and fast to
 serve. Their blind spot is novelty: they cannot flag attacks they have never
 seen labeled.
 
@@ -56,7 +57,8 @@ al., 2008), which scores anomalies by how few random splits isolate a point, and
 autoencoder anomaly detection, which flags points with high reconstruction error.
 
 **Tools.** The supervised classifier is XGBoost or LightGBM (Microsoft) for tabular
-features, or a PyTorch / TensorFlow DNN when sparse embeddings help. Anomaly
+features, or a PyTorch / TensorFlow DNN when sparse embeddings (learned numeric
+vectors that stand in for high-cardinality categories like a device ID) help. Anomaly
 detection uses scikit-learn's Isolation Forest or a PyTorch autoencoder scored by
 reconstruction error, with imbalanced-learn on hand if any labeled resampling is
 needed. Graph anomaly methods (RGCN, GraphBEAN) are built on PyG (PyTorch Geometric)
@@ -83,7 +85,8 @@ signal groups. Each group contributes a different kind of evidence.
 merchant country, card BIN (the first six digits that identify the issuer and
 card type), entry mode (chip, contactless, CNP), and time of day.
 
-**Velocity and aggregate features.** Stateful counts precomputed over rolling
+**Velocity and aggregate features.** Stateful counts (velocity features measure
+how fast activity is happening for a card or account) precomputed over rolling
 windows: transactions per card in the last minute / hour / 24 hours, distinct
 merchants per card, total spend per account, number of distinct devices per
 account, geo-velocity (two transactions from cities 1,000 km apart within an

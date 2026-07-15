@@ -31,6 +31,18 @@ connections), then rank the merged pool with a heavier pairwise model.
 - **Neighbor sampling** (the GraphSAGE trick) bounds the cost: sample a fixed
   fan-out per node rather than reading the whole neighborhood, so cost does not
   blow up on hub nodes.
+
+```python
+import random
+def sample_neighbors(neighbors, v, fan_out):
+    # neighbors: dict node -> list of neighbor ids;  fan_out: max neighbors to keep
+    nbrs = neighbors[v]
+    if len(nbrs) <= fan_out:
+        return list(nbrs)                 # small node: keep all its neighbors
+    return random.sample(nbrs, fan_out)   # hub node: keep a fixed-size random subset
+# a celebrity with millions of edges still yields only fan_out neighbors per hop,
+# so per-node work stays bounded no matter the degree
+```
 - **Graph partitioning and distributed training.** Billion-node graphs do not fit
   on one machine; production frameworks (LinkedIn LiGNN, Snapchat GiGL) partition
   the graph and pipeline sampling with training.

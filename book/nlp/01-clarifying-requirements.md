@@ -58,12 +58,15 @@ Two consequences follow from this immediately, and stating them at the start is
 most of the interview signal here.
 
 **Volume and latency rule out a large LLM on the hot path.** A large decoder model
-takes hundreds of milliseconds per call and costs orders of magnitude more per
-inference than a fine-tuned encoder. At millions of calls per day the math is not
+(a text-generating model that emits one token at a time) takes hundreds of
+milliseconds per call and costs orders of magnitude more per inference than a
+fine-tuned encoder (a model that reads text into a vector, then adapted to your
+task on a few labeled examples). At millions of calls per day the math is not
 close. The inline path needs a small, fast, calibratable model. The LLM's role, if
 it has one, is offline: generating weak labels to bootstrap the encoder,
 processing the long tail of hard cases the cheap model abstains on, and serving as
-a zero-shot baseline while labeled data accumulates.
+a zero-shot baseline (making predictions with no task-specific training examples)
+while labeled data accumulates.
 
 **"NLP system" is five different problems, and each needs its own model, label,
 and metric.** A single model that does everything would be over-designed for most

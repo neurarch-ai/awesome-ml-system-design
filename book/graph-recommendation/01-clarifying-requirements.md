@@ -31,7 +31,8 @@ suggestions within minutes?
 **Interviewer:** New edges should influence suggestions quickly, within minutes to
 hours, not a nightly rebuild.
 
-Let us summarize. **We are asked to design People You May Know: link prediction on
+Let us summarize. **We are asked to design People You May Know: link prediction
+(predicting which not-yet-connected pairs of members will form an edge) on
 a member graph of hundreds of millions of nodes and tens of billions of edges.**
 The input is a member (plus their neighborhood and profile); the output is a ranked
 list of not-yet-connected members likely to accept an invitation, returned in tens
@@ -46,5 +47,7 @@ signal:
 - **We cannot score all pairs.** Hundreds of millions squared is astronomical, so
   the system must be two stage: cheaply generate a few hundred candidate members
   per member (via graph structure and embedding nearest neighbors), then rank those
-  with a heavier pairwise model. That constraint is why node embeddings plus an ANN
-  index sit at the center of the design.
+  with a heavier pairwise model. That constraint is why node embeddings (per-member
+  vectors positioned so likely-connected members sit close together) plus an ANN
+  index (approximate nearest neighbor search, which finds close vectors fast without
+  comparing all pairs) sit at the center of the design.

@@ -11,7 +11,7 @@ as a function of its features rather than its ID.
 | Feature category | Examples | Why it helps cold items |
 |---|---|---|
 | Taxonomy and category | top-level category, subcategories, tags | places the item near semantically similar items from day zero |
-| Creator signal | creator ID or creator embedding, creator quality score | cold items from a high-quality creator inherit a prior from that creator's track record |
+| Creator signal | creator ID or creator embedding, creator quality score | cold items from a high-quality creator inherit a prior (a starting belief used before the item has data of its own) from that creator's track record |
 | Text content | title embedding, description tokens, hashtags | semantic similarity to warm items that share topics or vocabulary |
 | Visual content | thumbnail embedding from a pretrained vision model | places visual items near visually similar warm items |
 | Structured attributes | price, language, duration, format | hard constraints a user filter can match before any neural scoring |
@@ -39,6 +39,16 @@ new district has no history, so the system backs off to district-level priors,
 then city-level, then regional. As interactions arrive, the prior blends
 toward the specific user. Geo-hierarchy priors are a content feature for
 the user, just as text embeddings are content features for an item.
+
+Concretely, the backoff is a Bayesian blend. Let $n$ be the number of
+interactions observed for the user and $\bar{r}_{\text{user}}$ their observed
+rate; the estimate shrinks toward the coarsest level that has enough data:
+
+$$\hat{\theta} = \frac{n\,\bar{r}_{\text{user}} + k\,\theta_{\text{prior}}}{n + k}, \qquad \theta_{\text{prior}} = \theta_{\text{district}} \rightarrow \theta_{\text{city}} \rightarrow \theta_{\text{region}}$$
+
+where $k$ is the prior strength (how many interactions the prior is worth). At
+$n = 0$ the estimate equals the prior exactly; as $n$ grows it blends toward
+the user's own signal.
 
 ## Feedback logging: the four-field contract
 

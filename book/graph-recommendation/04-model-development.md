@@ -11,12 +11,29 @@ $$\text{CommonNeighbors}(u,v) = |N(u) \cap N(v)|, \qquad \text{Jaccard}(u,v) = \
 
 $$\text{AdamicAdar}(u,v) = \sum_{w \in N(u) \cap N(v)} \frac{1}{\log |N(w)|}$$
 
+```python
+import math
+def common_neighbors(N, u, v):                     # N: node -> set of neighbor ids
+    return len(N[u] & N[v])                         # count of shared neighbors
+def jaccard(N, u, v):
+    return len(N[u] & N[v]) / len(N[u] | N[v])      # shared / total distinct neighbors
+def adamic_adar(N, u, v):
+    # each shared neighbor w contributes 1/log(degree of w), so hubs count for less
+    return sum(1.0 / math.log(len(N[w])) for w in (N[u] & N[v]))
+# N = {"u": {"a","b","c"}, "v": {"b","c","d"}, "b": {"x","y"}, "c": {"x","y","z"}}
+# shared neighbors of u, v are {b, c}
+# common_neighbors(N, "u", "v") -> 2
+# jaccard(N, "u", "v")          -> 2 shared / 4 distinct = 0.5
+# adamic_adar(N, "u", "v")      -> 1/log(2) + 1/log(3) = 2.352934267515801
+```
+
 Adamic-Adar is the workhorse: it counts shared connections but down-weights hubs (a
 shared celebrity connection means little; a shared niche colleague means a lot).
 These are hard to beat cheaply and are always the baseline to state first.
 
-**2. Shallow embeddings.** node2vec / DeepWalk run random walks and learn a vector
-per node with a skip-gram objective, so proximity in the walk implies closeness in
+**2. Shallow embeddings.** node2vec / DeepWalk run random walks (random hops from
+node to neighbor that produce node sequences, treated like sentences of words) and
+learn a vector per node with a skip-gram objective, so proximity in the walk implies closeness in
 the embedding. Transductive: they only embed nodes seen at training time, so a
 brand-new member has no vector.
 
@@ -25,6 +42,24 @@ of Pinterest's PinSage) embeds a node by sampling a fixed fan-out of neighbors a
 aggregating their features inward, layer by layer:
 
 $$h_v^{(k)} = \sigma\!\left(W^{(k)} \cdot \text{concat}\left(h_v^{(k-1)},\ \text{AGG}\left(\lbrace h_u^{(k-1)} : u \in \mathcal{N}(v) \rbrace\right)\right)\right)$$
+
+Concretely, one such layer (with mean aggregation) is just: average the neighbor
+vectors, glue that to the node's own vector, then apply a linear map and a
+nonlinearity.
+
+```python
+import numpy as np
+def sage_layer(h, neighbors, W):
+    # h: dict node -> feature vector from the previous layer
+    # neighbors: dict node -> list of neighbor ids;  W: weight matrix
+    out = {}
+    for v in h:
+        agg = np.mean([h[u] for u in neighbors[v]], axis=0)  # average neighbor vectors
+        combined = np.concatenate([h[v], agg])               # self features + neighbor summary
+        out[v] = np.maximum(W @ combined, 0.0)               # linear map, then ReLU
+    return out
+# stacking k such layers lets a node's vector see k hops out into the graph
+```
 
 Because it aggregates **features**, it is **inductive**: it embeds a node it never
 saw in training (a new member) from that node's features and neighbors. That is why
@@ -50,7 +85,8 @@ Two subtleties an interviewer probes:
   LiGNN, Twitter TwHIN) model these as typed edges, which carries far more signal
   than a single homogeneous friend graph.
 - **GNNs have a known blind spot for common-neighbor count.** Standard message
-  passing with set-pooling cannot directly count shared neighbors, exactly the
+  passing (the step where each node collects and aggregates vectors from its
+  neighbors) with set-pooling cannot directly count shared neighbors, exactly the
   signal Adamic-Adar captures. Recent work (subgraph methods like SEAL, and adding
   the heuristic as an explicit feature) fixes this. The practical answer: **feed the
   heuristics in as features**, do not expect the GNN to rediscover them.

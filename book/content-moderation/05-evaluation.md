@@ -57,6 +57,14 @@ are not inflated by the large negative mass. Harm prevalence is not constant. Ad
 growth all shift the base rate. Track the flag rate per policy over time on a random
 audit sample.
 
+```python
+import numpy as np
+def prevalence(labels):
+    labels = np.asarray(labels, float)
+    return labels.mean()                     # (TP+FN)/N: fraction of items that are truly harmful
+# prevalence([0,0,0,0,0,0,0,0,0,1]) -> 0.1
+```
+
 ![Harm prevalence over time](assets/fig-harm-prevalence.png)
 
 *Spam prevalence drops when the classifier deploys (week 8), then rebounds as

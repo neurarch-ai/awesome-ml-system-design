@@ -25,9 +25,11 @@ not so much that users suffer. The optimal rate is surface-specific.*
 
 ## The bandit framing
 
-The formal vocabulary: we have an **agent** (the recommendation system), a
-set of **arms** (items to recommend), and a **reward** (click, completion,
-retention) observed after each decision. At each timestep, the agent picks
+The formal vocabulary (the setup is called a *multi-armed bandit*, after a
+gambler facing a row of slot machines, each with an unknown payout): we have
+an **agent** (the recommendation system), a set of **arms** (items to
+recommend), and a **reward** (click, completion, retention) observed after
+each decision. At each timestep, the agent picks
 an arm, observes a reward, and updates its beliefs. The goal is to maximize
 cumulative reward over time, not just the next reward.
 

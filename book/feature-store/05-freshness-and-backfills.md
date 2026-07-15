@@ -47,7 +47,15 @@ $$a_i(T) = \sum_{t \leq T} y_t \cdot e^{-\lambda(T - t)}$$
 
 The decay rate $\lambda$ controls how quickly old events lose weight. This gives
 a "recent activity" signal that emphasizes the most recent events without hard
-window cutoffs. To support point-in-time training, the value $a_i(T)$ must be
+window cutoffs.
+
+```python
+import math
+
+def decayed_sum(events, T, lam):        # events: list of (t, y); weight fades with age
+    return sum(y * math.exp(-lam * (T - t)) for t, y in events if t <= T)
+# decayed_sum([(0, 1.0), (1, 1.0), (2, 1.0)], 2, 1.0) -> e^-2 + e^-1 + 1 = 1.503
+``` To support point-in-time training, the value $a_i(T)$ must be
 logged at the time it is computed and stored with a timestamp; recomputing it from
 raw events requires replaying the full event history with the correct decay.
 
@@ -73,6 +81,12 @@ Each feature should have a declared freshness SLA, and the platform should monit
 it. The staleness of feature $i$ at time $T$ is:
 
 $$s_i(T) = T - \max\bigl\lbrace t : \text{materialized}(e_i, t) \bigr\rbrace$$
+
+```python
+def staleness(T, materialized_times):   # age of the freshest materialized value
+    return T - max(materialized_times)
+# staleness(100, [40, 70, 95]) -> 100 - 95 = 5 (5 time units behind now)
+```
 
 If $s_i(T)$ exceeds the declared SLA, the feature is stale and downstream models
 may be silently degraded. An alerting rule on this metric per feature is the

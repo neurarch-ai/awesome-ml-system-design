@@ -18,6 +18,19 @@ positives invisibly. The "always-legit" baseline has an ROC-AUC of exactly 0.5
 slightly better than random on the rare positive class can still show an ROC-AUC
 of 0.85+ by being good at the easy negatives.
 
+```python
+def roc_auc(labels, scores):   # P(random fraud scores higher than random legit); ties count 0.5
+    import numpy as np
+    labels, scores = np.asarray(labels), np.asarray(scores)
+    pos = scores[labels == 1]                     # scores of the fraud examples
+    neg = scores[labels == 0]                     # scores of the legit examples
+    wins = 0.0
+    for p in pos:
+        wins += np.sum(p > neg) + 0.5 * np.sum(p == neg)   # count fraud-beats-legit pairs
+    return float(wins / (len(pos) * len(neg)))    # fraction of all such pairs ranked correctly
+# roc_auc([1,0,1,0], [0.9,0.8,0.7,0.1]) -> 3/4 = 0.75
+```
+
 PR-AUC (average precision) does not have this property. It is computed purely
 from the precision-recall curve, which focuses entirely on the positive class.
 The baseline curve for a classifier that outputs random scores sits at
@@ -74,6 +87,21 @@ while keeping recall at or above the floor, then read off the precision there:
 
 $$P_{\text{at}\ R_{\min}} = P(\tau^{\star}), \quad \tau^{\star} = \arg\max_\tau\, P(\tau) \quad \text{s.t.}\ R(\tau) \geq R_{\min}$$
 
+```python
+def precision_at_recall(labels, scores, r_min):   # best precision while recall >= r_min
+    import numpy as np
+    labels, scores = np.asarray(labels), np.asarray(scores)
+    order = np.argsort(-scores)                    # rank transactions high score first
+    labels = labels[order]
+    tp = np.cumsum(labels)                         # true positives down the ranking
+    fp = np.cumsum(1 - labels)                     # false positives down the ranking
+    precision = tp / (tp + fp)                     # P at each threshold
+    recall = tp / labels.sum()                     # R at each threshold
+    ok = recall >= r_min                           # thresholds meeting the recall floor
+    return float(precision[ok].max())              # highest precision among them
+# precision_at_recall([1,0,1,0], [0.9,0.6,0.5,0.1], 0.5) -> 1.0
+```
+
 The typical question is "what is the precision when recall equals 0.80?" This is the
 right question for a cost-sensitive system where the business has decided it
 must catch at least 80 percent of fraud and wants to know how many legitimate
@@ -88,6 +116,22 @@ expected cost at each threshold. For each candidate threshold $\tau$ on the
 validation set, compute:
 
 $$L(\tau) = c_{\text{FP}} \cdot \text{FP}(\tau) + c_{\text{FN}} \cdot \text{FN}(\tau)$$
+
+```python
+def min_cost_threshold(labels, scores, c_fp, c_fn):   # sweep thresholds, return (tau*, cost)
+    import numpy as np
+    labels, scores = np.asarray(labels), np.asarray(scores)
+    best = None
+    for tau in np.unique(scores):                     # candidate thresholds = observed scores
+        pred = scores >= tau
+        fp = int(((pred == 1) & (labels == 0)).sum())  # blocked good users at this threshold
+        fn = int(((pred == 0) & (labels == 1)).sum())  # missed fraud at this threshold
+        cost = c_fp * fp + c_fn * fn
+        if best is None or cost < best[1]:             # keep the cheapest threshold
+            best = (float(tau), cost)
+    return best
+# min_cost_threshold([1,1,0,0], [0.9,0.8,0.2,0.1], 1, 20) -> (0.8, 0)
+```
 
 Plot this curve (normalized) and mark the minimum. The threshold that minimizes
 expected cost on the validation set is the threshold that ships. This is a
@@ -124,6 +168,19 @@ decision is made on live metrics measured against settled labels:
   easy legitimates to the queue.
 - **Human review audit.** Periodically sample analyst decisions and audit for
   consistency, since analyst verdicts become training labels.
+
+The false discovery rate above is a one-liner over the actioned set:
+
+```python
+def false_discovery_rate(labels, scores, tau):   # FP / (TP + FP) among flagged; = 1 - precision
+    import numpy as np
+    labels, scores = np.asarray(labels), np.asarray(scores)
+    flagged = scores >= tau                       # transactions the system blocked / reviewed
+    tp = int((flagged & (labels == 1)).sum())     # flagged and truly fraud
+    fp = int((flagged & (labels == 0)).sum())     # flagged but actually legit
+    return fp / (tp + fp)                         # fraction of flagged cases that were legit
+# false_discovery_rate([1,0,1,0], [0.9,0.8,0.2,0.1], 0.5) -> 1/2 = 0.5
+```
 
 ## When to use which metric
 

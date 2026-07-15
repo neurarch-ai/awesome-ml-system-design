@@ -9,9 +9,11 @@ architectures are the way they are, not just that they exist.
 
 ### Logistic regression over one-hot sparse features
 
-The workhorse of ads CTR for years. Sparse feature ids are one-hot encoded, an
-embedding weight is learned for each, and a sigmoid maps the inner product to a
-probability.
+The workhorse of ads CTR for years. Sparse feature ids are one-hot encoded (a
+vector that is 1 at the id's own slot and 0 everywhere else), an embedding weight
+is learned for each, and a sigmoid (a function that squashes any real number into
+the range (0, 1) so the output reads as a probability) maps the inner product to
+a probability.
 
 $$\hat{p} = \sigma\!\left(\mathbf{w}^{\top}\mathbf{x} + b\right) = \frac{1}{1 + e^{-(\mathbf{w}^{\top}\mathbf{x} + b)}}$$
 
@@ -29,6 +31,17 @@ training example passes through the trees; the leaf indices it falls into become
 new sparse features fed to a logistic regression head. The linear head stays
 naturally calibrated; the trees supply the interactions.
 
+Concretely, each tree reports the id of the leaf a sample lands in, and those
+leaf ids are one-hot encoded into one long sparse vector for the linear head:
+
+```python
+# one example dropped through 2 boosted trees; each tree returns the leaf it hit
+leaf_ids = [3, 1]                    # tree A -> leaf 3, tree B -> leaf 1
+offsets  = [0, 4]                    # tree A owns slots 0-3, tree B owns slots 4-6
+positions = [o + l for o, l in zip(offsets, leaf_ids)]  # global 1-hot positions
+# positions -> [3, 5]: the LR head sees a sparse vector with 1s at 3 and 5, else 0
+```
+
 **Strengths:** automatic interaction discovery without deep embeddings; naturally
 calibrated linear head.
 
@@ -38,7 +51,8 @@ that forces embedding-based deep models.
 
 ### Factorization Machines (FM)
 
-Each feature gets a latent vector $\mathbf{v}_i \in \mathbb{R}^k$. All pairwise
+Each feature gets a latent vector $\mathbf{v}_i \in \mathbb{R}^k$ (a short learned
+vector, the same idea as an embedding). All pairwise
 interactions are modeled via dot products:
 
 $$\hat{p} = \sigma\!\left(w_0 + \sum_i w_i x_i + \sum_{i \lt j} \langle \mathbf{v}_i, \mathbf{v}_j \rangle x_i x_j\right)$$
@@ -149,8 +163,10 @@ ids. The tables dwarf the MLP by two to three orders of magnitude.
 
 Two systems consequences:
 
-1. The tables must be **sharded across machines** (model parallelism on
-   embeddings, data parallelism on the MLP) because no single device holds them.
+1. The tables must be **sharded across machines** (model parallelism, meaning
+   each machine holds a different slice of the same embedding tables; data
+   parallelism, meaning every machine holds a full copy of the small MLP and
+   averages gradients) because no single device holds them.
 2. The id space is open-ended, so feature hashing into a fixed-size table
    (collision tradeoff discussed in the previous section) is the standard fix.
 

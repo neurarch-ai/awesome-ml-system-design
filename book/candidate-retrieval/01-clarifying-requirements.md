@@ -46,4 +46,5 @@ the signal in this question:
 - **We cannot score 100 million items per request.** Tens of milliseconds rules
   out running any model over the whole catalog online. The design must precompute
   as much as possible and reduce the online cost to a lookup. That single
-  constraint is what forces the two-tower architecture in the next section.
+  constraint is what forces the two-tower architecture (one network for the user, a
+  separate one for items, joined only at the end) in the next section.

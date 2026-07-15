@@ -24,7 +24,7 @@ at up to 500k events per second during peak.
 **Candidate:** Does training need features at the exact value they had when the
 event happened, or is "latest value" good enough?
 **Interviewer:** Labels can arrive hours after the events. We have had label
-leakage before. Point-in-time correctness is required.
+leakage before. Point-in-time correctness (pairing each label with the feature value as it existed at the moment of the event, not a later value) is required.
 
 **Candidate:** Is this a greenfield build, or are we migrating from ad-hoc pipelines?
 **Interviewer:** Migration. Teams have 200-plus existing feature pipelines. Keep
@@ -43,7 +43,7 @@ of the signal in this question:
   separate SQL for training and a separate service for scoring, any divergence in
   logic creates skew. The fix is a single shared definition that compiles to both
   paths. This is the architectural invariant the whole system protects.
-- **A low-latency lookup store is mandatory.** Single-digit milliseconds rules out
+- **A low-latency (answers in a few milliseconds) lookup store is mandatory.** Single-digit milliseconds rules out
   computing features at request time for anything non-trivial. The system must
   precompute and materialize the latest value into a key-value store. That
   requirement is what forces the dual-store split in section 4.

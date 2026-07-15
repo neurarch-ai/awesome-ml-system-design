@@ -67,6 +67,19 @@ updates, and geo filters ran poorly over graph traversal. IVF turns a filter int
 cheap cluster selection. Match the index to update rate, filtering, and memory,
 not to a default.
 
+Concretely, IVF (inverted file index) groups the item vectors into clusters up
+front, then at query time only scans the few clusters nearest the query instead of
+the whole catalog:
+
+```mermaid
+flowchart LR
+  V["all item vectors"] --> KM["k-means: group into clusters,<br/>one centroid per cluster"]
+  Q["query vector"] --> PICK["pick the nprobe<br/>nearest centroids"]
+  KM --> PICK
+  PICK --> SCAN["scan only items in<br/>those few clusters"]
+  SCAN --> NN["nearest neighbors"]
+```
+
 ## Freshness and the funnel
 
 - **Item freshness.** A new item is invisible until it is re-embedded and upserted

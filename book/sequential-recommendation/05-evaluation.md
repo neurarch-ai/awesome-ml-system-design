@@ -55,6 +55,16 @@ at rank 1 scores higher on NDCG than one that puts it at rank k. NDCG@k
 complements Recall@k: a model can have high recall (the item is in the top k)
 but low NDCG (it is near the bottom of that set).
 
+```python
+import math
+def ndcg_at_k(recommended, relevant, k):   # recommended: ranked ids; relevant: set of relevant ids
+    # each relevant item found in the top-k earns 1/log2(rank+1); rank is 1-based
+    dcg = sum(1.0 / math.log2(i + 2) for i, item in enumerate(recommended[:k]) if item in relevant)
+    ideal = sum(1.0 / math.log2(i + 2) for i in range(min(len(relevant), k)))  # best case: relevant on top
+    return dcg / ideal if ideal > 0 else 0.0
+# ndcg_at_k(['a', 'b', 'c'], {'c'}, k=3) -> 0.5   # true item at rank 3: 1/log2(4) = 0.5
+```
+
 ### MRR (Mean Reciprocal Rank)
 
 MRR is the average of the reciprocal rank of the true next item across users:
@@ -65,6 +75,12 @@ where $1/\text{rank}_u = 0$ when the true next item does not appear among the
 returned results. MRR is sensitive to whether the true item is rank 1 vs rank 10 vs rank 100. It
 is a natural fit when the goal is to surface the single best next recommendation
 as early as possible (for a "top pick" placement), rather than filling a list.
+
+```python
+def mrr(ranks):   # ranks: 1-based rank of the true next item per user, None if it never appears
+    return sum((1.0 / r if r else 0.0) for r in ranks) / len(ranks)
+# mrr([1, 3, None]) -> 0.4444444444444444   # (1 + 1/3 + 0) / 3
+```
 
 ## Time-based split is mandatory
 

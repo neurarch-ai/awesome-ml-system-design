@@ -7,10 +7,11 @@ Every experiment makes a decision under uncertainty. Two ways to be wrong:
 - **Type I error (false positive, alpha):** you ship a change that does nothing.
   Controlled by the significance level, commonly alpha = 0.05.
 - **Type II error (false negative, beta):** you miss a real win.
-  Controlled by the power, commonly 1 - beta = 0.80.
+  Controlled by the power (the probability of correctly catching a real effect when one truly exists), commonly 1 - beta = 0.80.
 
 The **minimum detectable effect (MDE)** connects them both to the sample size:
 it is the smallest true effect for which your test will correctly reject the null
+(the null hypothesis: the default assumption that the change has no effect)
 with the specified power. Declare the MDE before launching, because it represents
 the smallest lift that is worth shipping.
 
@@ -34,7 +35,7 @@ where:
 - $\sigma^{2}$ is the per-user variance of the primary metric,
 - $\text{MDE}$ is the minimum detectable effect (absolute, in the same units as
   the metric),
-- $z_{q}$ is the standard-normal quantile at probability $q$ (e.g.
+- $z_{q}$ is the standard-normal quantile (the value below which a fraction $q$ of a standard normal distribution falls) at probability $q$ (e.g.
   $z_{0.975} \approx 1.96$ for a two-tailed test at alpha = 0.05, and
   $z_{0.80} \approx 0.84$ for 80% power).
 
@@ -50,6 +51,24 @@ def sample_size_per_arm(sigma, mde, z_alpha=1.96, z_beta=0.84):
     n = 2 * sigma ** 2 * z_sum / mde ** 2   # per-arm users, diff-of-means test
     return math.ceil(n)                     # round up to whole users
 # sample_size_per_arm(0.15, 0.01) -> 3528
+```
+
+Solving the same relationship for the other two unknowns gives the **achieved
+statistical power** at a chosen sample size, and the **MDE** you can detect with
+a fixed budget of users:
+
+```python
+import numpy as np, math
+def power(n, sigma, mde, z_alpha=1.96):
+    # achieved power: probability of rejecting the null when the true effect is mde
+    ncp = mde * math.sqrt(n / (2 * sigma ** 2))              # noncentrality, in SE units
+    return 0.5 * (1 + math.erf((ncp - z_alpha) / math.sqrt(2)))  # Phi(ncp - z_alpha)
+# power(3528, 0.15, 0.01) -> 0.7995458067395504   (~0.80, the n we sized for)
+
+def mde_from_n(n, sigma, z_alpha=1.96, z_beta=0.84):
+    # smallest detectable effect given n per arm: invert the sample-size formula
+    return np.sqrt(2 * sigma ** 2 * (z_alpha + z_beta) ** 2 / n)
+# mde_from_n(3528, 0.15) -> 0.01   (inverts sample_size_per_arm(0.15, 0.01))
 ```
 
 ### Why sample size scales as $1 / \text{MDE}^{2}$
@@ -93,6 +112,17 @@ typically achieves $\rho$ around 0.6 to 0.8 for engagement metrics.
 CUPED is a post-hoc adjustment: estimate $\theta$ from both arms pooled after the
 experiment, then analyze the adjusted outcomes.
 
+```python
+import numpy as np
+def cuped(y, x):
+    # y: in-experiment outcome per user; x: matching pre-period covariate per user
+    theta = np.cov(y, x, ddof=1)[0, 1] / np.var(x, ddof=1)  # theta = Cov(Y,X)/Var(X)
+    y_adj = y - theta * (x - x.mean())     # subtract the predictable, pre-period part
+    return y_adj                            # same mean as y, but smaller variance
+# with rho = corr(x, y), var(y_adj) ~ var(y) * (1 - rho^2). Extreme check:
+# y = np.array([1., 2, 3, 4]); cuped(y, y).var() -> 0.0  (x == y, rho = 1, all variance gone)
+```
+
 ## When to use which approach
 
 | Reach for | When | Instead of |
@@ -120,3 +150,13 @@ $$\beta^{\ast} = \frac{\beta}{G + 1}$$
 
 False-positive rates are not adjusted across guardrails, because requiring all
 of them to pass does not compound alpha the way independent tests would.
+
+```python
+def joint_beta(beta, G):
+    # tighten the per-metric miss rate so the primary plus G guardrails all hold jointly
+    return beta / (G + 1)          # the primary metric is the "+1" alongside G guardrails
+# joint_beta(0.20, 3) -> 0.05   (target beta 0.20 with 3 guardrails => power 0.95 each)
+```
+
+You then feed this tighter $\beta^{\ast}$ back into `sample_size_per_arm` as a
+smaller `z_beta` target, which raises the required sample size per arm.

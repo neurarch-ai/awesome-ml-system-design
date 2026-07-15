@@ -28,7 +28,8 @@ A **Wide-and-Deep** model trains two paths jointly against the same loss:
   generalizes to combinations never seen in training but misses reliable
   specific rules.
 
-Joining both at the output logit so both share the same gradient is the key move.
+Joining both at the output logit (the raw pre-sigmoid score that gets squashed
+into a probability) so both share the same gradient is the key move.
 The wide side needs hand-engineered cross features; that manual work is the cost
 of its memorization power. Google shipped this for Google Play app ranking.
 
@@ -96,7 +97,8 @@ this: changing the weights reorders the feed within hours.
 
 When tasks are negatively correlated (for example: saves and close-ups), a
 shared body can let one task hurt another. Use **Mixture-of-Experts (MMoE or
-PLE)** gating: the shared expert pool is mixed differently per task, softening
+PLE)** gating: the shared expert pool is mixed differently per task via a softmax
+(a function that turns raw scores into positive weights that sum to 1), softening
 conflict. Spotify and Snap both use MMoE with DCN-v2 inside each expert.
 
 $$g^k(x) = \text{softmax}(W_k x), \qquad y_k = h_k\!\Big( \sum_{i=1}^{n} g^k(x)_i\, f_i(x) \Big)$$

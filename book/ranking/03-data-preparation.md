@@ -28,13 +28,22 @@ Two standard corrections:
   widely used.
 - **Inverse-propensity weighting (IPW).** Estimate the probability of an item
   being examined at each position, then upweight observations at lower positions
-  so the ranker does not over-credit top-position clicks.
+  so the ranker does not over-credit top-position clicks. Concretely, each row is
+  weighted by the inverse of its examination propensity and that weight scales its
+  loss term:
+
+$$w_i = \frac{1}{p(\text{examined} \mid \text{position}_i)}, \qquad \mathcal{L}_{\text{IPW}} = \frac{1}{N}\sum_{i=1}^{N} w_i \cdot \ell(\hat{y}_i,\, y_i)$$
+
+  A click at a rarely-examined low position (small propensity) thus counts for
+  more than a click at the top, correcting the position bias in the labels.
 
 ## Feature engineering: three families
 
 Three families of features, and naming all three signals experience.
 
-**User features.** User id embedding (learned), demographic attributes if
+**User features.** User id embedding (a short learned vector that stands in for
+each id, so the model can represent millions of users in a compact numeric form),
+demographic attributes if
 available, aggregated interaction history (category affinities, engagement rates
 over multiple time windows), and context (time of day, device, location).
 

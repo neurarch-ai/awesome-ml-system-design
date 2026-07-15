@@ -12,7 +12,7 @@ Before building features, decompose the series mentally into its components: a s
 
 The global GBT path (and the neural path) treat forecasting as tabular regression: the model sees a row of features and predicts future demand. Getting these features right is where most of the accuracy comes from.
 
-**Lag features.** Demand at time $t - k$ tells the model about autocorrelation and seasonality. For a weekly series with annual seasonality, the key lags are $t - 1$ (last week), $t - 7$ (same day of week one period ago for daily data), $t - 52$ (same week last year). The trap: a 12-week-ahead forecast cannot use the $t - 1$ lag, because that value is not yet known at forecast time. Choose lag distances that are available at the forecast horizon, or build one feature set per target horizon.
+**Lag features.** Demand at time $t - k$ tells the model about autocorrelation (how correlated the series is with earlier copies of itself) and seasonality (patterns that repeat on a fixed calendar cycle, like weekly or yearly). For a weekly series with annual seasonality, the key lags are $t - 1$ (last week), $t - 7$ (same day of week one period ago for daily data), $t - 52$ (same week last year). The trap: a 12-week-ahead forecast cannot use the $t - 1$ lag, because that value is not yet known at forecast time. Choose lag distances that are available at the forecast horizon, or build one feature set per target horizon.
 
 **Rolling statistics.** Mean, standard deviation, min, and max over 7-, 28-, and 90-day rolling windows capture the level and volatility of the series. These encode trend and regime information that individual lags miss.
 
@@ -24,11 +24,20 @@ The global GBT path (and the neural path) treat forecasting as tabular regressio
 
 ## The leakage trap
 
-Any lag or rolling window that peeks past the forecast origin inflates offline metrics and collapses in production. A 7-day-ahead forecast evaluated with a $t - 1$ lag in the feature set will look spectacular offline and fail live because the $t - 1$ value is not yet available when the forecast runs. Enforce **point-in-time availability** per horizon: for a horizon of $h$ weeks, only lags $\ge h$ and rolling windows that close at least $h$ weeks before the origin are valid.
+Any lag or rolling window that peeks past the forecast origin inflates offline metrics and collapses in production. A 7-day-ahead forecast evaluated with a $t - 1$ lag in the feature set will look spectacular offline and fail live because the $t - 1$ value is not yet available when the forecast runs. Enforce **point-in-time availability** (only use values that were actually known at the forecast origin, never anything from after it) per horizon: for a horizon of $h$ weeks, only lags $\ge h$ and rolling windows that close at least $h$ weeks before the origin are valid.
 
 ## Cold-start: new items and new locations
 
 Lag features break entirely on a new SKU with no history. The solution is a **global model** that has learned a representation of item and location attributes. At inference time for a cold-start SKU, the model falls back to attribute priors and borrows the pattern from similar SKUs via hierarchical shrinkage (the parent-category average is the warm prior). Keep intervals wide until enough history has accumulated to trust the item's own signal.
+
+Concretely, shrinkage is a weighted blend that leans on the category prior when the item's own history is thin and leans on the item as its history grows:
+
+```python
+def shrink(item_mean, parent_mean, n, k=10):   # n = weeks of item history, k = prior strength
+    w = n / (n + k)                            # more history -> weight the item more
+    return w * item_mean + (1 - w) * parent_mean
+# shrink(item_mean=8.0, parent_mean=5.0, n=10, k=10) -> 0.5*8 + 0.5*5 = 6.5
+```
 
 ## Building the rolling-origin backtest split
 

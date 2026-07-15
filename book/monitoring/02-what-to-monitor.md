@@ -70,7 +70,7 @@ distributions but both of which indicate a broken serving path.
 
 ## Layer 4: Performance decay
 
-The ground truth. Once labels join back, compute the metrics the model
+The ground truth (the real outcomes the model is ultimately judged against). Once labels join back, compute the metrics the model
 actually cares about: AUC, precision, recall, calibration, and the business
 metric (CTR, revenue, engagement). Always slice by segment.
 

@@ -32,14 +32,14 @@ The horizon setup also decides the recursive vs direct split:
 
 ## Choosing the ML category
 
-This is a **quantile regression on a time series**, not a classification or ranking problem. The model learns to minimize asymmetric pinball loss at each target quantile, rather than MSE or cross-entropy. The ML family that suits this best depends on scale and structure, which is the subject of section 4, but the framing is consistent: transform the problem into supervised learning on (feature, target) pairs where the target is future demand and the features are lags, rolling statistics, and covariates.
+This is a **quantile regression on a time series** (predicting a chosen quantile such as the P90 directly, rather than the average), not a classification or ranking problem. The model learns to minimize asymmetric pinball loss (an error that penalizes under- and over-prediction by different amounts, tuned to the target quantile) at each target quantile, rather than MSE or cross-entropy. The ML family that suits this best depends on scale and structure, which is the subject of section 4, but the framing is consistent: transform the problem into supervised learning on (feature, target) pairs where the target is future demand and the features are lags, rolling statistics, and covariates.
 
 ## When to use which forecast output
 
 | Reach for | When | Instead of |
 |---|---|---|
 | Quantile regression (P10/P50/P90) | downstream decision needs specific operating points and you want assumption-free asymmetric loss | a parametric distribution when the demand shape is unknown or changes seasonally |
-| Parametric likelihood (negative binomial, log-normal) | demand is count-valued, over-dispersed, or heavy-tailed and you want sampled paths for Monte Carlo | quantile regression when the shape is unstable and a few fixed quantiles miss the tail |
+| Parametric likelihood (negative binomial, log-normal) | demand is count-valued, over-dispersed (variance larger than the mean, i.e. burstier than a plain Poisson allows), or heavy-tailed and you want sampled paths for Monte Carlo | quantile regression when the shape is unstable and a few fixed quantiles miss the tail |
 | Conformal prediction intervals | you have a good point model and want calibrated intervals cheaply, with no distributional assumption | re-training a full probabilistic model if the point model is already production-quality |
 | Point forecast only | downstream decision needs only a central estimate (e.g., an ETA quote with no safety-stock implication) | a full distribution when the extra complexity and evaluation overhead are not consumed by the decision |
 

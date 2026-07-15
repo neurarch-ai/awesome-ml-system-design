@@ -11,7 +11,9 @@ z-test. The test statistic is:
 
 $$t = \frac{\bar{Y}_{\text{treat}} - \bar{Y}_{\text{ctrl}}}{\sqrt{\hat{\sigma}^{2}_{\text{treat}}/n_{\text{treat}} + \hat{\sigma}^{2}_{\text{ctrl}}/n_{\text{ctrl}}}}$$
 
-Report the 95% confidence interval alongside the p-value. A p-value tells you
+Report the 95% confidence interval alongside the p-value (the probability of
+seeing a difference this large or larger if the change truly did nothing; small
+p means the effect is hard to explain by chance alone). A p-value tells you
 whether an effect is distinguishable from zero; the confidence interval tells you
 whether it is *large enough to matter*. A statistically significant effect that
 is below the MDE is not a ship.

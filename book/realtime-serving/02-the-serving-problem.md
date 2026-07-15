@@ -86,6 +86,13 @@ $L_{\text{model}}(B)$ is inference time at batch size $B$. If feature fetch
 costs 10 ms and the network adds 5 ms, the model and its batching overhead have
 at most 35 ms.
 
+```python
+def fits_budget(l_net, l_feat, w, l_model, budget):   # all times in ms
+    total = l_net + l_feat + w + l_model              # sum every hop on the path
+    return total, total <= budget                     # spend vs the p99 budget
+# fits_budget(5, 10, 5, 25, 50) -> (45, True)  (45 ms fits inside a 50 ms budget)
+```
+
 **Design backwards from the budget.** Size the batch window so it fits inside
 the remaining slice; choose hardware so the model forward-pass fits inside the
 batch window's remainder; cache features and even whole predictions where inputs
@@ -96,7 +103,16 @@ repeat. This ordering, budget first and hardware second, is the senior move.
 The mean hides the tail. If 93 percent of requests take 8 ms and 7 percent take
 80 ms, the average is about 13 ms while the p99 is 80 ms. The user whose
 request lands in the tail always waits; p99 is the latency that the SLA actually
-measures. For fan-out systems (a search page that fans out across shards)
+measures.
+
+```python
+def mean_and_p99(latencies):                          # ms samples
+    s = sorted(latencies)
+    mean = sum(s) / len(s)                             # average, hides the tail
+    idx = min(len(s) - 1, int(0.99 * len(s)))         # nearest-rank index for p99
+    return round(mean, 1), s[idx]
+# mean_and_p99([8]*93 + [80]*7) -> (13.0, 80)  (healthy mean, tail is the real story)
+``` For fan-out systems (a search page that fans out across shards)
 individual tail requests multiply, so teams like Booking.com hold to p999
 precisely because one slow shard stalls the whole page.
 
@@ -116,8 +132,8 @@ A production model server handles four things that look simple but are not:
    them as one batch to fill the accelerator. The next section covers this in
    detail.
 4. **Metrics and health.** It exposes per-version latency histograms, error
-   rates, and throughput so monitoring can distinguish a slow version from a slow
-   host before a human notices.
+   rates, and throughput (requests served per second) so monitoring can
+   distinguish a slow version from a slow host before a human notices.
 
 None of these belong in application code. They belong in one place, owned by the
 serving platform, shared across every model.

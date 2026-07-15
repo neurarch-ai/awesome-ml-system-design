@@ -40,6 +40,15 @@ where $p_b$ is the fraction of training samples in bucket $b$ and $q_b$ is the
 fraction of serving samples in bucket $b$. PSI above 0.1 is a warning; above 0.2
 is a signal that the model is operating out of distribution.
 
+```python
+import numpy as np
+
+def psi(p, q):                          # p, q: bucket fractions, each sums to 1
+    p, q = np.asarray(p, float), np.asarray(q, float)
+    return float(np.sum((p - q) * np.log(p / q)))
+# psi([0.40, 0.35, 0.25], [0.25, 0.35, 0.40]) -> 0.141 (mass shifted between fixed buckets)
+```
+
 ![Training vs. serving feature distribution drift](assets/fig-skew-distributions.png)
 
 *The two distributions share the same feature but diverge because training used a
@@ -62,7 +71,16 @@ $$\text{parity} = \frac{1}{N} \sum_{i=1}^{N} \mathbf{1}\!\left[\,\left|\hat{x}^{
 
 This is the fraction of entities for which the value retrieved from the online
 store matches the value a fresh offline computation would produce, within a small
-tolerance. A well-run feature platform targets parity above 0.999. When it drops,
+tolerance. A well-run feature platform targets parity above 0.999.
+
+```python
+import numpy as np
+
+def parity(serve, train, eps):          # fraction of entities agreeing within tolerance eps
+    s, t = np.asarray(serve, float), np.asarray(train, float)
+    return float(np.mean(np.abs(s - t) <= eps))
+# parity([1.0, 2.0, 3.0], [1.0, 2.05, 3.5], 0.1) -> 2 of 3 within 0.1 = 0.667
+``` When it drops,
 skew has entered the system through one of the three causes above.
 
 Monitoring parity on a schedule, per feature, is the earliest warning system for

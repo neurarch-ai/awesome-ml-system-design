@@ -2,7 +2,8 @@
 
 Ads CTR models need two evaluation lenses: one that measures how well the model
 **orders** candidates (standard ranking quality), and one that measures how well
-it **prices** them (calibration). Using only AUC is the single most common
+it **prices** them (calibration, that is, whether a predicted 2% click rate
+really clicks about 2% of the time). Using only AUC is the single most common
 evaluation mistake for this problem. State both lenses early.
 
 ## AUC: ranking quality
@@ -14,6 +15,18 @@ positive above a random negative. It is an aggregate rank-order metric.
   a scalar in $[0, 1]$: 0.5 is random, 1.0 is perfect rank-order separation.
 
 $$\text{AUC} = P(\hat{p}_{\text{click}} \gt \hat{p}_{\text{no-click}})$$
+
+```python
+import numpy as np
+def auc(scores, labels):
+    scores, labels = np.asarray(scores, float), np.asarray(labels, float)
+    pos = scores[labels == 1]                    # scores given to positives (clicks)
+    neg = scores[labels == 0]                    # scores given to negatives (no-click)
+    wins = sum((p > n) + 0.5 * (p == n)          # each pos vs each neg: 1 if ordered, 0.5 on a tie
+               for p in pos for n in neg)
+    return wins / (len(pos) * len(neg))          # fraction of correctly ordered pos/neg pairs
+# auc([0.1, 0.4, 0.35, 0.8], [0, 0, 1, 1]) -> 0.75
+```
 
 **What AUC captures:** whether the model orders ads correctly. A higher AUC
 means the top-scored ads are more likely to be clicks.
@@ -76,6 +89,22 @@ $$\text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} \big|\text{acc}(b) - \text{conf}(b)\
 
 where $n_b$ is the count in bin $b$, $\text{acc}(b)$ is the observed click rate,
 and $\text{conf}(b)$ is the mean predicted probability.
+
+```python
+import numpy as np
+def ece(probs, labels, n_bins=10):
+    probs, labels = np.asarray(probs, float), np.asarray(labels, float)
+    edges = np.linspace(0, 1, n_bins + 1)     # bin boundaries on the probability axis
+    e = 0.0
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = (probs > lo) & (probs <= hi)      # predictions falling in this bin
+        if m.sum() == 0: continue
+        conf = probs[m].mean()                # mean predicted prob in the bin
+        acc = labels[m].mean()                # observed click rate in the bin
+        e += m.mean() * abs(acc - conf)       # weight the gap by the bin's fraction of data
+    return e
+# ece([0.1, 0.2, 0.9, 0.8], [0, 0, 1, 1]) -> 0.15
+```
 
 ![Calibration reliability curve](assets/fig-calibration-reliability.png)
 

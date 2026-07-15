@@ -29,8 +29,9 @@ labels, or something else?
 **Interviewer:** Billions of impression rows, each with an engagement outcome.
 Negative examples vastly outnumber positives.
 
-**Candidate:** Does the ranking score need to be a calibrated probability, or is
-ordering the list enough?
+**Candidate:** Does the ranking score need to be a calibrated probability (one
+where a predicted 0.1 really does mean a 10% chance, not just a number that sorts
+correctly), or is ordering the list enough?
 **Interviewer:** At least one use case feeds a threshold, so calibration matters.
 
 **Candidate:** Are there fresh items or users with little history?

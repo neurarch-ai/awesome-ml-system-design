@@ -65,8 +65,10 @@ and naming both is a strong signal.
 
 **1. Popularity bias.** Because the catalog is power-law, popular items appear as
 in-batch negatives (and positives) far more often, so a plain softmax
+(the function that turns raw scores into probabilities summing to 1)
 over-penalizes head items. The fix is the **logQ correction**: subtract an estimate
-of each item's sampling log-probability from its logit, so the embedding space
+of each item's sampling log-probability from its logit (the raw score before softmax),
+so the embedding space
 itself comes out unbiased. The estimate itself is a streaming one: track the average
 number of steps between two hits of an item, and its sampling probability is the
 reciprocal of that gap.

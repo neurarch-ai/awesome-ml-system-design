@@ -108,6 +108,13 @@ At $\beta = 0.5$, precision counts four times more than recall in the harmonic
 mean. For toxicity detection where missing abuse is more costly than over-blocking,
 use $\beta \gt 1$.
 
+```python
+def f_beta(p, r, beta):                   # beta>1 weights recall, beta<1 precision
+    b2 = beta * beta
+    return (1 + b2) * p * r / (b2 * p + r) # generalizes F1 (which is beta=1)
+# f_beta(p=0.6, r=0.9, beta=2) -> 5*0.6*0.9/(4*0.6+0.9) = 2.7/3.3 = 0.8181818181818182
+```
+
 **For seq2seq translation,** the loss is token-level cross-entropy over the target
 sequence, conditioned on the source and all previously decoded target tokens:
 
@@ -118,7 +125,8 @@ $$\mathcal{L}_{\text{seq2seq}} = -\frac{1}{T}\sum_{t=1}^{T} \log p_{\theta}(y_t 
 Where does the LLM fit in this design? Offline, in three roles:
 
 1. **Bootstrapping labels** where none exist: prompt the LLM to classify a sample
-   of messages, then distill its outputs into the small encoder. Pay the LLM once
+   of messages, then distill its outputs into the small encoder (distillation:
+   training a small model to imitate a larger one's outputs). Pay the LLM once
    per training example, not once per inference.
 2. **Handling the long tail** of hard cases the cheap model abstains on: route
    low-confidence predictions to an LLM fallback or a human queue.

@@ -18,7 +18,17 @@ The forecast is not the product; it is the input to the **optimizer**. For reple
 
 $$q^{\ast} = F^{-1}\!\!\left(\frac{c_u}{c_u + c_o}\right)$$
 
-where $c_u$ is the underage cost (lost sale, churn) and $c_o$ is the overage cost (holding cost, waste). For a 3:1 underage-to-overage ratio, $q^{\ast} = F^{-1}(0.75)$: stock to the P75 of forecasted demand. A more general optimizer (Zalando uses gradient-free Monte Carlo over a full replenishment policy) consumes the entire demand distribution, not just one quantile, and also folds in lead-time uncertainty and current stock state.
+where $c_u$ is the underage cost (lost sale, churn) and $c_o$ is the overage cost (holding cost, waste). For a 3:1 underage-to-overage ratio, $q^{\ast} = F^{-1}(0.75)$: stock to the P75 of forecasted demand.
+
+In code, $F^{-1}$ is just the quantile of the forecast distribution at the critical fractile:
+
+```python
+def newsvendor_stock(samples, c_u, c_o):       # samples = forecast draws of demand
+    import numpy as np
+    frac = c_u / (c_u + c_o)                    # critical fractile
+    return np.quantile(np.asarray(samples, float), frac)  # F^-1(frac)
+# newsvendor_stock([10, 20, 30, 40], 3, 1) -> quantile at 0.75 = 32.5
+``` A more general optimizer (Zalando uses gradient-free Monte Carlo over a full replenishment policy) consumes the entire demand distribution, not just one quantile, and also folds in lead-time uncertainty and current stock state.
 
 Two things candidates miss: the optimizer needs the **distribution** (not the mean), and the metric that ultimately matters is the **downstream decision cost** (realized stockouts and waste), not the forecast error. Where feasible, evaluate model changes against the downstream cost on a held-out period.
 
@@ -31,7 +41,7 @@ Reconciliation runs once per forecast cycle, after all series are forecast. MinT
 
 ## Feature store and training/serving skew
 
-Lag and rolling features computed at training time must match exactly what is available at serving time. A feature store with **point-in-time lookup** (where each row's feature is computed from data up to but not including the forecast origin) is the standard solution. Without it, subtle skew builds up: training used an actual $t - 1$ value while serving uses an estimated or delayed one, and offline metrics inflate while live accuracy degrades. This is the most common silent failure mode in large-scale forecasting systems.
+Lag and rolling features computed at training time must match exactly what is available at serving time. A feature store (a shared table of precomputed model features) with **point-in-time lookup** (where each row's feature is computed from data up to but not including the forecast origin) is the standard solution. Without it, subtle skew builds up: training used an actual $t - 1$ value while serving uses an estimated or delayed one, and offline metrics inflate while live accuracy degrades. This is the most common silent failure mode in large-scale forecasting systems.
 
 ## Bottlenecks and how to address them
 

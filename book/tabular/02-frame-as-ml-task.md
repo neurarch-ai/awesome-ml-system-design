@@ -32,7 +32,9 @@ markdown).
 **Survival analysis** answers "when will this event happen, for customers who
 have not yet experienced it?" The output is a survival curve, one per customer,
 giving the probability they are still active (or still-paying) at every horizon.
-Use this when the timing matters and some rows are censored: still-active
+Use this when the timing matters and some rows are censored (the event has not
+happened yet, so you know only that the customer survived at least this long, not the
+final outcome): still-active
 subscription customers, applicants whose default window has not yet resolved
 (Nubank, Block Square).
 
@@ -67,7 +69,7 @@ Framing churn as classification when you need survival, or framing an interventi
 question as propensity when you need uplift, is the most expensive early mistake
 in a tabular design. Pin the decision first, then pick the row.
 
-**Provenance.** The default classification and regression engines are the boosting libraries XGBoost (Chen and Guestrin, 2016), LightGBM (Microsoft, 2017), and CatBoost (Yandex, 2017). The calibrated-probability framing, the one that must hold when a score feeds a threshold, limit, or price, relies on Platt scaling (Platt, 1999) or isotonic regression rather than any change to the model.
+**Provenance.** The default classification and regression engines are the boosting libraries XGBoost (Chen and Guestrin, 2016), LightGBM (Microsoft, 2017), and CatBoost (Yandex, 2017). The calibrated-probability framing, the one that must hold when a score feeds a threshold, limit, or price, relies on Platt scaling (Platt, 1999) (fitting a simple sigmoid that maps raw scores to true probabilities) or isotonic regression (a more flexible non-decreasing step-function version of the same idea) rather than any change to the model.
 
 **Tools for each framing.** Classification and regression on tabular data are
 dominated by the gradient-boosting libraries XGBoost, LightGBM, and CatBoost.

@@ -74,7 +74,7 @@ there is no second code path to drift.
 **Batch pipeline.** A scheduled job (daily, hourly, or finer) reads from the data
 warehouse or object store, applies the shared feature definition, and writes two
 things: (1) timestamped rows to the offline store for full history, and (2) the
-latest value per entity to the online store via a materialization step. Spark is
+latest value per entity to the online store via a materialization step (precomputing and writing the current value into the fast online store so serving never has to compute it). Spark is
 the standard compute engine; the offline store is typically a columnar warehouse
 (BigQuery, Snowflake) or partitioned Parquet on object storage.
 
@@ -82,7 +82,7 @@ the standard compute engine; the offline store is typically a columnar warehouse
 (Flink, Samza, Spark Streaming) that applies the same shared definition to compute
 the real-time aggregate, then pushes the result to the online store within seconds.
 The hardest constraint here is that the streaming aggregate must be numerically
-identical to what the batch backfill would compute for the same window over the
+identical to what the batch backfill (a re-run of the feature logic over historical data) would compute for the same window over the
 same data. This is the seam where data skew most often enters. Uber's DSL runs the
 same code in both contexts. Feathr compiles the same transformation API to both
 Spark batch and Spark Streaming.
@@ -96,7 +96,7 @@ This is a bulk scan over potentially billions of rows; columnar formats and
 predicate pushdown matter here.
 
 **Serving read.** At request time, the ranking service issues a batch key lookup to
-the online store: one entity key per feature, typically batched as "fetch all
+the online store: one entity key (the ID of the thing being looked up, such as a user or item ID) per feature, typically batched as "fetch all
 features for user U and items I1, I2, I3 in a single round-trip." The result is
 returned in a few milliseconds and injected into the model's feature vector. This
 is a pure point-read workload; columnar formats are wrong here. Redis or Cassandra

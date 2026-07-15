@@ -9,7 +9,8 @@ probability that a given user clicks a given ad in a given context.**
 $$\hat{p} = P(\text{click} \mid \text{user},\, \text{ad},\, \text{context})$$
 
 This is a **binary classification** problem with a twist: the output must be a
-**calibrated probability**, not just a score. The number flows directly into
+**calibrated probability** (a number where "0.02" really means a 2% chance of a
+click, not just a score that ranks correctly), not just a score. The number flows directly into
 eCPM, so a score that is off by even 20 percent mis-prices the auction.
 
 ## Specifying the input and output
@@ -47,7 +48,9 @@ In a ranking system the model only needs to **order** items correctly; the
 absolute values are discarded after sorting. In ads CTR prediction the absolute
 value is the product. Two important consequences:
 
-- **AUC is necessary but not sufficient.** A model can have identical AUC before
+- **AUC is necessary but not sufficient.** (AUC, area under the ROC curve, is a
+  rank-order score: the chance a random clicked ad outscores a random non-clicked
+  one.) A model can have identical AUC before
   and after a systematic shift in its probability scale, because AUC only measures
   rank order. The auction, however, prices off the number. Detecting this with
   AUC alone is impossible; you need calibration metrics too.

@@ -30,7 +30,18 @@ which can hurt calibration.
 **SMOTE (synthetic minority oversampling).** For each minority point, find its
 k nearest minority neighbors and interpolate synthetic new examples along the
 line between them. Paired with light majority undersampling, SMOTE can lift
-recall when labeled fraud is scarce. Its risks: interpolating near a noisy or
+recall when labeled fraud is scarce.
+
+The interpolation at the heart of SMOTE is a single line of code: take two fraud
+rows and step a random fraction of the way from one toward the other.
+
+```python
+def smote_point(a, b, lam):        # a, b: two fraud feature rows; lam in [0, 1]
+    import numpy as np
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    return a + lam * (b - a)        # synthetic fraud point on the segment a -> b
+# smote_point([0.0, 10.0], [2.0, 20.0], 0.5) -> array([ 1., 15.])
+``` Its risks: interpolating near a noisy or
 overlapping decision boundary invents unrealistic examples and blurs the very
 boundary you care about; and SMOTE assumes a metric space, so raw categoricals
 need encoding first.
@@ -80,7 +91,8 @@ mislabeling recent fraud as legitimate.
 ## Point-in-time correctness: preventing feature leakage
 
 When a chargeback arrives weeks after a transaction, the temptation is to join
-the delayed label to current account state. That is a leakage bug: features
+the delayed label to current account state. That is a leakage bug (letting
+information that would not be available at scoring time leak into training): features
 like "total disputes on this account" or "account age" will reflect the future
 at the time of training but not at the time of serving, inflating offline
 metrics and collapsing live performance.

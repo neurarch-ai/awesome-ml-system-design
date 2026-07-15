@@ -22,12 +22,15 @@ contrast and how sensitive they are to negative quality.
 
 For an anchor $x_i$ and its positive $x_i^{+}$, treat the positive as the correct
 class among a set of $B$ candidates (the positive plus $B - 1$ negatives) and
-minimize the cross-entropy:
+minimize the cross-entropy (softmax turns the similarity scores into probabilities
+that sum to 1, and cross-entropy penalizes putting low probability on the positive):
 
 $$\mathcal{L}_{\text{InfoNCE}} = -\frac{1}{B}\sum_{i=1}^{B} \log \frac{\exp\!\bigl(\text{sim}(z_i,\, z_i^{+}) / \tau\bigr)}{\exp\!\bigl(\text{sim}(z_i,\, z_i^{+}) / \tau\bigr) + \sum_{j \neq i} \exp\!\bigl(\text{sim}(z_i,\, z_j) / \tau\bigr)}$$
 
 where $z_i = f(x_i)$ is the embedding, $\text{sim}$ is dot product or cosine, and
-$\tau$ is a temperature hyperparameter. Small $\tau$ makes the softmax peaky,
+$\tau$ is a temperature hyperparameter (a single number that divides every score
+before the softmax, controlling how sharp or flat the resulting distribution is).
+Small $\tau$ makes the softmax peaky,
 concentrating the loss on the hardest negatives; large $\tau$ spreads the gradient
 over all negatives. This is the workhorse loss for dual-encoder retrieval, and it
 is exactly the loss two-tower models train under.
@@ -53,6 +56,16 @@ closer to the positive than to the negative by a margin $m$:
 
 $$\mathcal{L}_{\text{triplet}} = \max\!\bigl(0,\ d(a, p) - d(a, n) + m\bigr)$$
 
+```python
+import numpy as np
+def triplet_loss(a, p, n, margin=1.0):
+    a, p, n = np.asarray(a, float), np.asarray(p, float), np.asarray(n, float)
+    dp = np.sqrt(np.sum((a - p)**2, axis=1))   # Euclidean distance anchor to positive
+    dn = np.sqrt(np.sum((a - n)**2, axis=1))   # Euclidean distance anchor to negative
+    return float(np.maximum(0.0, dp - dn + margin).mean())  # hinge: 0 once the margin is met
+# triplet_loss([[0,0]], [[1,0]], [[1.5,0]], margin=1.0) -> 0.5  (margin still violated)
+```
+
 where $d(\cdot, \cdot)$ is a distance (e.g., Euclidean or $1 - \text{cosine}$).
 The loss is zero when the margin is already satisfied, so only triplets near the
 boundary contribute gradients. This makes triplet loss very sensitive to how
@@ -63,7 +76,8 @@ training stalls.
 
 In-batch negatives are sampled from the data distribution, so popular items appear
 as negatives far more often and the model learns to push them down unfairly. The
-fix is to subtract the log sampling probability from each item's logit before the
+fix is to subtract the log sampling probability from each item's logit (the raw
+similarity score fed into the softmax, before it becomes a probability) before the
 softmax:
 
 $$s'(x, y) = s(x, y) - \log Q(y)$$
@@ -97,6 +111,20 @@ cosine. Because the score factorizes into one vector per side, you precompute on
 side offline and serve the other against an ANN index. The towers share an output
 space but not weights, because the two sides have different features. This is the
 canonical architecture for query-item and user-item retrieval.
+
+```mermaid
+flowchart LR
+  UF["user / query features"] --> UT["user tower<br/>(its own weights)"]
+  IF["item / document features"] --> IT["item tower<br/>(its own weights)"]
+  UT --> UV["user vector z_u"]
+  IT --> IV["item vector z_i"]
+  UV --> DOT["dot product z_u . z_i<br/>= relatedness score"]
+  IV --> DOT
+```
+
+The two towers never see each other's features until the final dot product, which
+is exactly why the item vectors can be computed offline once and reused: nothing
+about the score depends on the user until that last step.
 
 > **Open the validated graph.** Trace a two-tower model at real dimensions in the
 > live [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo). Follow

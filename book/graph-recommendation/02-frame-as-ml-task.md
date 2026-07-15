@@ -26,7 +26,7 @@ flowchart LR
   SCORE --> P["probability the edge forms"]
 ```
 
-**How it works.** A member u arrives with their local neighborhood and node features (profile, company, school, geography), and that subgraph is fed into a GNN encoder. The encoder aggregates the neighborhood into a single embedding z_u that places likely-connected members close together in vector space. A scoring function f then combines z_u with a candidate's embedding z_v, which was precomputed offline in the same batch pass, to produce a pairwise score. That score maps to the probability the edge forms and is accepted. Factoring the model this way (encode once per node, score pairs cheaply) is what lets ANN handle candidate generation while a pairwise head supplies precision, instead of running the full GNN for every pair at request time.
+**How it works.** A member u arrives with their local neighborhood and node features (profile, company, school, geography), and that subgraph is fed into a GNN encoder (a graph neural network: a model that builds a node's vector by repeatedly gathering and combining its neighbors' features). The encoder aggregates the neighborhood into a single embedding z_u that places likely-connected members close together in vector space. A scoring function f then combines z_u with a candidate's embedding z_v, which was precomputed offline in the same batch pass, to produce a pairwise score. That score maps to the probability the edge forms and is accepted. Factoring the model this way (encode once per node, score pairs cheaply) is what lets ANN handle candidate generation while a pairwise head supplies precision, instead of running the full GNN for every pair at request time.
 
 ## Choosing the right ML category
 

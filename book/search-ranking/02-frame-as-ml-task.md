@@ -41,15 +41,19 @@ which hurts recall.
 
 ## Choosing the right ML category
 
-This is a **learning-to-rank** problem. The model's job is not to predict an
+This is a **learning-to-rank** problem (training a model to order a set of items
+relative to each other, not to score each one in isolation). The model's job is not to predict an
 absolute relevance score (regression) or a binary label (classification), but to
 produce a *relative ordering* of documents for a query. That distinction matters
 because the metric (NDCG) is position-weighted: getting position 1 right is worth
 far more than getting position 10 right.
 
 Retrieval is a **representation-learning** sub-problem: learn embeddings for
-queries and documents such that relevant pairs are close in the shared space. This
-is the same two-tower structure as candidate retrieval in recommendation, with the
+queries and documents such that relevant pairs are close in the shared space
+(an embedding is just a fixed-length vector of numbers that stands in for text, so
+similar meanings land near each other). This
+is the same two-tower structure (one encoder for the query, one for the document,
+meeting only at a final similarity score) as candidate retrieval in recommendation, with the
 query taking the user's place.
 
 **When to use which framing.**

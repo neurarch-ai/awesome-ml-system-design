@@ -32,6 +32,14 @@ all.
 
 $$L_{\text{IPW}} = \sum_{i} \frac{y_i}{p(\text{pos}_i)} \cdot \ell\!\left(f(x_i),\, y_i\right)$$
 
+```python
+import numpy as np
+def ipw_loss(y, propensity, base_loss):   # y: click 0/1; propensity: P(examined | position); base_loss: per-example loss
+    w = np.array(y) / np.array(propensity)   # a click at a low-propensity (deep) position counts for more
+    return float(np.sum(w * np.array(base_loss)))
+# ipw_loss([1, 0, 1], [0.9, 0.5, 0.1], [0.2, 0.3, 0.4]) -> 4.222...  (the deep click at propensity 0.1 dominates)
+```
+
 A click at position 10 is divided by a small propensity, so it counts for more
 than a click at position 1. The propensity $p(\text{pos}_i)$ is estimated from
 either a small randomization experiment (swap a few results to random positions
@@ -43,7 +51,16 @@ The complementary trick is **position as a train-time feature**: feed the
 displayed position to the model during training so it can explain away the
 position-driven component of a click, then fix that feature to a neutral constant
 at serving time. The model learns relevance net of position without explicitly
-estimating propensities.
+estimating propensities. Concretely, position is just one more feature column that
+is real at training time and pinned to a constant when scoring live candidates:
+
+```python
+def score(feature_row, weights, serve_position=1):   # at serving, force position to one neutral value for every candidate
+    row = dict(feature_row)
+    row["position"] = serve_position                  # overwrite the logged position so it can no longer sway the score
+    return sum(weights[name] * value for name, value in row.items())
+# score({"bm25": 2.0, "position": 7}, {"bm25": 1.5, "position": -0.3}) -> 2.7  (uses position=1, not the logged 7)
+```
 
 ![Position-bias propensity curve](assets/fig-position-bias.png)
 
@@ -58,7 +75,8 @@ Human judgments are expensive but trustworthy. Trained raters grade
 query-product pairs on a four-point scale (perfect, good, fair, bad) following
 detailed guidelines. They cover the head query distribution and a sample of the
 tail, and they are the gold standard against which you calibrate the click-derived
-labels. The Wayfair WANDS dataset is a public example of what a well-constructed
+labels (calibration = adjusting the noisy click signal so its implied relevance
+lines up with the trusted human grades). The Wayfair WANDS dataset is a public example of what a well-constructed
 human-judgment set looks like.
 
 In practice you fuse both: human judgments anchor calibration and cover the head,
