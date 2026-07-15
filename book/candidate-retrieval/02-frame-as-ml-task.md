@@ -8,6 +8,42 @@ item, so that items the user engages with score higher than items they do not.**
 If we have that function, retrieval becomes "find the items most similar to this
 user."
 
+## Where retrieval sits: the multi-stage funnel
+
+Retrieval is the first stage of a **cascade**, and knowing the whole cascade is the
+framing an interviewer wants. You cannot run a heavy model over millions of items per
+request, so a large recommender narrows the candidate set in stages, each cheaper per
+item than the next and each trusting the previous stage's recall.
+
+```mermaid
+flowchart LR
+  POOL["catalog<br/>(millions of items)"] --> RET["retrieval / candidate sourcing<br/>(cheap, high recall)"]
+  RET -->|"thousands"| ESR["pre-ranking (ESR)<br/>(lightweight ranker)"]
+  ESR -->|"hundreds"| LSR["ranking (LSR)<br/>(heavy multi-task model)"]
+  LSR -->|"scored"| RR["re-ranking<br/>(diversity, policy, business rules)"]
+  RR -->|"final list"| FEED["feed shown to the user"]
+```
+
+- **Retrieval (candidate sourcing).** Turn millions into thousands, cheaply, with
+  high recall. It usually fans out across several sources (a two-tower model, a
+  graph or co-visitation source, trending, freshly created items) whose results are
+  merged, so "retrieval" is often a union of retrievers, not one model.
+- **Pre-ranking, or early-stage ranking (ESR).** A lightweight model narrows
+  thousands to hundreds. Its job is not to be accurate in isolation but to keep the
+  items the full ranker would have liked, so it is designed for **consistency** with
+  the next stage (covered in the ranking chapter).
+- **Ranking, or late-stage ranking (LSR).** The heavy multi-task model scores the
+  few hundred survivors precisely, predicting several engagement events and combining
+  them into one value.
+- **Re-ranking.** A final policy layer on the top items: diversity, business rules,
+  freshness, dedup, exploration, and whole-list objectives.
+
+This chapter is the first stage. **Provenance.** The retrieval-then-ranking funnel
+was popularized by YouTube's deep recommender (Covington et al., Google, 2016); the
+distinct pre-ranking (ESR) stage was formalized in Alibaba's COLD (2020). A newer
+alternative that compresses this cascade into a single large model, generative
+recommendation, is covered in the [sequential-recommendation chapter](../sequential-recommendation/04-model-development.md).
+
 ## Specifying the input and output
 
 The retrieval system takes a **user and their context** and returns a **ranked

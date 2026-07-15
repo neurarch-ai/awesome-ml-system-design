@@ -1,5 +1,32 @@
 # 4. Model development
 
+## Two ranking stages: pre-ranking (ESR) and full ranking (LSR)
+
+"Ranking" in a large recommender is usually two stages, not one. After retrieval
+hands over thousands of candidates, a **pre-ranking (early-stage ranking, ESR)** model
+narrows them to a few hundred, and then the **full ranking (late-stage ranking, LSR)**
+model scores those precisely. The split exists because the heavy multi-task ranker is
+too expensive to run over thousands of items inside the latency budget.
+
+The non-obvious design rule for the pre-ranker is **consistency, not accuracy**. Its
+only job is to pass through the items the full ranker would have ranked highly, so it
+is graded on **recall of the full ranker's top-k**, not on absolute engagement
+prediction. In practice teams keep it consistent by making the pre-ranker a smaller,
+distilled version of the full ranker (a lightweight two-tower or a shallow network
+trained to mimic the ranker's scores), so the two stages agree on what is good.
+
+| Stage | Input size | Model | Graded on |
+|---|---|---|---|
+| Pre-ranking (ESR) | thousands | lightweight, often distilled from the ranker | recall of the full ranker's top-k |
+| Full ranking (LSR) | hundreds | heavy multi-task deep model | the business objectives directly |
+
+**When you can skip pre-ranking:** if retrieval already returns only a few hundred
+candidates that fit the full ranker inside the latency budget, run the full ranker
+directly. Pre-ranking earns its place once the candidate set is large enough that the
+full ranker cannot score all of it in time. **Provenance.** The pre-ranking stage was
+formalized in Alibaba's COLD (2020). The rest of this chapter is about the full
+ranker (LSR).
+
 ## The two families: trees and deep networks
 
 **GBDT rankers** (XGBoost, LambdaMART) work well on tabular, hand-engineered

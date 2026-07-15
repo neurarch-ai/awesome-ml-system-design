@@ -157,6 +157,39 @@ where $W$ is a window of future interactions, not just t+1.
 
 **Worked example.** A streaming service modeling next-item intent starts with GRU4Rec from RecBole as a cheap baseline for short viewing sessions under twenty events. As histories lengthen and cross-position dependencies start to matter, it moves to SASRec, whose causal self-attention parallelizes at training time yet applies directly at serving because the last-position vector only attended over the past. It considers BERT4Rec only once it has enough data and needs one model to serve several surfaces, accepting the extra masking complexity for bidirectional context. To keep a once-daily batch embedding from going stale, it swaps the next-item target for an all-action window loss (PinnerFormer style), and trains throughout with in-batch negatives rather than an infeasible full-catalog softmax.
 
+## Generative recommendation: the foundation-model paradigm
+
+The multi-stage cascade (retrieval, pre-ranking, ranking, re-ranking) is the dominant
+architecture, but a newer paradigm reformulates recommendation as a **generative
+sequence** problem that follows scaling laws like a language model. It shows up in two
+places.
+
+**Generative retrieval.** Instead of embedding every item and running approximate
+nearest-neighbor search, quantize each item's content embedding into a short sequence
+of discrete codes (a **semantic ID**), then train a sequence-to-sequence model to
+*generate* the next item's semantic ID token by token. Retrieval becomes decoding, so
+there is no separate ANN index, and items that share codes (including cold-start items)
+generalize for free. This is the TIGER approach (Rajput et al., Google, 2023).
+
+**Generative sequential recommenders.** Push the same idea to ranking: treat the whole
+problem as sequential transduction over the user's action history and scale the model
+like an LLM, so quality tracks a scaling law rather than hand-built features. HSTU
+(Zhai et al., 2024, "Actions Speak Louder than Words") is the reference point, with the
+ambition of collapsing the multi-stage cascade into a single large model that both
+retrieves and ranks.
+
+| | Multi-stage cascade | Generative foundation model |
+|---|---|---|
+| Structure | separate retrieval, pre-rank, rank, rerank | one large sequence model |
+| Improves via | better features and models per stage | scale (data, parameters, compute) |
+| Cost | cheap per request, modular to iterate on | expensive to serve, newer, less battle-tested |
+| Reach for it when | most systems today | very large scale where a scaling-law model pays off, or to unify many hand-built sources |
+
+The honest framing for an interview: the cascade is what almost everyone runs in
+production today, and the generative foundation model is the direction the frontier is
+moving, not yet a drop-in replacement. Naming both, and the tradeoff, is the senior
+signal.
+
 ## Implementation and training pitfalls
 
 Sequence models are unusually easy to leak: a single off-by-one in the mask or a
