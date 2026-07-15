@@ -104,6 +104,15 @@ to attention pathologies (looping, early stopping, hallucination on silence).
 Large-scale weak supervision (Whisper at 680K hours) gives zero-shot robustness
 across languages and domains.
 
+**Recent direction: full-duplex spoken dialogue.** The newest conversational systems
+drop the turn-based listen-then-speak pipeline entirely and model speech in and
+speech out at once, so the model can listen and talk simultaneously (handling
+interruptions and backchannels like a real conversation). Moshi (Kyutai, 2024,
+[arXiv:2410.00037](https://arxiv.org/abs/2410.00037)) is the reference full-duplex
+speech-text model, and Meta's SeamlessM4T remains the reference for unified
+multilingual ASR and speech translation. These matter when the product is a live
+voice agent rather than batch transcription.
+
 ## When to use which architecture
 
 | Reach for | When | Instead of |
