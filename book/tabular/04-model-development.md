@@ -230,3 +230,30 @@ where $m(t)$ is expected margin per active period and $d$ is the discount rate.
 Two traps: do not regress raw historical revenue and call it LTV (survivorship bias,
 no horizon), and be explicit about baseline versus incremental LTV when the number
 justifies a marketing spend (again a causal question, not a predictive one).
+
+## Implementation and training pitfalls
+
+Tabular models rarely fail because the algorithm is wrong; they fail because of data
+leakage, a distribution mismatch, or miscalibration. The loss curve is still the
+first thing to read on any iterative learner.
+
+![Reading training curves: four diagnostics](assets/fig-training-diagnostics.png)
+
+*Four shapes a training run takes. Healthy: train and validation error both fall and
+stay close. Overfitting: validation error bottoms out then rises, so stop early or
+regularize. Learning rate too high (for gradient-boosted or neural models): the loss
+oscillates instead of settling, so lower it. Underfitting: error stays high and flat,
+so the model or features are too weak. Illustrative.*
+
+| Problem | Symptom | Fix |
+|---|---|---|
+| Target leakage | eval looks amazing offline, collapses in production | audit each feature for information from the label's future; use point-in-time features |
+| Train/serve skew | offline and online scores diverge for the same input | compute features from one shared definition, verify parity on sampled requests |
+| Overfitting (too many trees / too deep) | train error near zero, validation error rising | early stopping on a validation fold, shallower trees, more regularization (min-child-weight, L2) |
+| Miscalibration from resampling | ranking fine (AUC ok) but probabilities are biased | recalibrate after downsampling (Platt or isotonic), or correct the intercept for the sampling rate |
+| Class imbalance mishandled | model predicts the majority class only | class weights or focal loss first, resample only if that is not enough, and always recalibrate |
+| High-cardinality categorical blowup | memory explosion or overfit on rare IDs | hashing trick, target encoding with cross-fitting, or learned embeddings |
+| Silent distribution shift | slow metric decay after launch | monitor input drift (PSI) and recalibrate or retrain on a schedule |
+
+The through-line: a suspiciously good offline number almost always means leakage or
+contamination, not a great model, so distrust it until you have ruled those out.
