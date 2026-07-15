@@ -89,6 +89,21 @@ It is non-parametric (it assumes no particular distribution shape): no assumptio
 It returns a p-value, so the decision threshold is statistical significance
 rather than a field-rule number.
 
+### The p-value trap at large sample sizes
+
+The KS and chi-square tests return a p-value, and that is exactly what makes them
+dangerous on production-scale windows. Both are consistent tests: as the sample size
+grows, they reject the null for an arbitrarily small true difference. On a window of
+hundreds of thousands or millions of rows, a shift far too small to affect the model
+will still produce a p-value below any fixed significance level, so the alert fires
+on statistical significance that carries no practical significance. The senior fix is
+to threshold on an **effect size**, not a p-value: report the KS statistic itself
+(the maximum CDF gap, already in $[0, 1]$) against a magnitude threshold, and prefer
+PSI, which is a divergence magnitude rather than a hypothesis test and so does not
+sharpen with sample size the way a p-value does. This is the deeper reason PSI is the
+industry default at scale and why a raw KS p-value is a poor page condition on a
+firehose.
+
 ## Chi-square test
 
 For categorical features, the chi-square test measures whether the observed

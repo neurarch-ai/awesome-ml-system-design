@@ -24,6 +24,25 @@ from a logistic model), fast, interpretable, easy to retrain.
 capture the "this user likes this category of ads" signal; you would have to
 hand-craft a user-category cross feature for that.
 
+**How the LR is actually trained at scale: FTRL-Proximal (McMahan et al.,
+Google, 2013).** Plain SGD is a poor fit for ads LR: the feature space is
+billions of sparse ids arriving as a stream, and you want a model that trains in
+a single online pass and stays small enough to serve. FTRL-Proximal (Follow The
+Regularized Leader with a proximal term) is the optimizer that made LR the ads
+workhorse for years. Two mechanisms matter. First, it keeps a **per-coordinate
+adaptive learning rate**: a feature seen millions of times (a common publisher
+id) gets a small, settled step, while a rare tail id keeps a large step so it can
+still move, which is the right behavior when feature frequencies span many orders
+of magnitude. Second, it applies **L1 regularization through a closed-form
+proximal update** rather than by subtracting a gradient, and the L1 update sets a
+coordinate to *exactly* zero whenever the accumulated evidence for it is weaker
+than the penalty. That exact-zero property is the point: a coordinate at zero
+costs no serving memory, so the model naturally drops the long tail of ids that
+never earned their keep instead of storing a tiny nonzero weight for each. The
+result is a sparse, calibrated, one-pass-trainable linear model, which is exactly
+what a low-latency auction needs and what pure SGD-plus-L1 does not give you
+(SGD's noisy per-step L1 rarely lands on exact zeros).
+
 ### GBDT + logistic regression (Facebook recipe)
 
 Gradient-boosted trees discover useful feature combinations automatically. Each

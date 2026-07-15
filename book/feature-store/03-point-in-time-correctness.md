@@ -78,6 +78,27 @@ Feathr's sliding-window APIs handle this by storing full timestamped history for
 each window definition. The common mistake is writing only the current window
 value, then finding no historical rows to join against.
 
+## The unbounded-lookback trap
+
+The as-of join as written picks the latest write at or before $T_i$ with no lower
+bound on how old that write may be. On a slow-moving or intermittently written
+feature this silently returns a value from arbitrarily far in the past: a feature
+last written months before the event still satisfies $t \leq T_i$ and wins the join.
+That is point-in-time correct in the narrow sense (it leaks no future) yet still
+produces train/serve skew, because the online store almost always expires stale
+rows. Offline the as-of join happily surfaces the ancient value; online the model
+reads a null or a default because the entry aged out. The model then trains on a
+feature that will never be populated the same way at serving time, which is the
+mirror image of the leakage bug and just as damaging.
+
+The fix is a maximum-staleness bound: accept a write only inside the window
+$T_i - \text{ttl} \leq t \leq T_i$, and emit null (matching serving behavior) when
+nothing falls in that window. Feast exposes exactly this as the `ttl` on a feature
+view, and making the offline ttl match the online store's expiry is what keeps the
+two paths consistent. The senior habit is to treat the ttl as part of the feature
+definition rather than an infra detail, and to set it from the feature's real
+refresh cadence instead of leaving the lookback unbounded.
+
 ## When to use which approach
 
 | Reach for | When | Instead of |

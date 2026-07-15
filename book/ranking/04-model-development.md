@@ -130,6 +130,21 @@ conflict. Spotify and Snap both use MMoE with DCN-v2 inside each expert.
 
 $$g^k(x) = \text{softmax}(W_k x), \qquad y_k = h_k\!\Big( \sum_{i=1}^{n} g^k(x)_i\, f_i(x) \Big)$$
 
+The reason to prefer PLE (Progressive Layered Extraction, Tencent, 2020) over
+plain MMoE is the **seesaw phenomenon**: under a fully shared expert pool, the
+gradients that help one task routinely arrive with the opposite sign for a
+conflicting task, so a change that lifts one head quietly costs another and the
+pair seesaws instead of both improving. MMoE softens this with per-task gates
+but still draws every expert from one shared pool, so a task can never fully
+escape gradients meant for its rival. PLE makes the separation structural: it
+splits experts into **task-specific** experts (only that task's gate can route
+to them, shielding them from conflicting gradients) and **shared** experts (open
+to all tasks for transfer), and stacks this over several extraction layers so
+higher layers mix progressively. The senior read: reach for PLE precisely when
+you can measure a seesaw, one head's offline metric rising as another falls under
+a shared body, not as a reflexive upgrade, since the extra experts cost
+parameters and latency.
+
 ## LambdaMART: pairwise loss scaled by NDCG change
 
 LambdaMART trains a GBDT to directly move NDCG. For each pair of items where

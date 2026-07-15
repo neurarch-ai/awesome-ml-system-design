@@ -144,6 +144,24 @@ the batch fills. This means batching mostly helps at sustained high load, where
 it matters most; at low load the wait window dominates and adds latency for
 little gain.
 
+## Static batching wastes generative workloads
+
+Everything above assumes each request does one fixed forward pass, so a batch
+starts and finishes together. Autoregressive generation breaks that assumption:
+requests in the same batch decode a different number of tokens, and with static
+batching the whole batch is held until its **longest** member finishes. Short
+requests sit padded and idle behind a long one (head-of-line blocking), and GPU
+utilization falls as the batch drains down to its last unfinished sequence.
+
+**Continuous (iteration-level) batching** fixes this by scheduling at the
+granularity of one decode step instead of one whole request: after every token,
+a finished sequence is evicted from the batch and a queued request takes its
+slot, so the batch stays full without waiting for the slowest member. This is
+the mechanism introduced by Orca (Yu et al., 2022) and popularized by vLLM's
+implementation. It is the right default for LLM-style autoregressive serving and
+is orthogonal to the wait-window knob above, which still governs how requests
+first enter the batch.
+
 ## When to use which batching approach
 
 | Reach for | When | Instead of |

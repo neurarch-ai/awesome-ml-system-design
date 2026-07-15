@@ -36,6 +36,23 @@ identical AUC but different probability scales will rank ads identically, but
 will produce different eCPMs, different prices, and different auction outcomes.
 This is the gap that makes AUC alone insufficient for ads.
 
+**A second, subtler AUC trap: global AUC over-counts easy cross-request pairs.**
+Global AUC forms every positive-versus-negative pair in the whole eval set,
+including pairs from *different* requests: a click shown to a heavy user against a
+non-click shown to a light user. Those cross-request pairs are easy to order (the
+model can separate them on user-level or context-level features alone) and they
+dominate the pair count, so global AUC can look high while the model is weak at
+the only comparison the auction ever actually makes: ranking the candidate ads
+*within one request*. The fix ads teams use is **grouped AUC** (also called user
+AUC or GAUC), popularized in Alibaba's Deep Interest Network work (Zhou et al.,
+2018): compute AUC within each request or each user, then average the per-group
+values weighted by impressions or clicks. A model can move grouped AUC while
+leaving global AUC flat, and vice versa, so report the grouped version when the
+decision is about in-request ranking. Note grouped AUC is undefined for any group
+that is all clicks or all non-clicks (no valid pair exists), and those
+single-label groups are common at ad-level granularity, so the weighting and the
+drop rule both need to be stated explicitly.
+
 ## Log loss: calibration-aware quality
 
 Log loss (cross-entropy) rewards the model for predicting the correct

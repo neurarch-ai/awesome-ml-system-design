@@ -104,6 +104,18 @@ its peak precision is high, because recall does not extend far.*
 Also report precision and recall at the **chosen confidence operating point**,
 since the product must pick one threshold to run at.
 
+A subtlety that trips up even strong candidates: AP is **threshold-free in
+confidence**. The precision-recall curve is traced by sweeping every possible
+confidence cutoff, so AP measures how well the model *ranks* detections (are true
+positives scored above false positives?), not whether any particular score is
+calibrated. Two detectors with identical mAP can need very different production
+thresholds, and pushing mAP up (better ranking) does not guarantee that your fixed
+serving threshold gets better, since it may sit on a part of the curve that did not
+move. This is exactly why the chosen operating point must be reported alongside mAP,
+not inferred from it. Note also that mAP is computed on the boxes that *survive*
+NMS, so the NMS IoU threshold silently shapes the reported number: too aggressive
+and true positives in crowded scenes are suppressed before AP ever sees them.
+
 ### Segmentation: mean IoU (mIoU)
 
 The model assigns a class label to each pixel; **mIoU** scores those per-pixel

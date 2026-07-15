@@ -197,6 +197,28 @@ handle more features automatically but need more data and are harder to debug.
 > the pairwise-interaction layer, and the top MLP. Those two structural details
 > explain why one retrieves and the other ranks.
 
+### Optional stage 4: cross-encoder reranking the shortlist
+
+The dual-encoder in stage 2 scores a query against a document with a single dot
+product of two independently computed vectors, which is exactly why its document
+embeddings can be precomputed and indexed. That independence is also its ceiling:
+the query tokens never interact with the document tokens, so nothing in the model
+can react to *this* query landing on *this* document. A **cross-encoder**
+concatenates the query and document and runs them through one Transformer, so
+every query token attends to every document token; the joint attention resolves
+term overlap, negation, and word order that a dot product cannot represent, and
+it is the accuracy ceiling of the pipeline.
+
+The reason it is a rerank stage and never a retrieval stage is cost. A
+cross-encoder cannot precompute anything, since its representation depends on the
+query and document jointly, so scoring N candidates is N full Transformer forward
+passes at query time. That is affordable over the ~100 the ranker already
+shortlisted, and impossible over the corpus. The senior pattern is to run it only
+on the head of the ranked list, where reordering changes what the user actually
+sees, and to distill it into the cheaper dual-encoder or LTR model so most of its
+quality is paid for offline. This is the Sentence-BERT cross-encoder line
+(Reimers and Gurevych, UKP Darmstadt, 2019).
+
 ## When to use which
 
 **Retrieval arm.**

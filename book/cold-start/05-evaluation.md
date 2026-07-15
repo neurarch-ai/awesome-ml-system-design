@@ -59,6 +59,24 @@ def ips(pi_new, pi_log, rewards):
 # ips([0.5, 0.25, 0.5], [0.25, 0.5, 0.5], [1, 0, 1]) -> 1.0
 ```
 
+**Self-normalized IPS (SNIPS)** fixes a specific pathology of plain IPS: the
+importance weights $w_i = \pi(a_i \mid x_i) / \pi_0(a_i \mid x_i)$ do not
+average to one on a finite sample, so IPS systematically over- or
+under-counts reward whenever the sampled weights happen to sum to more or less
+than $n$. SNIPS divides by the realized sum of weights instead of by $n$:
+
+$$\hat{V}_{\text{SNIPS}}(\pi) = \frac{\sum_{i=1}^{n} w_i\, r_i}{\sum_{i=1}^{n} w_i}$$
+
+This makes the estimator invariant to a constant additive shift in the reward
+and, more importantly, self-corrects when a few large weights dominate the log:
+the same big weight that inflates the numerator also inflates the denominator,
+so the estimate is pulled back toward the observed average rather than
+exploding. The tradeoff is that SNIPS is no longer strictly unbiased (it is
+consistent, unbiased only in the limit) but its variance is far lower on the
+skewed weight distributions that cold-start explore logs actually produce. The
+self-normalized estimator for counterfactual learning is from Swaminathan and
+Joachims (2015).
+
 **Doubly-robust (DR)** adds a learned reward model $\hat{r}$ as a baseline
 and importance-weights only its residual:
 

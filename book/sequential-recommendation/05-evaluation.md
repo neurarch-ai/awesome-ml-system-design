@@ -82,6 +82,21 @@ def mrr(ranks):   # ranks: 1-based rank of the true next item per user, None if 
 # mrr([1, 3, None]) -> 0.4444444444444444   # (1 + 1/3 + 0) / 3
 ```
 
+## A caution on sampled evaluation
+
+The metrics above assume the true next item is ranked against the **full**
+catalog. Many papers and internal harnesses instead rank it against a small fixed
+sample of negatives, because scoring the whole catalog per user is expensive.
+Krichene and Rendle (2020) showed this sampled protocol is treacherous: the
+sampled versions of Recall@k, NDCG@k, and MRR are not consistent estimators of
+their full-catalog counterparts, and worse, they can **reorder** models, so
+system A beats system B on sampled metrics while B is genuinely better against
+the full catalog. The distortion is sharpest at small k, which is exactly where
+these metrics are read. The senior rule: evaluate against the full catalog when
+you can afford it; if you must sample for scale, keep the negative sample fixed
+and large, use a bias-corrected estimator, and never compare two models across
+different sampled sets.
+
 ## Time-based split is mandatory
 
 For the same reason as in the requirements: random splits leak the future. The

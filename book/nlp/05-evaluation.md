@@ -126,6 +126,17 @@ normalized variants). COMET correlates better with human quality ratings than
 BLEU does. The release gate for production translation systems is human ratings,
 not BLEU alone. Google GNMT used a 0-6 human rater scale as the final quality bar.
 
+A subtler trap with BLEU is that the number is not comparable across systems unless
+the scoring setup is identical. BLEU is computed after tokenization, and different
+tokenizers, lowercasing choices, and n-gram orders yield different scores on the
+exact same translations, so a BLEU quoted in one place cannot be compared to a BLEU
+quoted in another without knowing both preprocessing pipelines. Post (2018)
+documented this and introduced sacreBLEU (the `sacrebleu` tool in the stack above),
+which fixes a canonical tokenization and emits a version signature so scores are
+reproducible and comparable. The senior habit is to report the sacreBLEU signature
+alongside the number and to treat any BLEU delta measured against a
+differently-tokenized baseline as meaningless.
+
 **Grammatical error correction:** $F_{0.5}$ rather than $F_1$. The model
 proposes edits to a sentence; the metric scores those edits against a gold
 correction set and returns a number in [0, 1]. False corrections (editing good

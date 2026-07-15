@@ -171,6 +171,26 @@ double with each step. Pick a modest $d$, tune it against the downstream consume
 and reach for quantization before chasing dimension if memory is the constraint.
 Schematic; qualitative trend is the point.*
 
+### Matryoshka representation learning: defer the choice
+
+You do not have to commit to one $d$ at training time. **Matryoshka representation
+learning (Kusupati et al. 2022)** trains a single encoder so that every nested
+prefix of the output vector (the first 8, 16, 32, 64, ... coordinates) is
+independently usable as an embedding. The mechanism is a summed loss: the same
+contrastive or classification objective is computed at each prefix length and
+averaged, which forces the model to pack the most discriminative information into
+the earliest coordinates and progressively finer detail into later ones. A plain
+encoder spreads information arbitrarily across all $d$ dimensions, so truncating it
+destroys quality; a Matryoshka encoder degrades gracefully because the truncation
+points were training targets.
+
+This converts the three-way tradeoff from a training-time commitment into a
+per-query serving decision. The canonical pattern is coarse-to-fine retrieval:
+run the cheap ANN shortlist over a short prefix (say 64 dims) to cut latency and
+index memory, then re-rank that shortlist with the full-width vector for quality.
+One model, one index write, and each consumer picks the prefix that meets its own
+recall and cost budget without a retrain or a separate distillation run.
+
 ## When to use which
 
 **Losses and negative strategies.**

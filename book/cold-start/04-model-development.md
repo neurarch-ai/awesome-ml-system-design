@@ -120,6 +120,32 @@ Thompson sampling is the default that many production teams reach for: it is
 empirically robust, gives clean stochastic propensities, and its exploration
 is as directed as UCB while being more forgiving to tune.
 
+**Why sampling from the posterior is principled: probability matching.** The
+mechanism is not a heuristic. Over many draws, Thompson sampling selects arm
+$a$ with exactly the posterior probability that $a$ is the optimal arm,
+$P(a = \arg\max_{a'} \mu_{a'} \mid \text{data})$. An arm with a wide posterior
+that overlaps the current leader wins draws often precisely because there is a
+real, quantified probability it is best; as its posterior concentrates, that
+probability collapses toward zero or one and the sampling rate follows. This is
+also why the propensity is well defined and nonzero for every arm with nonzero
+posterior mass: the action distribution is the posterior-optimality
+distribution, which is exactly the object off-policy estimators need.
+
+**Why the Beta update is a single counter increment: conjugacy.** For a
+Bernoulli reward, the Beta prior is the conjugate prior, so the posterior after
+observing data is again Beta with no integral to compute: a click adds one to
+$\alpha$ and a no-click adds one to $\beta$. The posterior $\text{Beta}(\alpha_0
++ s_a, \beta_0 + f_a)$ is therefore maintained with two integers per arm and
+updated in constant time per event. This is what makes non-contextual Thompson
+sampling almost free to run at scale, and it is the reason the neural-linear
+head (a Gaussian-conjugate linear layer) is chosen for the contextual case: it
+preserves a closed-form conjugate posterior instead of forcing a sampler.
+
+**Provenance of the empirical case.** Thompson sampling sat mostly unused for
+decades; the empirical evaluation that established it as a competitive
+production default, matching or beating UCB on display-advertising and news
+data while being simpler to tune, is Chapelle and Li (2011).
+
 ## Contextual bandits: LinUCB and neural-linear
 
 The above policies assume a fixed arm set and per-arm parameters that do not

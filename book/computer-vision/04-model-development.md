@@ -87,6 +87,46 @@ $$\text{mAP} = \frac{1}{C} \sum_{c=1}^{C} \int_{0}^{1} p_c(r)\, dr$$
 
 where $p_c(r)$ is the precision of class $c$ at recall level $r$.
 
+#### Why dense detectors need focal loss
+
+A single-stage detector scores on the order of tens of thousands of anchors per
+image, and the overwhelming majority land on background. Under plain cross-entropy
+$\text{CE}(p_t) = -\log(p_t)$, each easy background anchor still contributes a
+small but nonzero loss, and summed over tens of thousands of them that trickle
+swamps the gradient from the handful of hard foreground anchors. Two-stage
+detectors dodge this by sampling (a fixed positive-to-negative ratio, hard-negative
+mining); a dense detector has no such stage.
+
+Focal loss (Lin et al., FAIR, 2017, "Focal Loss for Dense Object Detection", the
+RetinaNet paper) fixes this by multiplying cross-entropy by a modulating factor:
+
+$$\text{FL}(p_t) = -(1 - p_t)^{\gamma} \log(p_t)$$
+
+The mechanism is entirely in $(1 - p_t)^{\gamma}$. With the common $\gamma = 2$, an
+easy example already scored at $p_t = 0.9$ has its loss scaled by $(0.1)^2 = 0.01$,
+a hundredfold reduction, while a hard example at $p_t = 0.5$ is scaled by only
+$(0.5)^2 = 0.25$, a fourfold reduction. Easy negatives are pushed toward
+irrelevance so the few informative examples dominate the gradient, without any
+explicit sampling. It is usually paired with an $\alpha$ class-balance weight. The
+practical lesson: focal loss is the loss that lets you drop the sampling heuristics,
+not a drop-in accuracy knob for an already-balanced two-stage pipeline.
+
+#### Anchor-based vs anchor-free heads
+
+Anchor-based heads (Faster R-CNN, RetinaNet, YOLOv2 and v3) tile every feature-map
+location with a preset bank of anchor boxes across scales and aspect ratios, then
+regress an offset from each anchor and classify it, matching anchors to ground
+truth by an IoU threshold. This introduces hyperparameters a senior engineer has to
+tune per domain: anchor scales, aspect ratios, and the positive/negative IoU cutoffs,
+all of which interact with the object-size distribution of your data. Anchor-free
+heads (FCOS, Tian et al., 2019; CenterNet, 2019) instead predict object centers or
+keypoints and regress box extent directly from each location, removing the anchor
+bank and its matching thresholds along with the memory of storing many anchors per
+location. The tradeoff: anchor-free heads shift the burden onto center/scale
+assignment rules and can be more sensitive to crowded, overlapping objects, whereas
+a well-tuned anchor set can still edge them out on a domain with a narrow, known
+object-size range.
+
 ### Segmentation head
 
 **Semantic (U-Net style):** an encoder-decoder where skip connections carry

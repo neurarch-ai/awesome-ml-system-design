@@ -45,6 +45,37 @@ adjustment. Right: the distribution of per-user treatment-minus-control, raw
 versus CUPED. The narrower CUPED distribution means the test needs fewer users
 to detect the same effect.*
 
+## The delta method: variance for ratio metrics
+
+Many product metrics are ratios of two sums: click-through rate (total clicks
+over total impressions), average session length (total seconds over total
+sessions), conversion per visit. When you divert by user but the ratio's
+numerator and denominator both aggregate over events, the denominator is itself a
+random quantity, and the per-user numerator and denominator are correlated (a
+heavy user contributes many clicks and many impressions). A naive standard error
+that treats each event row as independent gets this doubly wrong: it ignores the
+within-user clustering and it treats the denominator as fixed.
+
+The delta method fixes both by linearizing the ratio. Write the metric as $R =
+\bar{Y} / \bar{X}$, the ratio of the per-user mean numerator to the per-user mean
+denominator. A first-order Taylor expansion of $R$ around $(\mathbb{E}[Y],
+\mathbb{E}[X])$ gives:
+
+$$\text{Var}(R) \approx \frac{1}{n\,\bar{X}^{2}} \left( \hat{\sigma}_{Y}^{2} - 2R\,\hat{\sigma}_{YX} + R^{2}\,\hat{\sigma}_{X}^{2} \right)$$
+
+The cross term $-2R\,\hat{\sigma}_{YX}$ is exactly the numerator-denominator
+covariance that the naive estimator drops. Because $Y$ and $X$ are usually
+positively correlated across users, that term is negative and pulls the true
+variance below a numerator-only calculation, so ignoring it tends to make
+intervals too wide on CTR-like metrics, while ignoring the within-user clustering
+makes them too narrow. The two errors do not cancel in any reliable way, which is
+why you cannot hand-wave the ratio variance. The delta method is the standard
+closed-form alternative to bootstrapping the ratio, and it composes with CUPED
+(residualize numerator and denominator, then apply the same expansion).
+
+**Provenance.** The delta method applied to large-scale A/B ratio metrics is
+documented by Deng, Knoblich, and Lu (Microsoft, 2018).
+
 ## Sequential testing: looking without peeking
 
 The standard fixed-horizon test assumes you look exactly once, at the planned

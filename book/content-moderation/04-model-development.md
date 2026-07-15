@@ -21,6 +21,36 @@ flowchart TD
 
 **How it works.** Every incoming item (text, image, video, or voice) first hits a perceptual-hash lookup, a near-zero-cost, near-zero-false-positive gate that auto-actions and reports known-bad re-uploads before any model runs. Novel items pass to cheap unimodal classifiers (a fine-tuned text encoder, EfficientNet for images); confident scores go straight to the policy engine, while ambiguous cross-modal cases escalate to the expensive joint image-text model first. The policy engine applies each policy's tuned thresholds and splits the outcome three ways: above the auto-action threshold removes or blocks, below the auto-allow threshold allows, and anything in the borderline band between them routes to the human review queue. Cost rises left to right, so the funnel spends heavy compute only on the small fraction of items that survive the cheaper gates.
 
+### The perceptual-hash gate: match radius and its two failure modes
+
+The hash gate leads the funnel because it is the one component that is near-zero-cost
+and near-zero-false-positive at the same time, but both properties hinge on one tunable:
+the Hamming-distance match radius $r$ (a candidate matches a bank entry when the two
+256-bit PDQ strings differ in at most $r$ bits). That single knob is a precision-recall
+dial for the gate itself, and it has an asymmetric cost structure that mirrors the
+classifier thresholds downstream. Set $r$ too tight and a re-encode, crop, or logo
+overlay pushes the hash just past the radius, so the gate misses a known-bad re-upload
+and leaks it to the more expensive (and more fallible) classifiers, which is a recall
+loss on the cheapest, most reliable stage. Set $r$ too loose and unrelated benign images
+start colliding with bank entries, which auto-actions innocent content: the collision
+probability grows sharply with $r$ because the number of 256-bit strings within Hamming
+distance $r$ is $\sum_{i=0}^{r}\binom{256}{i}$, so each extra bit of slack enlarges the
+match ball combinatorially. The near-zero-false-positive claim is therefore a property
+of a conservatively chosen $r$, not an intrinsic guarantee of perceptual hashing.
+
+Two failure modes survive even a well-tuned radius, and both explain why the hash gate
+sits *before* the classifiers rather than replacing them. First, the bank only stores
+fingerprints of material already known to be bad, so it has zero generalization: a
+first-of-its-kind violating image (novel harm, never seen) hashes to something no bank
+entry is near and passes untouched. The gate catches re-uploads, not new content, which
+is precisely why the classifiers behind it carry the novel-harm recall. Second, the
+Hamming threshold is the attack surface: an adversary who possesses the bank (or can
+probe the gate) can perturb pixels to move the hash past $r$ while the image stays
+perceptually identical to a human, defeating the fingerprint without visibly changing
+the content. The mitigation is not a cleverer single hash but defense in depth (multiple
+independent hash algorithms, periodic bank refresh from confirmed misses, and the
+downstream classifiers as the backstop for anything the bank cannot match).
+
 ### Text classifiers
 
 Fine-tuned transformer encoders (BERT-family, ModernBERT) are the workhorse. Each

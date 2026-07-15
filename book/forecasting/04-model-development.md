@@ -30,6 +30,26 @@ most current foundation models handle weakly. Treat a foundation model as the ne
 "what does an off-the-shelf model get before I build anything" bar, not an automatic
 replacement for a fitted model.
 
+### Why a global tree cannot extrapolate a trend
+
+The global GBT workhorse hides one structural limitation worth stating before you
+ship it: a decision tree predicts a piecewise-constant function, and every leaf
+value is an average of training targets. Its output is therefore bounded by the
+range of targets it saw in training. A tree literally cannot predict a value larger
+than the largest one in its training data. For a series with a persistent upward
+trend (growing demand, an inflating price level, a metric that only climbs), this
+means the model flatlines the moment the horizon leaves the historical range: it
+clamps to the maximum leaf value instead of continuing the trend. Linear models and
+classical ETS/ARIMA extrapolate a trend by construction; trees do not.
+
+The standard fix is to remove the trend before the tree sees it and add it back
+afterward: difference the target (predict $y_t - y_{t-1}$ or $y_t - y_{t-m}$), or
+model the target as a ratio or residual against a simple trend or seasonal-naive
+baseline, so the tree only has to fit the stationary part it is good at. This is why
+lag-and-calendar GBT pipelines almost always predict a differenced or deflated
+target rather than the raw level, and why a GBT that looks strong in backtest can
+still degrade on a strongly trending SKU when that detrending step is skipped.
+
 ## Producing the probabilistic output
 
 A probabilistic forecast is the output the decision layer needs. There are three practical paths to get there.

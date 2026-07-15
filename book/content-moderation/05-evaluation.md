@@ -76,6 +76,29 @@ A sudden drop in a policy's flag rate is as likely to be successful evasion as a
 genuine drop in harm. Alert on both directions and investigate. A sudden rise can
 indicate a coordinated campaign or a model regression.
 
+### The base-rate arithmetic that makes per-item accuracy meaningless
+
+The reason accuracy fails here is worth making quantitative, because the effect is
+larger than most engineers expect. Precision (positive predictive value) at deployment
+is governed by prevalence through Bayes' rule:
+
+$$\text{Precision} = \frac{\pi \cdot \text{TPR}}{\pi \cdot \text{TPR} + (1-\pi)\cdot \text{FPR}}$$
+
+where $\pi$ is prevalence, TPR is recall (sensitivity), and FPR is one minus specificity.
+Take a classifier that looks excellent on a balanced test set: 99 percent recall and 99
+percent specificity (so FPR is 1 percent). At a prevalence of 0.1 percent
+($\pi = 0.001$), precision is $\frac{0.001 \times 0.99}{0.001 \times 0.99 + 0.999 \times 0.01} \approx 0.09$.
+Roughly nine of every ten items this "99 percent accurate" model flags are benign. The
+false positives are drawn from a negative pool a thousand times larger than the positive
+pool, so even a tiny FPR floods the flagged set. This is why the precision floor, not
+accuracy or specificity, is the binding constraint: to reach even 50 percent precision at
+$\pi = 0.001$ with 99 percent recall, the model needs an FPR near 0.1 percent (99.9
+percent specificity), an order of magnitude stricter than the balanced-set number
+suggests. The practical corollaries: a model evaluated only on a rebalanced set will look
+far better than it serves, and precision measured in production drifts whenever prevalence
+moves even if the model is unchanged, so precision must always be reported against the
+prevalence it was measured at.
+
 ## False-block rate and the appeals proxy
 
 The standard $\text{FPR} = \text{FP}/(\text{FP}+\text{TN})$ is not actionable

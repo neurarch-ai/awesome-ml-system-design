@@ -80,6 +80,20 @@ The feedback loop through previous output tokens is what separates RNN-T from CT
 and is what makes the transducer approach more robust on context-sensitive
 transcription.
 
+### The transducer emission-delay trap
+
+A subtlety senior engineers watch for: a transducer is free to emit the blank
+symbol and keep consuming audio before it commits a token, and nothing in the
+standard RNN-T loss discourages waiting. Left alone the model learns to **delay**
+emission, hoarding future frames because more right context lowers token error,
+which inflates the user-perceived latency that streaming was supposed to protect.
+The gap between when enough audio has arrived to decide a word and when the model
+actually emits it is the emission delay, and it does not show up in WER at all.
+FastEmit (Yu et al., Google, 2021) is the standard fix: it adds a term to the
+transducer loss that rewards emitting a non-blank token sooner, trading a small
+accuracy cost for a large reduction in emission delay. This is why two RNN-T
+models with identical WER can feel very different live.
+
 ## Full-context architecture (batch): the Conformer
 
 The **Conformer** is the dominant batch encoder. It interleaves self-attention

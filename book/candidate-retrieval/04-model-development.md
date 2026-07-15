@@ -150,6 +150,35 @@ correction entered wide practice through the YouTube deep recommender (Google,
 2016), which is where the sampling-bias correction for popularity-skewed catalogs
 was popularized.
 
+## Why the logQ correction is exact, not a heuristic
+
+It is worth being precise about why subtracting `log Q(y)` is the right term and
+not just a knob that happens to help. The in-batch softmax is a Monte Carlo
+estimate of the true softmax over the whole 100M-item corpus, but its negatives are
+drawn from the interaction stream, so an item `y` shows up as a negative with
+probability `Q(y)` proportional to its popularity, not uniformly. Left uncorrected,
+the denominator (the partition function) systematically over-counts head items,
+which pushes their embeddings away from queries they actually match and biases the
+retrieved distribution. Subtracting `log Q(y)` from each logit is the standard
+importance-sampling correction for a sampled softmax: it is equivalent to
+reweighting each sampled negative by `1 / Q(y)` inside the exponential, so that in
+expectation the sampled denominator equals the true full-corpus denominator. The
+correction lineage goes back to adaptive importance sampling for neural language
+models (Bengio and Senecal, 2008); the paper that adapted it specifically to
+streaming two-tower item retrieval, and that showed how to estimate `Q(y)` online
+from the hit-gap stream (the estimator in `estimate_logq` above) so no static
+frequency table is needed for a catalog that churns daily, is
+**Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations**
+(Yi et al., Google, 2019).
+
+The mirror-image subtlety is why the term is applied at training time only. At
+serving there is no softmax and no sampling: you retrieve by raw inner product over
+the ANN index. Re-adding `log Q(y)` there would not "keep the correction consistent,"
+it would re-introduce exactly the popularity skew you removed, since the trained
+embeddings already bake in the unbiased geometry. That is the trap in the "logQ
+applied at serving" pitfall row below: the term is a property of the training
+estimator, not of the score you rank on.
+
 ## Implementation and training pitfalls
 
 A two-tower retriever can train cleanly and still return poor candidates, because

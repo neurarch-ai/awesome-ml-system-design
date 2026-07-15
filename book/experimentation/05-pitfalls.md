@@ -70,6 +70,20 @@ whole social communities or geographic regions), switchback experiments
 designs. LinkedIn runs the treatment alongside a cluster design and compares
 the two estimates; a gap between them reveals leakage.
 
+The subtle part a senior engineer plans for is that cluster randomization does not
+come free: it trades a bias you cannot see for a variance you can measure. Once you
+randomize whole clusters (communities, cities, time windows) instead of individual
+users, the effective number of independent units is closer to the number of
+clusters than the number of users, and users inside a cluster are correlated. The
+variance of the treatment-effect estimate inflates by roughly a design-effect
+factor (Kish) of $1 + (m - 1)\rho$, where $m$ is the average cluster size and
+$\rho$ is the intraclass correlation of the metric. A design with a handful of
+large clusters therefore has far fewer effective independent units than its raw
+user count suggests, so it needs many more clusters (and usually more total
+traffic) to reach the same power as a user-level split. That is why
+interference-robust designs are reserved for cases where the leakage is plausibly
+large enough to justify the power hit, not applied by default.
+
 ## Simpson's paradox
 
 An aggregate result can reverse when you look inside subgroups. A ranker that

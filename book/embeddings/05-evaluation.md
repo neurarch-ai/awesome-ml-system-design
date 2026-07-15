@@ -88,6 +88,28 @@ positives close (small alignment loss) and space spread (small uniformity loss).
 Random-negative triplet loss lands far from the ideal corner; InfoNCE with hard
 negatives lands closest. Schematic; relative positions are the point.*
 
+### The anisotropy problem in text embeddings
+
+Text encoders built on pretrained language models have a specific, well-documented
+uniformity failure worth naming explicitly: **anisotropy**. The raw output vectors
+of models like BERT and GPT-2 occupy a narrow cone rather than spreading over the
+sphere, so two randomly chosen sentences already sit at high cosine similarity
+(Ethayarajh, 2019 measured this geometry across BERT, ELMo, and GPT-2; Gao et al.
+2019 traced the training cause and named it the representation degeneration
+problem). In the vocabulary of this section, anisotropy is exactly a uniformity
+failure, and it is invisible to a plain cosine probe: because every pair, related
+or not, reports a high cosine, the absolute similarity number is meaningless and
+only the relative ranking of scores carries any signal.
+
+Two families of fix. Post-hoc, you can whiten or standardize the vectors to
+re-center and de-correlate them so the cone opens up (BERT-flow, Li et al. 2020,
+and related whitening transforms). More durably, contrastive fine-tuning such as
+SimCSE directly optimizes uniformity and pulls the geometry off the cone at
+training time. This is why dropping a raw pretrained encoder into an ANN index and
+trusting cosine usually underperforms a smaller contrastively fine-tuned one:
+the larger model may hold more knowledge, but its space is not shaped for
+similarity search until something has forced it to be uniform.
+
 ## Downstream task lift
 
 The best offline proxy for production value is whether the embedding improves a

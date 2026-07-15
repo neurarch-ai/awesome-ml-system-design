@@ -181,6 +181,32 @@ The figure below shows the cost matrix that drives this calculation.
 good user) costs the lost sale plus support and churn. FN (missed fraud) is the
 most expensive: the chargeback amount plus network fees. Illustrative.*
 
+## Why resampling breaks the threshold you just derived
+
+The closed-form threshold $\tau^{\star}$ above assumes the model outputs a
+**calibrated** probability. Two of the imbalance fixes on this page quietly violate
+that assumption. Downsampling the negatives (a common way to make training tractable
+at a fraction-of-a-percent base rate) shifts the model's implied prior, so it
+systematically over-predicts fraud probability; focal loss and heavy class weights
+distort the score in the same direction. Feeding those inflated scores into
+$\tau^{\star} = c_{\text{FP}}/(c_{\text{FP}} + c_{\text{FN}})$ blocks far more traffic
+than the cost math intended. This is the mechanism behind the "ranking fine,
+probabilities biased high" pitfall.
+
+Because the mechanism is a clean prior shift, the correction is exact rather than a
+re-fit. If negatives are kept at rate $r$ during downsampling, the model's odds are
+inflated by $1/r$, and multiplying the predicted odds back by $r$ recovers the true
+probability:
+
+$$p_{\text{true}} = \frac{r\, p_s}{1 - p_s + r\, p_s}$$
+
+where $p_s$ is the score from the model trained on the resampled data. This is the
+sampling correction of Elkan (2001) and Dal Pozzolo et al. (2015). The senior
+discipline: fit a monotone method (isotonic, Platt) or apply this closed-form
+correction on a held-out set drawn from the true base rate **before** computing
+$\tau^{\star}$, and recalibrate after every retrain, since the score distribution
+moves each time.
+
 ## When to use which model family
 
 | Reach for | When | Instead of |

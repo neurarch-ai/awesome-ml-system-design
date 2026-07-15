@@ -96,6 +96,24 @@ Two subtleties an interviewer probes:
 *Heuristics are strong and cheap; inductive GNNs win when node features and graph
 structure both matter, especially for cold-start members. Illustrative.*
 
+## Why deeper is not better: over-smoothing
+
+A natural instinct is to stack more GNN layers so each node sees further into the
+graph. It backfires, and the reason is mechanical. One message-passing layer
+replaces a node's vector with a blend of its own and its neighbors' vectors, which is
+a smoothing (low-pass) operation on the graph. Stacking $k$ layers applies that
+smoothing $k$ times, and repeated averaging over a connected neighborhood is a
+diffusion that converges toward a state where every node in a connected component
+holds essentially the same vector (up to a degree-dependent scale). Li et al. (2018)
+made this precise by showing a GCN layer is a form of Laplacian smoothing. Past two
+or three hops the representations wash out and become indistinguishable, so a
+link-prediction head can no longer separate pairs. This **over-smoothing** is why
+production GNNs stay shallow (two to three layers) and why the useful escape hatches
+are residual or jumping-knowledge connections (which re-inject earlier, sharper
+representations) rather than more depth. It is also why long-range graph signal is
+usually better captured by a heuristic feature or a subgraph method than by simply
+adding layers.
+
 **When to use which model.**
 
 | Reach for | When | Instead of |

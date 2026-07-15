@@ -80,6 +80,38 @@ flowchart LR
   SCAN --> NN["nearest neighbors"]
 ```
 
+## Maximum inner product search is not metric search
+
+One assumption hides under "ANN search," and getting it wrong quietly costs recall
+even with a perfect index. The two-tower head scores by inner product, so retrieval
+is **maximum inner product search (MIPS)**, and MIPS is not a metric
+nearest-neighbor problem. Inner product has no triangle inequality, and a vector is
+not its own nearest neighbor: a longer item vector can out-score a query's own exact
+match, purely on magnitude. Graph and tree indexes whose correctness intuition comes
+from metric spaces (HNSW's small-world navigation, IVF's k-means cells) therefore
+lose their guarantees on raw inner products. There are two standard fixes. Normalize
+every vector to unit length, which turns MIPS into cosine and hence into Euclidean
+nearest neighbor (same ranking order), accepting that you discard the magnitude
+signal Airbnb deliberately kept. Or apply an asymmetric augmentation that appends
+extra coordinates to the item vectors so that plain Euclidean nearest neighbor in the
+augmented space recovers the inner-product order (Bachrach et al., Microsoft, 2014;
+Shrivastava and Li, 2014; Neyshabur and Srebro, 2015). This is why FAISS and ScaNN
+expose an explicit inner-product-vs-L2 metric flag: choosing the wrong one silently
+degrades recall no matter how well the index is tuned.
+
+Quantization has the same MIPS-vs-L2 split. Product quantization (Jegou, Douze, and
+Schmid, 2011) compresses vectors by splitting each into subvectors and replacing each
+subvector with the id of its nearest centroid from a small per-subspace codebook, so
+a 128-dim float vector becomes a handful of bytes and distances are read from
+precomputed lookup tables (this is the PQ in Etsy's HNSW-with-4-bit-PQ). ScaNN (Guo
+et al., Google, 2020) sharpens this for MIPS specifically: instead of minimizing raw
+reconstruction error, its score-aware anisotropic loss penalizes the component of
+quantization error that is parallel to the datapoint far more than the orthogonal
+component, because for inner-product ranking it is the parallel error that shifts the
+score while orthogonal error largely cancels. The quantizer is thus tuned to preserve
+inner-product order rather than L2 reconstruction, which is why ScaNN tends to win
+recall-per-byte over plain PQ on MIPS workloads.
+
 ## Freshness and the funnel
 
 - **Item freshness.** A new item is invisible until it is re-embedded and upserted

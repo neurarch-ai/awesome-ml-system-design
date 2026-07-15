@@ -61,6 +61,27 @@ text (product descriptions), images (listing photos), or event sequences (browsi
 paths), a neural architecture handles all modalities jointly. A tree cannot natively
 ingest raw text or image tensors.
 
+### Why CatBoost's ordered target encoding matters
+
+The provenance line notes that CatBoost differs from XGBoost and LightGBM mainly
+in its categorical handling, and the mechanism is worth knowing because it fixes
+a leak that also bites hand-rolled pipelines. The naive way to turn a
+high-cardinality category (merchant id, zip code) into a number is **target
+encoding**: replace each category with the mean label of the rows that share it.
+Computed over the whole training set, that mean includes the very row you are
+about to predict, so the feature carries a shadow of its own label. The model
+looks excellent in training and degrades in production, a bias CatBoost's authors
+call **prediction shift**, and it is worst for exactly the rare categories where
+each mean is built from a handful of rows.
+
+CatBoost's **ordered target encoding** removes it by imposing an artificial order
+on the rows and encoding each row using only the labels of rows that came before
+it in that order (with several random orderings averaged to reduce variance), so
+no row ever sees its own label. The same ordering principle drives its **ordered
+boosting**. The practical takeaway: if you must target-encode by hand outside
+CatBoost, do it with out-of-fold (cross-fitted) means for the same reason, and
+never with a plain full-data mean.
+
 ### When to use which model family
 
 | Reach for | When | Instead of |
