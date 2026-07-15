@@ -36,7 +36,25 @@ Cold start is the whole reason production uses inductive GNNs.
 A: Standard message passing with set-pooling provably cannot count common
 neighbors, exactly the signal Adamic-Adar captures. The fix is to feed the
 heuristic in as an explicit pairwise feature (or use a subgraph method like SEAL),
-not to expect the GNN to rediscover it.
+not to expect the GNN to rediscover it. Mechanism: a message-passing GNN embeds each
+node independently from its own rooted neighborhood, and its expressive power is
+bounded by the 1-dimensional Weisfeiler-Leman test. It never sees the two candidate
+nodes jointly, so it has no way to represent "how many neighbors do u and v share,"
+which is a property of the pair, not of either node alone. Adamic-Adar computes
+exactly that pairwise intersection, weighted by inverse-log degree, which is why it
+stays competitive on shared-connection-heavy pairs.
+
+**Q: Hard negatives lifted offline Hits@k but online acceptance rate fell. What went
+wrong?**
+A: Hard negatives (two-hop, same-community non-edges) sharpen the decision boundary,
+but "structurally close yet not connected" is not the same as "a good suggestion."
+Two people in the same community who have deliberately not connected can be exactly
+the pair a user does not want surfaced. Pushing the model to rank those pairs highly
+improves offline ranking against sampled negatives while degrading the real product
+objective. The fix is to keep hard negatives proportionate (mix them with random and
+degree-corrected negatives rather than training on hard negatives alone) and to gate
+on the online acceptance rate, since the offline metric and the product goal have
+quietly diverged.
 
 **Q: Uniform negative sampling hurt the model. What happened?**
 A: The graph is power-law, so uniform non-edges over-sample hub nodes, and the model
@@ -63,7 +81,13 @@ over-suggesting.
 **Q: Do you run the GNN per request to score a member?**
 A: No. You batch-infer embeddings for the whole graph offline and index them; online
 is an embedding lookup plus an ANN query plus ranking. Running a multi-hop GNN per
-request blows the latency budget.
+request blows the latency budget. Mechanism: an L-hop GNN needs the target node's
+entire L-hop neighborhood at inference time, and that neighborhood grows roughly like
+the average degree raised to the power L. On a power-law social graph a single hop
+through one hub can pull in millions of nodes, so a per-request forward pass would
+have to fetch and aggregate an unbounded subgraph within the request budget.
+Precomputing embeddings amortizes that fan-out into an offline batch job and leaves
+online serving as a bounded lookup plus ANN query.
 
 **Q: Is a homogeneous friend graph enough?**
 A: Usually not at scale. Real signal is heterogeneous (members, companies, schools,

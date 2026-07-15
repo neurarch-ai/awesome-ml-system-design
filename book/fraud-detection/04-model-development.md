@@ -181,6 +181,12 @@ most expensive: the chargeback amount plus network fees. Illustrative.*
 | GraphBEAN / autoencoder | bipartite or graph-structured data, novel fraud, no labels | supervised anomaly, which needs labels it does not have |
 | Ensemble (supervised + anomaly) | mature production system with both known and novel fraud | single model that covers only one threat mode |
 
+**Provenance.** The gradient-boosted-tree workhorses are XGBoost (Chen and Guestrin,
+2016) and LightGBM (Microsoft, 2017); CatBoost (Yandex, 2017) is the alternative when
+high-cardinality categoricals dominate. The unsupervised anomaly branch draws on
+Isolation Forest (Liu et al., 2008) for label-free novel-attack detection and on
+autoencoder anomaly detection (reconstruction error as the score).
+
 **Tools.** Gradient-boosted trees are XGBoost and LightGBM (Microsoft), with
 scikit-learn isotonic or Platt calibration on top and imbalanced-learn available for
 resampling when focal or class-weighted loss is not enough. Wide-and-Deep DNNs are

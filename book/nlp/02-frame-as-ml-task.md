@@ -97,6 +97,11 @@ flowchart TD
 | Seq2seq encoder-decoder | the output is new generated text: translation, grammatical correction, summarization | a classification or tagging head when the output length is variable and open-ended |
 | LLM zero-shot | no labeled data yet and you need a baseline immediately | a fine-tuned encoder when you have even a few thousand labels (the encoder will match or beat it at a fraction of the cost) |
 
+**Provenance.** The encoder-head framing rests on BERT (Google, 2018); the
+token-tagging head is served in practice by spaCy (Explosion) and descends from the
+classical sequence-labeling formulation CRF (Lafferty et al., 2001), which modeled the
+whole tag sequence jointly instead of tagging each token independently.
+
 **Tools.** Hugging Face Transformers provides the encoder classification and token-classification heads along with the T5 and BART seq2seq models, and spaCy offers a ready token-level NER pipeline. The bi-encoder for entity resolution comes from sentence-transformers, matched through an approximate-nearest-neighbor index such as FAISS (Meta). The zero-shot baseline is one LLM prompt run offline while labels accumulate.
 
 **Worked example.** A news platform names each NLP sub-task before choosing an architecture. To route each article into one topic it uses an encoder plus a classification head. To extract the people and places mentioned inside the article it uses a token-tagging head (spaCy or Transformers), not a single label for the whole document. To resolve messy source-name variants onto a canonical organization list it uses a bi-encoder (sentence-transformers) plus a FAISS lookup rather than a class per organization, which would not scale as the list grows. To produce a headline translation it needs open-ended generated text, so it reaches for a seq2seq encoder-decoder. Before any labels exist it stands up an LLM zero-shot baseline, then replaces it with a fine-tuned encoder once a few thousand labels accumulate.

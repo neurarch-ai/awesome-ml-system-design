@@ -113,6 +113,23 @@ segments: a miscalibrated new product means mis-priced risk on that product's
 entire book. Always report reliability curves sliced by segment, vintage, and
 protected group, especially for regulated decisions.
 
+**Q: Your fraud rate is 0.5 percent. Should you SMOTE the training set to balance
+the classes first?**
+
+A: Usually no, and knowing why is the point. SMOTE (Chawla et al., 2002)
+synthesizes minority rows by interpolating between a minority example and its
+minority nearest neighbors in feature space. Two problems bite in tabular risk
+settings. First, interpolating across categorical or non-smooth columns invents
+rows that live nowhere in the real distribution, and gradient-boosted trees
+already absorb imbalance through the loss (a `scale_pos_weight`-style class weight)
+without any resampling. Second, resampling changes the base rate, so every
+probability the model then emits is calibrated to the resampled 50/50 world, not
+the real 0.5 percent, and must be corrected back before it can feed a threshold or
+a price. The cleaner levers for a GBDT are class weighting in the loss plus
+threshold tuning on the true distribution, which leave calibration intact. Reach
+for SMOTE mainly when the model genuinely cannot express class weights and the
+features are smooth and continuous.
+
 ## Commonly answered wrong
 
 **Q: Should the model and the decision policy be in the same artifact?**

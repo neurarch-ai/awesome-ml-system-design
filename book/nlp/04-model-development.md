@@ -141,6 +141,12 @@ with a fixed label set and even a few thousand examples.
 | Class-weighted cross-entropy | positive class is well under one percent (abuse, spam, fraud) | uniform cross-entropy that the majority class dominates |
 | LLM offline as label factory | bootstrapping a new task with no labeled data, or generating weak labels at label time | LLM inline at inference time on a fixed-label task at scale |
 
+**Provenance.** The encoder-plus-head workhorse descends from BERT (Google, 2018),
+the masked-language-model encoder that the distilled variants (DistilBERT, MiniLM) and
+BERT-base fine-tunes all build on. The token-tagging NER head is the neural successor
+to the classical sequence-labeling approach, CRF (Lafferty et al., 2001), which framed
+tagging as a joint label-sequence prediction rather than independent per-token calls.
+
 **Tools.** Hugging Face Transformers ships DistilBERT, MiniLM, BERT-base, and the T5 and BART seq2seq backbones with classification and token-classification heads ready to fine-tune. The bi-encoder for entity resolution comes from sentence-transformers, and its output is matched through an approximate-nearest-neighbor index such as FAISS (Meta). Class-weighted cross-entropy is a loss argument in PyTorch (Meta); the LLM label factory runs offline, prompting a large model once per training example and distilling into the small encoder.
 
 **Worked example.** A support platform routes tickets at high QPS under a tight latency budget, so it fine-tunes a distilled encoder (DistilBERT via Transformers) rather than calling an LLM inline millions of times a day. To pull the product name and order date out of each ticket, it adds a token-tagging NER head on the same encoder instead of one label per document. To map free-text product mentions onto its canonical catalog it uses a bi-encoder (sentence-transformers) plus a FAISS lookup, which scales as the taxonomy grows where a class-per-product classifier would not. Because spam is well under one percent of traffic, it weights the positive class in cross-entropy so the majority class does not dominate the gradient. And when a brand-new label has no data yet, it prompts an LLM offline to bootstrap weak labels and distills them into the encoder rather than serving the LLM on the inline path.

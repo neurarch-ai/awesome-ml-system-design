@@ -69,3 +69,16 @@ velocity in batch for training and streaming for serving.
 | Calibration drift | Cost-optimal threshold produces wrong operating point post-retrain | Recalibrate after every retrain (isotonic regression or Platt scaling); monitor expected calibration error | Calibration requires held-out data |
 | Graph traversal latency | p99 spikes when graph query depth increases or shared-node degree grows | Cap BFS depth; prune high-degree nodes; pre-index hot entity links | Traversal depth caps can miss distant ring members |
 | Training-serving skew on velocity | Live recall much lower than offline recall despite good metrics | Log served feature values; diff against training pipeline; unify computation path | Storage and compute overhead for feature logging |
+
+Two details worth pinning down. First, the block-side blind spot is a selection-bias
+loop: once the model blocks a segment, no outcome label is ever observed for it, so
+the next retrain sees only the transactions the model allowed and its estimated block
+precision drifts free of reality. The standard remedy is a small randomized
+allow-through hold-out (a few basis points of would-be blocks let through and tracked
+to settled labels) so the block region keeps producing ground truth, accepting a tiny
+amount of realized fraud as the price of an unbiased precision estimate. Second, the
+class-imbalance fix that reaches for SMOTE (Chawla et al., 2002) is risky exactly at
+the fraud decision boundary: SMOTE interpolates new minority points between existing
+fraud examples, and where fraud and legitimate transactions overlap those synthetic
+points land among legitimates, so class weights or focal loss (which reweight without
+inventing points) are the safer first move.

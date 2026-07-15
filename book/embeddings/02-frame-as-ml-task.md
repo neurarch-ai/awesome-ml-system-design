@@ -58,4 +58,8 @@ primitive that turns representation learning into a production system.
 | Sequence / skip-gram model (word2vec style) | session or co-purchase order defines related and item IDs repeat enough to learn stable vectors | contrastive dual-encoder, when you have no content features and only id co-occurrence |
 | Self-supervised text contrastive (SimCSE) | the entity is a sentence or passage and you need a semantic embedding with no behavioral logs | behavioral dual-encoder, when the input is text and you have no engagement signal |
 
+**Provenance.** The skip-gram framing is word2vec (Google, 2013); the dual-encoder
+framing comes from DSSM (Microsoft, 2013); and the text-contrastive row's
+sentence-embedding tooling is Sentence-BERT (UKP Darmstadt, 2019).
+
 The next section builds the training data from behavioral logs.

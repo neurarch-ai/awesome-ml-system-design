@@ -95,6 +95,20 @@ demographic, per language, and per content type to catch disparate impact. Suppr
 counter-speech, news coverage, or marginalized voices at scale is a real harm, not
 a rounding error.
 
+**Q: Why does a perceptual hash catch a re-uploaded violating image that a
+cryptographic hash misses, and what is it actually comparing?**
+A: A cryptographic hash (SHA-256) is avalanche by design: flip one bit of the file
+and the entire digest changes, so re-saving at a different JPEG quality, cropping a
+pixel, or adding a watermark produces a totally different hash and the match is
+lost. A perceptual hash like PDQ (Meta) instead hashes the image's visual content:
+it downscales to a fixed grid, takes a frequency-domain (DCT) transform of the
+luminance, and thresholds the low-frequency coefficients into a 256-bit string, so
+two visually similar images produce hashes that differ in only a few bits. Matching
+is then a Hamming-distance threshold, not exact equality, which is why PDQ survives
+re-encoding and mild edits while remaining near-zero false positive and needing no
+per-image training. That robustness-to-edits property is exactly what a
+cryptographic hash lacks.
+
 ## Commonly answered wrong
 
 **Q: You have a new harm policy. You want a threshold. How do you set it?**
@@ -136,3 +150,17 @@ you lose visibility into how the model performs on the easy majority. Also track
 the appeal-overturn rate as a live false-positive signal, the flag rate per policy
 over time for evasion detection, and time-to-action on severe harms as a latency
 bound on harm spread.
+
+**Q: The classifier is calibrated, so a 0.9 score means about 90 percent of those
+items are violations. Safe to auto-action the whole 0.9-plus band, right?**
+A: Not safe, because calibration is a property of the distribution it was fit on,
+not a per-item guarantee that travels. Platt or isotonic calibration makes
+$\hat{p}$ match the empirical violation rate on the calibration holdout; the moment
+the incoming traffic shifts, and in moderation it shifts constantly because there
+is an adversary steering it, the base rate and the score-to-rate mapping both move,
+so the 0.9 bucket may now be 60 percent violations. Two mechanisms drive this: base
+-rate shift (calibration is sensitive to prior prevalence) and adversarial drift
+(new evasions cluster at specific scores). That is why moderation recalibrates on a
+recent holdout after every retrain and monitors appeal-overturn rate as a live
+check, rather than trusting a once-measured calibration curve. Calibration justifies
+a threshold; it does not license "set and forget" auto-action.

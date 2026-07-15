@@ -137,6 +137,12 @@ embeddings is then a meaningful semantic similarity score.
 | CLIP backbone plus embedding head | visual search, text-to-image retrieval, zero-shot tagging | a classification head, when there is no fixed class list or the catalog keeps growing |
 | Shared multi-head (Pinterest pattern) | multiple tasks share most of the computational cost and would benefit from joint feature learning | one model per task, which multiplies serving cost and technical debt |
 
+**Provenance.** The plain ViT trunk is the Vision Transformer (Google, 2020), and
+the CLIP backbone is from OpenAI (2021). Detection heads trace to the two-stage
+Faster R-CNN (Microsoft, 2015) and its instance-segmentation extension Mask R-CNN
+(Meta FAIR, 2017), the single-stage YOLO family (Redmon et al., 2016), and the
+set-prediction transformer detector DETR (Meta, 2020).
+
 **Tools.** timm carries pretrained ResNet, EfficientNet, Swin, and ViT backbones behind one interface, and torchvision (Meta) ships ResNet plus detection reference models. For detection and instance heads reach for Detectron2 (Meta) or Ultralytics YOLO; for the U-Net encoder-decoder segmentation head, segmentation-models-pytorch. Swin, ViT, and CLIP encoders come from Hugging Face Transformers or OpenCLIP, and the embedding head is served through an approximate-nearest-neighbor index such as FAISS (Meta).
 
 **Worked example.** A photo app tags user uploads with a multi-label classification head on a ResNet-50 trunk (timm), since a transformer would need more labels to pay off at that data scale. When one high-volume batch job makes cost per image the binding constraint, it swaps in an EfficientNet trunk for better accuracy per FLOP. For a "find similar photos" feature over an open, growing library, a fixed class list does not fit, so it uses a CLIP backbone plus an embedding head indexed in FAISS rather than a classifier. If it later needs to flag a small harmful region, it adds a Swin plus detection head whose hierarchical feature maps a plain ViT lacks. Once several of these heads coexist, it shares the one backbone instead of paying to serve a separate model per task.

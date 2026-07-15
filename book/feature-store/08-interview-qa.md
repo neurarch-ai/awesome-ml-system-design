@@ -91,6 +91,32 @@ conventions and feature groups so related features are discovered together. With
 governance, a feature store is a write-only system: features accumulate, ownership
 erodes, and nobody dares delete them.
 
+**Q: Each feature passes served-vs-computed parity individually, yet the model still
+degraded after a store migration. What could cause that?**
+
+A: Parity is checked per feature, but the point-in-time join stitches many features
+together at one anchor timestamp. If two features were materialized on different
+schedules (one hourly, one daily) and the migration changed their relative lag, each
+one can still match its own offline recomputation while the joined row now pairs a
+fresh value of feature A with a stale value of feature B, a combination the model
+never saw in training. The mechanism is correlated staleness across features, not a
+single-feature bug, so the diagnostic is to compare the joint (multi-feature) row the
+model receives at serving time against the as-of joined training row for the same
+entity and timestamp, not just each column in isolation.
+
+```mermaid
+flowchart LR
+  REQ["scoring request<br/>at time T"] --> A["feature A<br/>(hourly, fresh)"]
+  REQ --> B["feature B<br/>(daily, stale)"]
+  A --> ROW["joined serving row<br/>fresh A + stale B"]
+  B --> ROW
+  ROW --> CHK{"matches training<br/>as-of row?"}
+  CHK -->|"per-feature parity: yes"| PASS["each column passes"]
+  CHK -->|"joint row: no"| FAIL["unseen A/B combination"]
+```
+
+*Each feature can pass its own parity check while the jointly-served row is a fresh-plus-stale combination the model never saw in training.*
+
 ## Commonly answered wrong (the traps)
 
 **Q: Can you compute heavy features (neural embeddings, expensive aggregates) on
@@ -117,7 +143,13 @@ A: Between training and serving (live traffic). PSI between training and a holdo
 split tells you about train-test distribution shift, which is a different problem.
 PSI between training and serving tells you whether the feature values arriving at
 the model in production match what it was trained on. That is the skew signal. Both
-are useful; they measure different things.
+are useful; they measure different things. Mechanically, PSI (Population Stability
+Index, from credit-risk practice) fixes bins from the reference (training)
+distribution, then sums $(p_i - q_i)\ln(p_i / q_i)$ over bins, where $p_i$ and $q_i$
+are the training and serving proportions in bin $i$; because the bin edges are frozen
+on training, a shift shows up as mass moving between fixed buckets rather than the
+bins themselves moving. That is why using serving-derived bins would hide exactly the
+drift you are trying to catch.
 
 **Q: Can you just retrain more frequently to fix skew?**
 

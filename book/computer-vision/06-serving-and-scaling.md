@@ -84,6 +84,15 @@ items until they accumulate interactions.
 | Long tail of rare harm classes at near-zero recall | moderation miss rate increases for specific harm class | Add dedicated active-learning cycle for that class; or use retrieval (hash matching + ANN) as a fallback | More labeling cost or a slower fallback path |
 | EXIF orientation bug | sideways photos consistently miscategorized | Assert EXIF correction is applied in the ingest stage before any model runs | One-time fix, easy to verify |
 
+**Details.** The rare-harm-class fallback that pairs hash matching with ANN is
+where perceptual hashing earns its place: PDQ (Meta) computes a compact perceptual
+hash so known-violating images survive re-encoding, resizing, and mild edits and
+can be matched by Hamming distance with no per-class training data, making it a
+viable floor while the active-learning loop slowly gathers labels. On the p99 row,
+the distilled gate model runs on every item and only the escalate band pays for the
+heavy model, so average cost tracks the small escalate rate rather than the heavy
+model's per-item cost.
+
 ## Fail-closed versus fail-open
 
 For any task on the publish critical path, you must state what happens when the

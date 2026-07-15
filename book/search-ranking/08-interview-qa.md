@@ -77,6 +77,19 @@ position-biased clicks rather than multi-task engagement trade-offs. The funnel
 shape (retrieve then rank) is shared; the query and the label challenge are what
 change.
 
+**Q: Why fuse the two arms by rank (RRF) instead of just adding the BM25 and
+dense scores?**
+A: Because the two scores are not on a comparable scale. BM25 (Robertson and
+Walker, 1994) is an unbounded sum of IDF-weighted, length-normalized term
+saturations, while a dense cosine lives in [-1, 1]. Add or linearly weight them
+and one arm silently dominates, and the weight has to be re-tuned every time
+either scorer changes. Reciprocal Rank Fusion (Cormack et al., 2009) discards the
+raw scores and combines rank positions instead: each document scores the sum over
+arms of 1 / (k + rank), where the small constant k (commonly 60) damps the very
+top ranks so a single arm's number-one result cannot steamroll the fusion. It is
+scale-free and needs no per-arm calibration, which is exactly why it is the
+production default rather than a weighted score sum.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Should you replace BM25 with a dense retrieval model once you have a good
@@ -114,3 +127,15 @@ most reliable one. A model that learns to predict position better will lift NDCG
 while degrading user experience. The ship gate is an interleaving experiment or
 A/B test on engagement and reformulation rate. Treat offline NDCG as a pre-gate
 that decides whether to spend live traffic on a model, not as the decision.
+
+**Q: Your dense recall dropped after you sped up retrieval. Is the ANN index
+corrupted?**
+A: Almost certainly not; it is the accuracy-versus-latency dial working as
+designed. HNSW (Malkov and Yashunin, 2016) is approximate: it greedily walks a
+hierarchical proximity graph and returns the neighbors it happened to reach, not
+a guaranteed exact top-k. Lowering `efSearch` (or IVF `nprobe`) narrows the search
+beam, which is precisely what made retrieval faster and precisely what dropped
+recall. The fix is not to rebuild the index but to raise the probe parameter until
+recall@k measured against a brute-force reference is back in range, then shard the
+index to buy the latency back. Treating ANN recall as exact, and reaching for a
+rebuild when it moves, is the trap.

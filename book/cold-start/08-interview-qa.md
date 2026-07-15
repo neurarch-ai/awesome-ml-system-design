@@ -120,6 +120,37 @@ requires a deterministic choice (some caches and logging systems expect a
 fixed action per context hash), or when the uncertainty bonus needs to be
 a specific closed form for latency reasons.
 
+**Q: Concretely, how does Thompson sampling turn a stream of clicks into a
+per-request decision?**
+
+A: For a Bernoulli reward (click or no click) each arm keeps a Beta posterior:
+start at Beta(1, 1) (uniform), and after observing successes $s$ and failures $f$
+the posterior is Beta($1 + s$, $1 + f$). On each request you draw one sample from
+every candidate arm's Beta and serve the arm with the highest draw. That is the
+whole mechanism, and it is why the exploration is self-annealing: a rarely-shown
+arm has a wide Beta, so its draws scatter and it sometimes wins (exploration); a
+well-observed arm has a narrow Beta concentrated near its true rate, so it wins
+only when genuinely good (exploitation). The draw itself is the propensity source,
+which is why the logged action is stochastic and off-policy evaluation stays
+tractable. Contextual variants replace the per-arm Beta with a posterior over a
+shared feature-weight vector so that a never-seen arm inherits uncertainty from
+its features.
+
+```mermaid
+flowchart TD
+  R["new request"] --> S["draw one sample from<br/>each arm's Beta(1+s, 1+f)"]
+  S --> P["serve arm with the highest draw"]
+  P --> O["observe click or no-click"]
+  O --> U["update that arm:<br/>s+1 on click, f+1 on no-click"]
+  U --> R
+  W["wide posterior<br/>rarely-shown arm"] -.->|"draws scatter, sometimes wins"| S
+  N["narrow posterior<br/>well-observed arm"] -.->|"draws concentrate, wins only if truly good"| S
+```
+
+*Thompson sampling self-anneals: a rarely-shown arm's wide Beta scatters its draws
+and occasionally wins (exploration), while a well-observed arm's narrow Beta wins
+only when its rate is genuinely high (exploitation), with no explicit schedule.*
+
 ## Commonly answered wrong
 
 **Q: Should exploration be baked into the ranking model's objective function?**
@@ -173,3 +204,18 @@ synthesis: the experiment platform handles logging and assignment, and a
 Thompson-sampling allocator replaces the static traffic split with an adaptive
 one, reusing all the existing infrastructure while adding the exploration
 benefit.
+
+**Q: Can you vet an exploration policy with a standard supervised holdout and an
+AUC number?**
+
+A: No, and the reason is counterfactual. A supervised holdout scores how well a
+model predicts the reward of the action that was actually taken; it says nothing
+about the reward of the different action a new policy would have chosen, because
+that outcome is unobserved. Evaluating a policy requires off-policy estimators
+(replay, IPS, doubly-robust) that reweight the log by the ratio of new-policy to
+logged propensity, and those need two things a plain holdout never captures:
+logged propensities and nonzero probability on the actions the new policy favors
+(sufficient support / overlap). If the log is near-deterministic there is no
+overlap and every estimator degenerates, which is exactly why you fund a small
+uniformly-random explore bucket. AUC on a holdout is a reward-model diagnostic,
+not a policy evaluation.

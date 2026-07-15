@@ -50,6 +50,11 @@ flowchart TD
 | Both in parallel | you need high precision on known fraud AND want a safety net for novel attacks | either alone, which leaves one gap uncovered |
 | Graph anomaly (GraphBEAN, RGCN) | fraud is coordinated across accounts sharing devices, cards, or addresses | per-transaction models that treat each event in isolation |
 
+**Provenance.** The supervised branch rests on XGBoost (Chen and Guestrin, 2016) and
+LightGBM (Microsoft, 2017). The unsupervised branch uses Isolation Forest (Liu et
+al., 2008), which scores anomalies by how few random splits isolate a point, and
+autoencoder anomaly detection, which flags points with high reconstruction error.
+
 **Tools.** The supervised classifier is XGBoost or LightGBM (Microsoft) for tabular
 features, or a PyTorch / TensorFlow DNN when sparse embeddings help. Anomaly
 detection uses scikit-learn's Isolation Forest or a PyTorch autoencoder scored by

@@ -76,6 +76,19 @@ is happening. Also check tail recall and catalog coverage; popularity collapse
 means head items dominate, which can look fine on average recall while crushing
 the long tail.
 
+**Q: You lowered the InfoNCE temperature to sharpen contrast, but tail recall got
+worse. What is the mechanism?**
+A: Temperature $\tau$ divides the logits before the softmax, so a smaller $\tau$
+makes the distribution peakier and concentrates almost all of the gradient on the
+single hardest negative in the batch. That has two consequences that hurt the tail.
+First, the hardest negative is disproportionately likely to be a false negative (an
+unlabeled positive), so a low temperature amplifies exactly the noisiest signal.
+Second, over-penalizing the nearest neighbors pushes the space toward high
+uniformity at the expense of alignment, scattering semantically related tail items
+that should have stayed close. Temperature is therefore a knee, not a "lower is
+sharper is better" dial: tune it against tail recall and the alignment/uniformity
+diagnostics, and pair a low $\tau$ with hard-negative filtering.
+
 ## Commonly answered wrong (the traps)
 
 **Q: The logQ correction: apply it at training time or at serving time?**
@@ -109,3 +122,16 @@ serve it from an ANN index. Early crossing is the ranking stage's job; the
 retrieval embedding must keep the two sides separate until the final dot product.
 Adding cross features at the retrieval stage defeats the whole reason the two
 towers exist.
+
+**Q: A higher-dimensional embedding always retrieves better, so should you just max
+out the dimension?**
+A: No. Recall-vs-dimension saturates: past the point where the space can express
+the relevant distinctions, extra dimensions add capacity to memorize noise rather
+than signal, and recall flattens or even dips while cost keeps rising linearly.
+Meanwhile both index memory and per-query latency scale with the dimension (a 512-d
+float32 index is 4x the RAM of a 128-d one at the same entity count), so you pay
+double for a gain that has already plateaued. When memory is the binding
+constraint, quantization (int8 or PQ) almost always buys more recall per byte than
+raising the dimension, because it compresses after training instead of enlarging
+the model. The right move is to find the recall knee empirically and then compress,
+not to maximize the dimension.

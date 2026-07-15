@@ -110,6 +110,8 @@ point is a named production system. Illustrative.*
 | GPU underutilization | batches too small at off-peak | dynamic batching by audio length | slight latency variability |
 | Hallucinated text on silence | transcript has fluent garbage for non-speech sections | gate with VAD before the encoder | missed speech if VAD is too aggressive |
 
+**Details worth naming.** The long-audio row is a direct consequence of quadratic self-attention: a Conformer (Google, 2020) or attention seq2seq encoder scales with the square of the input frame count, so a one-hour recording is not "a bit slower" but memory-quadratically worse, which is why chunking with overlap (then stitching) is the fix rather than a bigger GPU. The hallucination-on-silence row is specific to attention decoders such as Whisper (OpenAI, 2022): the decoder is a language model conditioned on audio, so on a silent or non-speech span it falls back to fluent priors and emits plausible text with nothing to transcribe. Gating with voice-activity detection (VAD) before the encoder removes the non-speech frames that trigger it; the tradeoff noted is that an over-aggressive VAD clips quiet real speech. Note CTC (Graves et al., 2006) models are far less prone to this failure because they emit per-frame, blank-heavy alignments rather than autoregressively generating text.
+
 ## On-device vs cloud: where each workload lives
 
 | Workload | Runs where | Why |

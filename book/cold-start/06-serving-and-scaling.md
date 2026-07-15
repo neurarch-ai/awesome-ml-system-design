@@ -88,3 +88,12 @@ is fast enough that new signal actually updates the reward estimates.
 | Ossification despite exploration | served-item diversity metric declining, tail items getting zero impressions | raise exploration rate, add a dedicated diversity retrieval bucket, check quality floor is not too restrictive | short-term engagement dip |
 | Exploration on wrong surface | trust, safety, or checkout metrics degrade | disable or near-disable exploration (epsilon near zero, no UCB bonus) on sensitive surfaces; use a hard quality floor | discovery opportunity on that surface lost |
 | Reward proxy gaming | session metrics improve but retention or satisfaction falls | hold out long-horizon cohorts; add a retention-correlated proxy or use Impatient Bandits for delayed reward modeling | complexity of reward pipeline |
+
+**Details.** The uncertainty-too-slow row is why neural-linear is the standard
+scaling trick: a full per-request Bayesian posterior over millions of arms is
+intractable, so a learned encoder feeds a Bayesian-linear head whose posterior
+variance is a closed-form quadratic form, yielding a UCB-style optimism bonus (the
+UCB bonus itself is from Auer et al., 2002) at near-inference cost. On sensitive
+surfaces the fix collapses exploration entirely (epsilon near zero, no optimism
+bonus) so the policy reduces to greedy exploitation behind a hard quality floor,
+trading discovery for safety on that surface.

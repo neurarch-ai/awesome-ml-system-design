@@ -90,7 +90,25 @@ probability. A wide-and-deep joint logit, a tree ensemble trained on a
 resampled set, or focal-loss outputs are all miscalibrated out of the box.
 Recalibrate after every retrain with isotonic regression or Platt scaling.
 Deploying an uncalibrated model with a cost-derived threshold places the
-operating point at the wrong precision-recall level.
+operating point at the wrong precision-recall level. Mechanism for why focal
+loss miscalibrates: it multiplies each example's loss by $(1 - p_t)^\gamma$, so
+confident correct predictions contribute almost nothing to the gradient. That is
+what forces the model to focus on hard fraud, but it also means the model is no
+longer optimizing proper-scoring-rule log loss, so its raw outputs stop being
+frequency-accurate probabilities and must be mapped back with a post-hoc calibrator.
+
+**Q: You undersampled the majority class to train faster. The ranking looks fine but
+the cost-optimal threshold is now far too aggressive. Why, and what is the fix?**
+
+A: Resampling changes the base rate the model implicitly learned. If you train on a
+1:1 set drawn from a true 1:500 population, the model's output odds are inflated by
+roughly the sampling ratio, so a probability of 0.5 on the resampled model does not
+correspond to 0.5 in production. The threshold formula $c_{\text{FP}} / (c_{\text{FP}}
++ c_{\text{FN}})$ assumes true probabilities, so it lands at the wrong precision.
+The fix is a prior correction: shift the output log-odds by $\ln(\pi_{\text{train}} /
+\pi_{\text{prod}})$ (the log ratio of the sampled to the real positive rate), or
+equivalently fit isotonic or Platt calibration on a held-out set drawn from the true
+base rate before deriving the threshold.
 
 ## Commonly answered wrong (the traps)
 
@@ -119,7 +137,12 @@ A: Not necessarily, and sometimes the opposite is true. At a 0.2 percent base
 rate, the huge true-negative mass flatters ROC-AUC. A model can achieve 0.97
 ROC-AUC while having a PR-AUC of 0.05 and catching almost nothing at reasonable
 precision. Lead with PR-AUC. ROC-AUC is a secondary sanity check, not the
-primary gate.
+primary gate. Mechanism: ROC's x-axis is the false-positive rate, FP divided by
+the total number of negatives. When negatives outnumber positives 500 to 1, even
+tens of thousands of false positives barely move that denominator, so the curve
+stays near the top-left and the area stays high. Precision, FP divided by (FP plus
+TP), has no such large denominator to hide behind, which is exactly why PR-AUC
+collapses when the same model floods the block queue with false positives.
 
 **Q: I will just do a random train/test split.**
 

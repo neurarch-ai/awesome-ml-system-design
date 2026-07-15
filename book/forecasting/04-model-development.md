@@ -69,6 +69,14 @@ Forecasting each level independently (item, store, region, national) produces in
 | Top-down | the aggregate is stable and historical split proportions are reliable | leaf dynamics shift over time and the top-down splits miss them |
 | Optimal (MinT) or end-to-end coherent | all levels are forecast and you want provably lower total error using the full covariance | extra compute and covariance estimation overhead are prohibitive; an end-to-end coherent model can replace it |
 
+**Provenance.** ARIMA and ETS are classical statistics; the Theta method (2000) won
+the M3 competition as a strong simple baseline. Prophet (Meta, 2017) added a
+decomposable trend/seasonality/holiday model. The deep families originate from
+DeepAR (Amazon, 2017, autoregressive RNN with parametric likelihood), N-BEATS
+(Element AI, 2019), Temporal Fusion Transformer (Google, 2019), and PatchTST (2022).
+The global GBT workhorse rests on XGBoost (Chen and Guestrin, 2016) and LightGBM
+(Microsoft, 2017). Optimal reconciliation is MinT (Wickramasuriya et al., 2019).
+
 **Tools for each family.** Classical: statsmodels and the fast statsforecast
 (ARIMA, ETS, Theta), plus Prophet (Meta). Global GBT: LightGBM or XGBoost on
 lag-and-calendar features, wired up with mlforecast or skforecast. Deep: GluonTS and

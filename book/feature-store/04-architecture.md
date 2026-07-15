@@ -124,6 +124,11 @@ are right.
 | Single shared DSL / unified API | multiple models, multiple teams, skew is already a problem | separate SQL and service code, which guarantees code skew at scale |
 | Pluggable backends (Feast) | no single technology mandate, different models need different stores | a fixed-backend platform, when the team cannot commit to one online store |
 
+**Provenance.** The pluggable-backend, single-definition feature store pattern was
+popularized by Feast (Gojek, 2019), which introduced the split offline/online store
+under one registry so batch and serving reads compile from the same feature
+definition. The internally-hosted, fully-managed precedent was Michelangelo (Uber).
+
 **Tools.** Redis is the in-memory point-read online store; Cassandra (and ScyllaDB)
 are disk-backed wide-column stores for very large entity counts; DynamoDB on AWS and
 Bigtable on GCP are the managed cloud key-value options for teams that would rather

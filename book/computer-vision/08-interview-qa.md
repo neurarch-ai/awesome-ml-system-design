@@ -84,6 +84,19 @@ diverge, instrument each step (decode, resize, normalization constants, channel
 order) until you find the mismatch. This bug is silent in offline metrics and
 shows up only as a production accuracy regression.
 
+**Q: Your detector's mAP looks fine, but in production it draws two boxes on one
+object. What is the mechanism, and where is the knob?**
+A: The culprit is non-max suppression (NMS), the post-processing step that
+deduplicates overlapping boxes. NMS keeps the highest-scoring box and suppresses
+any other box whose IoU with it exceeds an NMS threshold. If that threshold is set
+too high, near-duplicate boxes on the same object fall below it and both survive
+(the double-count you see); set it too low and two genuinely adjacent objects get
+merged into one, dropping recall in crowded scenes. mAP hides this because it
+evaluates the ranked box list against ground truth with its own IoU matching and
+is fairly forgiving of duplicates, so the operating-point NMS threshold has to be
+tuned separately from the metric. For crowded domains, soft-NMS (decay scores
+instead of hard-suppressing) is the usual fix.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Report accuracy as the moderation metric. Is that right?**
@@ -122,3 +135,17 @@ positives that the human review queue will clear). A higher threshold reduces th
 review queue burden but increases missed violations. The correct framing is to fix
 the minimum acceptable precision and maximize recall there, not to "raise
 confidence."
+
+**Q: CLIP is zero-shot, so you can point it at your moderation taxonomy with text
+prompts and skip training. Right?**
+A: Not for a production harm gate. CLIP (OpenAI, 2021) was contrastively aligned
+to web image-caption pairs, so its zero-shot text prompts match how the internet
+captions images, not how your policy defines a violation; the two distributions
+diverge exactly on the ambiguous, adversarial cases moderation cares about.
+Zero-shot scores are also poorly calibrated and prompt-sensitive (rewording the
+class text moves the decision boundary), which is unacceptable when you need a
+fixed precision floor. The right use is CLIP as a frozen or lightly fine-tuned
+backbone with a small supervised head (or a linear probe) trained on your labeled
+policy data, which keeps the strong pretrained features while pinning the decision
+boundary and calibration to your taxonomy. Zero-shot is a fine bootstrap for
+labeling, not the gate.

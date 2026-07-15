@@ -78,3 +78,16 @@ cost.
 | Calibration drift after retrain | thresholds over-act or under-act after model update | recalibrate on a held-out calibration split every time a new model promotes | one extra eval step per retrain |
 | Review queue saturation | reviewers cannot keep up; latency rises | tighten the auto-act band (higher confidence threshold), prioritize queue by risk score | fewer items handled automatically |
 | False blocks on safety tasks | innocent-user complaint rate rises | widen the review band, audit false-block rate on sampled auto-blocked messages | more review volume |
+
+Two details worth pinning down. First, the multilingual-coverage fix leans on
+multilingual encoders (mBERT is BERT (Google, 2018) pretrained over many languages
+at once): a single shared subword vocabulary lets a low-resource language borrow
+representation from high-resource ones, but that same shared capacity is why a
+dominant language can crowd out a rare one, so per-language eval is not optional. The
+mechanism to watch is that the global F1 is a traffic-weighted average, so a language
+that is 2 percent of volume can collapse to near-zero recall while the headline number
+barely moves. Second, calibration drift after retrain is not a bug in the new model but
+a property of thresholding: a fresh model produces a different score distribution, so a
+confidence gate tuned to the old distribution now acts at a different effective
+operating point, which is why the recalibration step must run on every promotion, not
+only when accuracy visibly regresses.

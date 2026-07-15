@@ -112,6 +112,21 @@ on a held-out validation set for each task. In practice, many teams fine-tune a
 shared backbone jointly (multi-task learning), then add task-specific heads, which
 often outperforms single-task fine-tuning while sharing compute.
 
+**Q: Your multilingual model costs and latency are far higher per request for Thai
+and Arabic than for English, even on text of the same character length. Why?**
+
+A: Tokenizer fertility. A subword tokenizer (the one shipped with mBERT-style
+encoders built on BERT (Google, 2018)) is trained on a corpus dominated by
+high-resource languages, so its merges are tuned to English-like text. A language
+that is underrepresented, or uses a non-Latin script, fragments into many more
+subword tokens per word, sometimes down to near-byte level. Transformer compute and
+memory scale with token count (attention is quadratic in sequence length, the feed
+forward layers linear), so the same sentence in Thai becomes a much longer token
+sequence and costs proportionally more to serve. The mechanism, not the model
+weights, is what makes some languages expensive; measure fertility (tokens per word)
+per language and budget latency accordingly, and consider a script-aware or
+language-balanced tokenizer if one language dominates cost.
+
 ## Commonly answered wrong (the traps)
 
 **Q: The spam class is 0.5% of traffic. What accuracy should the model hit?**
@@ -131,7 +146,13 @@ or a simple function) on a held-out calibration set during model development,
 not refit at serving time. The common wrong answer is "we just pick a threshold on
 the raw logits." A raw logit is not a probability; the decision to route to review
 or auto-act should rest on a calibrated probability, not a threshold tuned against
-an uncalibrated score that will shift with every retrain.
+an uncalibrated score that will shift with every retrain. Mechanism: temperature
+scaling divides the logits by a single learned scalar $T$ before the softmax, which
+sharpens ($T \lt 1$) or softens ($T \gt 1$) the probability distribution without
+changing which class ranks highest. Because it never reorders predictions, it leaves
+accuracy and F1 untouched while fixing the reliability of the confidence numbers,
+which is exactly why it is safe to apply to a shipped model and why it must be refit
+whenever a retrain moves the logit scale.
 
 **Q: We have very little labeled data, so we should use a general-purpose LLM
 instead of training a specialized model.**

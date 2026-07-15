@@ -55,6 +55,8 @@ ingest raw text or image tensors.
 | Uplift / CATE models (two-model, S-learner, T-learner, causal forest) | interventions (pricing, discount, retention offer) where the question is WHETHER behavior changes, not who will act | a churn or propensity score that targets sure things and lost causes too |
 | Logistic regression | an interpretable final layer or a low-complexity baseline; also the second layer in PayPal's two-stage design | the first model you try on a rich feature set, where a tree will beat it |
 
+**Provenance.** The three boosting libraries are XGBoost (Chen and Guestrin, 2016), LightGBM (Microsoft, 2017), and CatBoost (Yandex, 2017); they differ less in the boosting math than in their categorical and split handling (CatBoost's ordered target encoding, LightGBM's histogram/leaf-wise growth). The named neural families are Wide-and-Deep (Google, 2016), DeepFM (Huawei, 2017), and DLRM (Meta, 2019). The calibration layer that turns any of these scores into probabilities is Platt scaling (Platt, 1999) or isotonic regression.
+
 **Tools.** Gradient-boosted trees: XGBoost, LightGBM (Microsoft), CatBoost
 (Yandex); all three expose monotone-constraint options for regulated decisions.
 Neural nets with learned embeddings: PyTorch (Meta) or TensorFlow (Google), with

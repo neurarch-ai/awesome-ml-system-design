@@ -67,6 +67,8 @@ Framing churn as classification when you need survival, or framing an interventi
 question as propensity when you need uplift, is the most expensive early mistake
 in a tabular design. Pin the decision first, then pick the row.
 
+**Provenance.** The default classification and regression engines are the boosting libraries XGBoost (Chen and Guestrin, 2016), LightGBM (Microsoft, 2017), and CatBoost (Yandex, 2017). The calibrated-probability framing, the one that must hold when a score feeds a threshold, limit, or price, relies on Platt scaling (Platt, 1999) or isotonic regression rather than any change to the model.
+
 **Tools for each framing.** Classification and regression on tabular data are
 dominated by the gradient-boosting libraries XGBoost, LightGBM, and CatBoost.
 Survival analysis: lifelines and scikit-survival, or XGBoost's AFT objective for a

@@ -56,6 +56,11 @@ Marker size is memory footprint. Illustrative.*
 | HNSW with 4-bit PQ (Etsy) | the index must fit memory at large N | full-precision vectors that blow the memory budget |
 | Flat / brute force | small catalog, or an offline recall ceiling to compare against | ANN, which you only need at scale |
 
+**Provenance.** HNSW as a navigable-small-world graph index comes from Malkov and
+Yashunin (2016); the IVF and product-quantization building blocks are popularized
+through FAISS (Meta), with ScaNN (Google) and Annoy (Spotify) as the other widely
+used ANN libraries these indexes are drawn from.
+
 The Airbnb case is the one to remember: everyone defaults to HNSW, but Airbnb
 chose **IVF** because HNSW's rebuild cost could not absorb price and availability
 updates, and geo filters ran poorly over graph traversal. IVF turns a filter into
@@ -89,3 +94,14 @@ not to a default.
 | Popularity collapse | coverage drops, tail starved | logQ correction, diversity source | slightly lower raw recall |
 | Embedding drift | recall decays after retrains | version and re-index user and item towers together | coordinated redeploys |
 | Batch false negatives | training loss plateaus, recall stalls | user-level masking of same-user items | small extra bookkeeping |
+
+**Details.** ANN-recall-too-low is a search-time knob, not a training bug: HNSW
+(Malkov and Yashunin, 2016) trades recall for latency through efSearch (how many
+graph neighbors are explored per query), and IVF through nprobe (how many centroid
+lists are scanned), so the fix is a config change and re-benchmark, never a
+re-train. Batch false negatives arise because in-batch sampled softmax treats every
+other item in the minibatch as a negative, so two positives from the same user
+collide in the denominator; the two-tower recipe popularized by the YouTube deep
+recommender (Google, 2016) counters the induced popularity bias with a logQ
+correction applied to the training logits, and user-level masking removes the
+same-user collisions on top of that.

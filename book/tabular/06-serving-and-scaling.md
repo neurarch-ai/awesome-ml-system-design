@@ -78,6 +78,8 @@ unlike the model-agnostic SHAP estimator.
 | Calibration drift | threshold or optimizer producing wrong decisions after market shift | re-fit calibrator on fresh holdout without full retrain; monitor reliability curves sliced by segment | frequent calibration updates require a governance cadence |
 | Scoring latency at application time | feature store round-trip dominates the budget | pre-compute stable features, cache with TTL, push only dynamic signals to the realtime path | freshness tradeoff on cached features |
 
+**Details worth naming.** The high-cardinality row has three fixes with different failure modes. Learned embeddings need a neural model and enough supervision per ID to be worth it; target encoding is compact but leaks the label unless it is cross-fitted (fold-out-of-fold encoding), which is the leakage risk flagged in the row; and feature hashing (Weinberger et al., 2009) bounds memory by hashing IDs into a fixed bucket count with no dictionary, at the cost of collision noise. Note that CatBoost (Yandex, 2017) folds an ordered (leakage-safe) target encoding into the library itself, so for a GBDT-native path it removes the need to hand-build the cross-fitted encoding. The calibration-drift row is distinct from the retraining row on purpose: a re-fit of the Platt (Platt, 1999) or isotonic calibrator on a fresh holdout is cheap and touches only the final monotone map, so it can run far more often than a full model retrain, which is why they are separate governance cadences.
+
 ## Monitoring ladder
 
 Because the label matures slowly, you cannot wait for defaults to tell you the

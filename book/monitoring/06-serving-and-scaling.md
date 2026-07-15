@@ -68,6 +68,17 @@ real design parameter:
 | Slow loop closure | drift caught but model stays stale | triggered retraining plus one-step rollback | pipeline complexity |
 | Reference staleness | normal seasonal variation flagged as drift | periodically re-anchor the reference window | reference must be deliberately refreshed |
 
+Two details worth pinning down. First, reference staleness interacts badly with the
+PSI drift test (Population Stability Index, from credit-risk practice): PSI freezes
+its bin edges on the reference window, so if that reference predates a seasonal shift,
+every in-season window scores as high drift even though nothing is broken. Re-anchoring
+the reference to a recent healthy period, or comparing against the same period last
+year, removes the false alarm without loosening the threshold. Second, the label-delay
+bottleneck is why the fast proxy path exists at all: PSI and KS (statistics) run on
+inputs and predictions that are available immediately, so they can fire days before
+any labeled performance metric can confirm decay, at the cost of not distinguishing a
+harmless covariate shift from a genuine concept drift until the labels land.
+
 ## The serving architecture
 
 ```mermaid

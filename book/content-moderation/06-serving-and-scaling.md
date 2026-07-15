@@ -84,6 +84,14 @@ borderline region. Calibrate classifiers and monitor queue volume together.
 | Calibration drift after retrain | appeal-overturn rate rises; threshold no longer meets precision floor | recalibrate with Platt scaling on a fresh calibration holdout after every retrain | calibration holdout must be recent; a stale holdout fails to correct drift |
 | Adversarial evasion | flag rate drops suddenly on a stable harm class; confirmed harms are not dropping | monitor flag rates in both directions; red-team with the new evasion pattern; fast-retrain with augmented positives | fast retraining increases training compute cost |
 
+**Details.** The ingest hash-check gate is a perceptual-hash match: PDQ (Meta)
+fingerprints known-bad media so re-uploads are auto-actioned by Hamming distance
+before any classifier runs, which is what flattens the cost curve against user
+growth. The calibration-drift row uses Platt scaling (Platt, 1999) on a fresh
+holdout because the harm base rate and adversary mix move between retrains, so a
+stale calibration set silently shifts the operating point below the required
+precision floor even when the raw ranking is unchanged.
+
 ## Freshness and the retraining loop
 
 Unlike recommendation systems where a stale embedding decays gracefully, a stale

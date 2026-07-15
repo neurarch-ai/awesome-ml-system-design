@@ -164,6 +164,12 @@ Schematic; qualitative trend is the point.*
 | LightGCN (transductive) | a fixed user-item interaction graph and you want a cheap, strong collaborative baseline | inductive graph encoder when the graph is sparse or entities arrive frequently |
 | SimCSE / text contrastive | the entity is a sentence or passage; semantic text similarity from dropout or NLI pairs | behavioral dual-encoder, when all you have is text with no engagement signal |
 
+**Provenance.** The dual-encoder (two-tower) structure comes from DSSM (Microsoft,
+2013) and was popularized for large-corpus retrieval by the YouTube deep
+recommender (Google, 2016), which is also where in-batch sampled softmax with logQ
+correction entered wide practice. The sentence-embedding tooling for the
+text-contrastive row is Sentence-BERT (UKP Darmstadt, 2019).
+
 **Tools.** InfoNCE dual-encoder training is a few lines in PyTorch (Meta) or TensorFlow Recommenders (Google), both of which ship in-batch-negative and sampled-softmax (logQ) helpers; sentence-transformers is the standard for SimCSE and other text contrastive setups. Triplet and margin losses with hard-negative miners come ready-made in pytorch-metric-learning. Graph encoders are implemented in PyTorch Geometric and DGL (GraphSAGE aggregators, LightGCN propagation), and RecBole packages LightGCN as a tuned collaborative-filtering baseline.
 
 **Worked example.** A marketplace building user-to-item retrieval starts with a two-tower dual-encoder trained under InfoNCE in TensorFlow Recommenders, because there are many candidates per anchor and one side (items) precomputes cleanly against an ANN index; it skips triplet loss since it has no triplet miner. It uses in-batch negatives for free, adds the logQ correction at training time because the catalog is popularity-skewed, and layers in a small tuned fraction of mined hard negatives only once the easy loss saturates. Because new items with rich features arrive constantly, the item tower moves to a GraphSAGE-style inductive encoder in PyTorch Geometric rather than a transductive LightGCN that would leave fresh items vectorless until retrain. For a separate text-only surface with no engagement signal, it drops in a sentence-transformers SimCSE encoder.

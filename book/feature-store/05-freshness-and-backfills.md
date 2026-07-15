@@ -35,6 +35,11 @@ tolerate. Illustrative.*
 | Streaming | session signals where a 1-minute lag would meaningfully change the prediction | batch, when the feature is slow-moving and batch is sufficient |
 | Request-time computation | features that depend on the request itself (query, device, time) and cannot be precomputed | precomputing for all possible request contexts, which is combinatorially infeasible |
 
+**Provenance.** The multi-tier freshness model (batch plus streaming plus
+request-time) and the discipline of logging each computed value with a timestamp so
+point-in-time correctness (industry standard) holds across tiers were codified by
+platforms like Michelangelo (Uber) and the open-source Feast (Gojek, 2019).
+
 The time-decayed streaming aggregate is the canonical streaming feature. For an
 entity $i$ at time $T$, with events $y_t$:
 
@@ -108,6 +113,11 @@ The recomputation path is error-prone; the log-replay path is not.
 | Log-replay (train on serve-time logs) | the platform logs exact feature values at serving time; this is the most reliable training source | recomputing features offline and hoping they match serve-time values |
 | Incremental backfill | the new feature is a minor variant of an existing one; only a recent window is needed | full recompute, which is expensive when history is years deep |
 | Validate with parity after any backfill | always | skipping validation, which is how backfill skew goes undetected until online degradation |
+
+**Provenance.** Log-replay (training on the exact feature values logged at serving
+time) is Google's serve-time logging discipline noted above; it is the most reliable
+way to preserve point-in-time correctness (industry standard) during a backfill,
+because it removes the recompute step where old and new feature logic can diverge.
 
 **Tools.** A full historical recompute runs the feature definition over all past raw
 data with Spark or the warehouse engine and writes timestamped rows to the offline

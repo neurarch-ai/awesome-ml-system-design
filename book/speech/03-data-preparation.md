@@ -107,6 +107,8 @@ real speaker-diverse, noise-diverse recordings is expensive. Common approaches:
 | Multilingual joint pretraining | low-resource language that can borrow from high-resource ones | language-isolated supervised training |
 | TTS-synthesized wake word data | bootstrapping a trigger detector before any real recordings | waiting for a live data collection campaign |
 
+**Provenance.** SpecAugment (Google, 2019) is the spectrogram-domain augmentation (time and frequency masking plus time warping) that became the default first step. The self-supervised checkpoints are wav2vec 2.0 (Meta FAIR, 2020) and HuBERT (Meta, 2021), and the weak-supervision-at-scale recipe is Whisper (OpenAI, 2022).
+
 **Tools.** SpecAugment ships in torchaudio, NeMo (NVIDIA), and ESPnet recipes. Noise
 and reverb mixing: audiomentations and pyroomacoustics for room impulse responses.
 Weak supervision at scale follows the whisper (OpenAI) recipe of pairing audio with

@@ -115,6 +115,8 @@ across languages and domains.
 | On-device int8-quantized RNN-T | always-on or privacy paths inside a memory/power envelope | a heavy cloud model running on a low-power core |
 | Attention seq2seq | when zero-shot breadth and multitask (ASR plus translation) matter | latency-sensitive streaming, where it fails |
 
+**Provenance.** Dated origins for the named architectures: CTC (Graves et al., 2006) and the RNN-Transducer (Graves, 2012) are the streaming losses; the Conformer encoder that carries most modern accuracy is Google (2020); the attention seq2seq head descends from the Transformer (Google, 2017); and the weak-supervision multilingual model is Whisper (OpenAI, 2022). When the on-device or low-resource path starts from a self-supervised encoder, that is wav2vec 2.0 (Meta FAIR, 2020) or HuBERT (Meta, 2021) with a small CTC or transducer head fine-tuned on top.
+
 **Tools.** Streaming transducers and CTC: NeMo (NVIDIA), k2 and icefall for RNN-T,
 and Kaldi for classic CTC decoding and forced alignment with an external language
 model. Full-context Conformer and attention seq2seq: ESPnet, SpeechBrain, and

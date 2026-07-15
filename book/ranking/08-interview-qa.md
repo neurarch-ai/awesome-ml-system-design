@@ -99,6 +99,20 @@ generalize across listings. Reserve id embeddings for entities with dense,
 repeated supervision (product ids in a marketplace with billions of transactions,
 not individual travel listings).
 
+**Q: LambdaMART optimizes NDCG, but NDCG is flat almost everywhere and
+discontinuous in the model scores. How does gradient boosting train on it at
+all?**
+A: It never differentiates NDCG. LambdaMART (Microsoft, 2010) specifies a
+per-pair gradient (a "lambda") directly, without any closed-form loss whose
+derivative it is. For each (winner, loser) pair it takes the RankNet (Microsoft,
+2005) pairwise-logistic gradient and scales it by the magnitude of the NDCG
+change that swapping just those two items would produce. Summing those lambdas
+over every pair an item appears in gives that item's gradient, and the regression
+trees fit that gradient. So the "loss" is implicit: you write down the gradient
+you wish existed, weighted so that mis-ordering a high-value pair near the top
+pulls hardest, which is exactly why the model moves NDCG without NDCG ever being
+differentiated.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Do the two towers in a ranker share weights to save parameters?**
@@ -133,3 +147,15 @@ shared body, letting one task's gradient hurt the other. The fix is MMoE or PLE
 gating (each task picks its own mixture of experts) rather than a flat shared
 body, and monitoring per-task metrics so you can see when one task is degrading
 another.
+
+**Q: Does applying Platt or isotonic calibration change the ranking order within
+a single model?**
+A: No, and stopping there is the trap. Platt scaling (Platt, 1999) is a monotone
+increasing logistic map and isotonic regression fits a monotone non-decreasing
+step function, so both are order-preserving on one model's scores: AUC and NDCG
+are unchanged by calibration. But that does not mean calibration is optional. The
+moment two calibrated quantities are combined (a multi-task utility blend, or an
+auction bid = value times predicted probability), a monotone remap of one head
+relative to another absolutely reorders the blended result. Calibration is
+order-neutral within a head and order-changing across heads, which is precisely
+why it earns its keep only once scores leave pure sorting.

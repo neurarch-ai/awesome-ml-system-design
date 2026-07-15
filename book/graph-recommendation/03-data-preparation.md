@@ -64,4 +64,10 @@ members. Illustrative.*
 | Hard negatives (2-hop, same community) | easy negatives stopped teaching and reject-cost matters | random negatives, which get trivially easy fast |
 | In-batch negatives | training embeddings with a softmax over the batch | explicit per-pair negatives, which cost extra lookups |
 
+**Provenance.** Sampling negatives from a smoothed frequency distribution rather than
+uniformly (here, degree-correcting the power-law graph) is the negative-sampling idea
+introduced by word2vec (Google, 2013), which drew negatives from the unigram
+distribution raised to the 3/4 power to avoid over-representing the most frequent
+tokens; the graph analogue reweights by node degree for the same reason.
+
 With the graph, features, and negatives in hand, we can build the model.

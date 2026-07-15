@@ -62,5 +62,7 @@ query taking the user's place.
 | Learning-to-rank with pairwise or listwise loss | the task is ordering candidates by graded relevance | pointwise regression, which optimizes absolute scores and wastes capacity deep in the list |
 | Pointwise regression | the task is essentially match-or-not per candidate (Yelp business matching) | LambdaMART, when the ordering of many candidates is the real job |
 
+**Provenance.** Lexical retrieval here is BM25 (Robertson and Walker, 1994), still the exact-term baseline; the dense dual-encoder descends from the two-tower / DSSM design (Microsoft, 2013), with DPR (Meta FAIR, 2020) the canonical dense-passage-retrieval instantiation. The learning-to-rank arm is LambdaMART (Microsoft, 2010), whose NDCG-weighted pairwise gradients build on RankNet (Microsoft, 2005).
+
 The next section builds the data pipeline that teaches these models what relevance
 means.

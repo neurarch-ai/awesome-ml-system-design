@@ -71,6 +71,18 @@ on a data window that includes the corrupted records bakes the bug into the new
 model. The fix is to run data-health checks before retraining, identify and
 backfill the broken window, and only then retrain.
 
+**Q: You widened the monitoring window from one day to one week and now the KS test
+fires on nearly every feature, though nothing about the data actually changed. Why?**
+A: The KS test (statistics) returns a p-value, and a p-value's power grows with sample
+size. The KS statistic (the maximum gap between two empirical CDFs) may be tiny, but
+with seven times the samples the same tiny gap crosses the significance threshold, so
+you get "statistically significant" drift that is practically meaningless. This is why
+threshold-based measures like PSI (Population Stability Index, from credit-risk
+practice) are often preferred for monitoring: PSI measures effect size directly and
+does not inflate with sample count the way a significance test does. If you keep the
+KS test, gate on the statistic magnitude (or a minimum-detectable-effect floor), not
+on the p-value alone.
+
 ## Commonly answered wrong (the traps)
 
 **Q: If I have fast labels (clicks arrive in seconds), I don't need drift
@@ -93,7 +105,13 @@ is usually better than dropping features entirely.
 A: The field rule is a starting point, not a universal constant. A feature that
 naturally swings by PSI 0.15 over weekends will page on-call every Monday with
 that threshold. Calibrate per-feature from historical variation. Uber D3 uses
-a Prophet forecast to set dynamic bands precisely to avoid this problem.
+a Prophet (Meta, 2017) forecast to set dynamic bands precisely to avoid this problem.
+Mechanism: PSI sums $(p_i - q_i)\ln(p_i / q_i)$ over fixed reference bins, so its
+scale depends on how many bins a feature has and how lumpy its distribution is. A
+naturally multimodal or bursty feature accumulates a larger baseline PSI just from its
+normal week-to-week churn, so the same 0.10 line that is quiet for a smooth feature is
+a hair-trigger for a spiky one. The Prophet-forecast band replaces one global constant
+with a per-feature expected range that already accounts for that seasonality.
 
 **Q: To fix concept drift, retrain on more data.**
 A: More data does not fix concept drift if the historical data reflects the old

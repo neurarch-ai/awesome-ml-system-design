@@ -89,6 +89,19 @@ to reduce collisions; shrink it to save memory. For rare ids the embedding was
 undertrained anyway, so a collision costs little additional quality.
 Name the tradeoff explicitly; it is the senior detail.
 
+**Q: You downsample negatives to balance training. Why does that force a
+recalibration step, and what is the exact correction?**
+A: Downsampling negatives at rate $w$ (keep a fraction $w$ of the zeros) raises
+the empirical positive rate the model fits, so its raw sigmoid output $q$ is a
+biased estimate of the true click probability $p$. The mechanism is a shift of
+the prior odds by exactly $1/w$: the model learns $\text{odds}(q) =
+\text{odds}(p)/w$. Inverting gives $p = q / (q + (1-q)/w)$. This is a closed-form
+prior correction, but in practice teams still fit a learned Platt or isotonic
+layer on top because $w$ interacts with delayed-feedback bias and per-slice
+demand shifts that the single-parameter formula does not capture. The senior
+point: negative sampling changes the base rate, not the ranking, so AUC is
+untouched while every price is wrong until you correct.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Can you just use a high AUC as the launch criterion?**
@@ -123,3 +136,14 @@ automatically. That said, deep models' raw heads still need post-hoc calibration
 under negative sampling and distribution shift, whereas logistic regression's
 sigmoid is naturally calibrated. The trade is interaction capacity for calibration
 ease.
+
+**Q: Can you fit the calibration layer on the same data the model trained on, to
+keep the pipeline simple?**
+A: No, that leaks and hides the very drift you are trying to correct. The model
+has already minimized log loss on its training set, so its scores there look
+near-calibrated by construction; a Platt or isotonic fit on that data learns the
+identity map and does nothing under real serving conditions. Calibration must be
+fit on a fresh held-out slice drawn from the serving distribution (ideally with
+exploration traffic so it is not itself biased by the incumbent policy). The
+whole reason calibration drifts hourly is that campaign mix and demand move away
+from the training snapshot, and only out-of-sample data exposes that gap.

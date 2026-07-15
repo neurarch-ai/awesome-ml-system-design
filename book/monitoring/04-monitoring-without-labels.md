@@ -65,6 +65,10 @@ computing performance metrics.
 | Segmented performance (once labels land) | labels arrive fast (clicks) or as the final confirmation of a proxy-flagged incident | aggregate performance, which hides per-cohort regressions |
 | Shadow traffic comparison | a new model candidate is live on a fraction of traffic | offline eval alone, which misses real-traffic distribution mismatch |
 
+**Provenance.** The label-free input-drift proxies use the Kolmogorov-Smirnov and PSI
+drift tests (statistics), PSI itself from credit-risk industry practice, surfaced
+through the open-source Evidently on the prediction log.
+
 **Tools.** Evidently and whylogs track input drift and prediction-score drift straight off the prediction log. Calibration drift is measured with scikit-learn reliability curves or netcal, while business proxies like coverage and diversity are custom aggregations over the serving log. Segmented performance uses scikit-learn metrics grouped by cohort; shadow-traffic comparison runs through the serving stack rather than a dedicated library.
 
 **Worked example.** An ad network watches a conversion model whose labels land days later. Because performance monitoring stalls until those labels arrive, it leans on input drift (Evidently) as the leading indicator available now. It also watches prediction drift, the score distribution and its entropy, off the prediction log, which catches a broken serving path even when the input distribution looks stable. Since the model emits probabilities that feed bidding, it tracks calibration drift before raw accuracy can move. Coverage and diversity serve as business proxies for a silent collapse onto head items, and once labels finally join back it computes segmented performance to surface a per-cohort regression that an aggregate number would bury.

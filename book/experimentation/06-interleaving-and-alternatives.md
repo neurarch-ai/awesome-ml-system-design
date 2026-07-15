@@ -93,3 +93,12 @@ units and higher variance.
 | Social graph leakage | Treating one user changes connected users' behavior | Cluster randomization by community or geography | Fewer effective units; needs CUPED or stratification to recover power |
 | Marketplaces with geographic clusters | Cross-boundary interference even with geo clusters | Geo switchback or budget-split design | Hard to parallelize; longer calendar time |
 | Concurrent experiments (many tests at once) | Tests share users; assignments correlate | Orthogonal layered hashing (independent experiment_id per test) | Platform complexity; must audit for residual correlation |
+
+**Details.** On the ranking-comparison row, interleaving wins its sensitivity by
+turning a between-subjects comparison into a within-subjects one: each user sees a
+single merged list drawn from both rankers (team-draft or balanced interleaving),
+so user-to-user variance cancels and a preference signal emerges from far less
+traffic than a parallel A/B. On the social-graph and geo-cluster rows, the power
+lost to fewer effective units is partly recovered with CUPED (Microsoft, 2013),
+which residualizes each cluster's outcome against its pre-period value before the
+test, shrinking variance without biasing the effect.

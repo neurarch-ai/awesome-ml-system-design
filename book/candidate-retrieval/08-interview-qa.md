@@ -64,6 +64,18 @@ A: The user and item towers must be versioned and re-indexed together. If you sh
 a new user tower against an index built by the old item tower, the two embedding
 spaces drift apart and recall collapses. Coordinate the redeploy.
 
+**Q: You switched the loss from dot product to cosine, but the ANN index still
+scores with inner product. What breaks?**
+A: Recall silently collapses unless the index geometry matches the training
+geometry. Cosine similarity is inner product on L2-normalized vectors, so if the
+towers were trained with cosine you must normalize both the stored item vectors
+and the query vector before indexing, then an inner-product index gives the right
+ranking. If you normalize on one side only (or not at all), the index is now
+ranking by `|u| |v| cos(theta)` while the model learned `cos(theta)`, so long
+vectors win for free and the retrieved set no longer matches what the loss
+optimized. The rule: the index distance metric and the training similarity must be
+the same function, normalization included.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Do the two towers share weights to save parameters?**
@@ -88,3 +100,15 @@ A: No. Retrieval is a recall stage: get the good items into the candidate pool
 cheaply. Precision is ranking's job on the few hundred survivors. Optimizing
 precision in retrieval wastes the funnel's division of labor and usually hurts
 recall.
+
+**Q: Harder negatives always teach more, so should you mine hard negatives from
+step one?**
+A: No, and the failure mode is specific. Retrieval labels are implicit: a
+non-interaction is not a confirmed negative, just an unobserved one. Mining the
+"hardest" items (nearest in embedding space to the anchor) disproportionately
+surfaces items the user would actually like but never saw, so you train the model
+to push away true positives, which caps recall and can destabilize the embedding
+geometry. The standard recipe is to warm up on in-batch (easy) negatives so the
+space is roughly organized, then introduce mined hard negatives gradually, often
+mixed with in-batch negatives rather than replacing them. "Hardest possible from
+the start" is the wrong answer.

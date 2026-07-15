@@ -94,6 +94,24 @@ a fast screen to prune a pool of candidate rankers to the few worth a full A/B
 test, then run the A/B to measure the actual business metric and guardrails
 before shipping. Interleaving alone does not measure the full business metric.
 
+**Q: CUPED reduces variance by subtracting a pre-experiment covariate. Why does
+that not bias the treatment effect?**
+
+A: The mechanism is the key. CUPED (Microsoft, 2013) forms an adjusted outcome
+$Y_{adj} = Y - \theta (X - \bar{X})$, where $X$ is a pre-experiment measurement
+(usually the same metric from the prior period) and $\theta = \text{Cov}(Y, X) /
+\text{Var}(X)$ is the regression coefficient of $Y$ on $X$. Two facts make it
+unbiased. First, $X$ is measured before treatment is assigned, so its expectation
+is identical across arms; subtracting a term built from a pre-treatment quantity
+cannot shift the between-arm difference in expectation. Second, subtracting the
+same linear function from both arms preserves the difference of means while
+removing the shared, predictable component of the variance. The variance of the
+adjusted estimator drops by a factor of $(1 - \rho^2)$, where $\rho$ is the
+correlation between $X$ and $Y$, which is why a covariate correlated at 0.7 removes
+roughly half the variance. The senior point: CUPED buys power for free precisely
+because the covariate is pre-treatment; using an in-experiment covariate instead
+would bias the estimate.
+
 ## Commonly answered wrong (the traps)
 
 **Q: If the confidence interval includes zero, the change has no effect. Right?**
@@ -133,3 +151,18 @@ rationalize a result after seeing it (HARKing: hypothesizing after results are
 known). Booking.com uses pre-registration adherence as the core of their
 experimentation quality KPI. Without it, even a well-designed experiment can
 produce a misleading ship decision.
+
+**Q: Your intended 50/50 split came back 50.4/49.6 across millions of users. That
+is close enough to balanced, so proceed with the analysis?**
+
+A: No; that is a sample ratio mismatch (SRM), and at that scale it is a red flag
+that usually invalidates the whole test. The check is a chi-square goodness-of-fit
+test on the raw assignment counts against the intended ratio: with millions of
+users, a 50.4/49.6 split produces a vanishingly small p-value, so the imbalance is
+not chance. The reason it matters is that a broken randomization or logging path
+(a redirect that drops slow clients on one arm, a bot filter applied
+asymmetrically, differential opt-out) means the two arms are no longer exchangeable,
+so the treatment-effect estimate is confounded by whatever caused the skew, not by
+the treatment. The correct response is to stop, diagnose the pipeline (assignment,
+exposure logging, filtering), and rerun, not to analyze the metric. "Close to
+50/50" is exactly the intuition SRM detection exists to override.

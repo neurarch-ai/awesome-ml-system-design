@@ -49,6 +49,13 @@ inflates precision to fiction.
 | SMOTE | labeled fraud is very scarce and recall is critically low despite class weights | when the decision boundary is overlapping or noisy (interpolation invents bad examples) |
 | No resampling at eval time | always: measure on the real base rate | a rebalanced eval set, which makes precision look far better than it is |
 
+**Provenance.** SMOTE (Chawla et al., 2002) introduced synthetic minority
+oversampling by interpolating between a minority point and its nearest minority
+neighbors, rather than duplicating rows; that interpolation is also why it misbehaves
+when the fraud and legitimate classes overlap, since interpolated points can land in
+majority territory. Point-in-time correctness (industry standard) governs the
+feature-join discipline in the next section.
+
 ## Label delay and the maturation window
 
 Chargebacks arrive 30 to 120 days after the transaction. This creates a

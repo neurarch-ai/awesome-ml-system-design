@@ -98,6 +98,30 @@ CTC's main strong suit in production is forced alignment: given audio and a know
 transcript, build a CTC trellis constrained to that transcript and backtrack the
 Viterbi path to get per-word timestamps.
 
+**Q: What exactly gives RNN-T an internal language model that CTC lacks?**
+
+A: The factorization. CTC (Graves et al., 2006) models the output as a product of
+per-frame token posteriors that are conditionally independent given the acoustics,
+roughly P(y|x) = product over frames of P(token | x). Nothing in that product lets
+token t depend on token t-1, so CTC cannot prefer a spelling from label context
+alone and leans on an external LM to supply it. RNN-T (Graves, 2012) adds a
+prediction network, a small autoregressive net over the previously emitted
+non-blank tokens, whose state is fused with the acoustic encoder in a joint network
+before the softmax. That conditions each emission on the emitted-token history,
+which is a learned internal LM. The price is decoding: RNN-T searches a 2D lattice
+over time steps and label steps (at each cell it either emits a token or advances
+in time via a blank), heavier than CTC's per-frame argmax, and that is the tradeoff
+you accept to drop the external LM on-device.
+
+```mermaid
+flowchart LR
+  A[Acoustic encoder<br/>audio frames] --> J[Joint network]
+  P[Prediction network<br/>prev emitted tokens] --> J
+  J --> S[Softmax over<br/>tokens plus blank]
+```
+
+*RNN-T fuses an acoustic encoder with an autoregressive prediction network in a joint network, which is the internal language model that conditionally-independent CTC does not have.*
+
 ## Commonly answered wrong (the traps)
 
 **Q: For wake word detection, should I optimize recall so users never miss the

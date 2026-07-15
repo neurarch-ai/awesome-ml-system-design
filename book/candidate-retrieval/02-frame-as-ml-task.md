@@ -45,5 +45,10 @@ lets us push similarity search onto a fast approximate-nearest-neighbor index.
 | A single cross-feature model (user and item together) | small catalog, or a re-ranking stage where you already have a few hundred items | retrieval at 100M scale, where it cannot meet latency |
 | Graph or co-visitation retrieval | strong item-item signal (people who watched X watched Y) | learned embeddings alone, when behavioral graphs carry more signal than content |
 
+**Provenance.** The two-tower framing comes from the DSSM two-tower model
+(Microsoft, 2013), which learned separate query and document encoders sharing one
+embedding space, and was popularized for large-corpus item retrieval by the
+YouTube deep recommender (Google, 2016).
+
 The next section builds the training data that teaches these towers what
 "similar" means.

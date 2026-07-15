@@ -35,6 +35,11 @@ Illustrative.*
 | Bigtable | GCP shop; wide rows (many features per entity); p99 of 5-10ms acceptable | Redis for very large wide-row feature sets where memory cost dominates |
 | Pluggable (Feast) | team has mixed infrastructure or wants to swap backends as scale grows | committing to one backend early and re-architecting later |
 
+**Provenance.** The pluggable online/offline store abstraction is from Feast (Gojek,
+2019); the managed-platform lineage where a central team owns materialization and
+serving is Michelangelo (Uber). The store choices themselves (Redis, Cassandra,
+DynamoDB, Bigtable) predate feature stores and are general key-value infrastructure.
+
 **Tools.** Redis serves in-memory sub-2ms batch key lookups; Cassandra (or
 ScyllaDB) is the disk-backed option for very large entity counts; DynamoDB on AWS
 and Bigtable on GCP are the managed key-value stores for teams avoiding cluster ops;
@@ -79,3 +84,12 @@ for live traffic while the write burst proceeds.
 | Feature staleness silent | model accuracy degrades without alerts | add per-feature freshness monitoring; alert on SLA breach | additional observability infra |
 | Feature sprawl | 10,000+ features, most unused; store grows unbounded | governance: deprecate unused features; enforce ownership in registry | migration effort |
 | Cold-start (new entity) | new users / items not in the online store | initialize with a global default or a cold-start feature vector; write to online store on first event | models see default values briefly for new entities |
+
+Two details worth pinning down. First, the batch-materialization burst hurts most
+when it competes with live reads on the same nodes: rate-limiting the write path (a
+token bucket on the materialization job) or pipelining it in smaller chunks keeps
+tail read latency stable, at the cost of a longer total materialization window.
+Second, "silent" feature staleness is usually invisible because the online store
+still returns a value, just an old one; the fix is to store a per-feature
+`event_timestamp` alongside the value and alert when now minus that timestamp exceeds
+the declared freshness SLA, rather than assuming a successful read means a fresh one.

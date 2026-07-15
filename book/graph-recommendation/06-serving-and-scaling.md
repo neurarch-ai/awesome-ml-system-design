@@ -48,3 +48,15 @@ connections), then rank the merged pool with a heavier pairwise model.
 | Cold-start member | empty neighborhood, no signal | inductive GNN over profile features plus content | weaker than a warm member |
 | Degree bias | only hubs suggested, coverage drops | degree-corrected negatives, diversity in ranking | slightly lower raw AUC |
 | Filter bubble | suggestions collapse to one community | inject exploration and diverse sources | short-term acceptance dips |
+
+Two details worth pinning down. First, the hub-node blowup is a fan-out explosion:
+without a cap, a 2-hop neighborhood around a celebrity node with millions of edges
+pulls most of the graph into a single training minibatch, and memory blows up
+super-linearly with depth. The fixed fan-out neighbor sampling that fixes it is the
+core scaling trick of GraphSAGE (Stanford, 2017), which samples a constant number of
+neighbors per hop so per-node cost is bounded regardless of degree; the tradeoff is
+that a high-degree node is now represented by a random subset of its neighbors.
+Second, stale embeddings matter more here than in most systems because a new edge
+changes not just the two endpoints but their k-hop neighborhoods; incremental
+re-inference must therefore re-embed the affected subgraph and upsert those vectors
+into the ANN index, not merely the two nodes that formed the edge.

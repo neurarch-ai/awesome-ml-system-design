@@ -85,6 +85,11 @@ ID verification (Uber), reading product labels.
 | Embedding retrieval | the catalog is open, growing, or has no fixed class list | classification when the taxonomy keeps changing |
 | OCR as a pipeline | the product value is the text content of the image | one-shot classification, which does not produce text |
 
+**Provenance.** The instance-segmentation framing is Mask R-CNN (Meta FAIR, 2017),
+which extends the two-stage detector Faster R-CNN (Microsoft, 2015); single-stage
+detection is the YOLO lineage (Redmon et al., 2016), and end-to-end set-prediction
+detection is DETR (Meta, 2020).
+
 **Tools.** Whole-image classification runs on torchvision (Meta) and timm backbones. Detection and instance segmentation (Mask R-CNN) come from Ultralytics YOLO or Detectron2 (Meta); semantic segmentation from segmentation-models-pytorch or MMSegmentation. Embedding retrieval pairs an encoder with an approximate-nearest-neighbor index such as FAISS (Meta), and the OCR detect-then-recognize pipeline is served by Tesseract, PaddleOCR, or EasyOCR rather than a single classifier.
 
 **Worked example.** A marketplace maps each product ask to an output shape before picking a model. "Is this listing photo a bedroom" is one tag per image, so it uses whole-image classification, the cheapest to label. "Does this photo contain a prohibited item in a corner" makes the region small, so it accepts the higher box-labeling cost of detection rather than a whole-image label that would miss it. "Cut the product out of its background" needs per-pixel shape, so it reaches for semantic segmentation instead of a bounding box. "Find visually similar listings" has an open, growing catalog with no fixed class list, so it uses embedding retrieval; and "read the serial number off the label" makes the text itself the value, so it runs an OCR pipeline, not a one-shot classifier.

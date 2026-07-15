@@ -141,3 +141,9 @@ Real systems adjust this in three recurring ways:
 | Hard-negative mining (Etsy, Snap) | easy negatives stopped teaching and boundary cases decide quality | only in-batch negatives, which get too easy |
 | Journey seen-not-booked negatives (Airbnb) | an impression inside a search session is a more informative negative than a random item | random negatives that ignore intent context |
 | Full softmax over the catalog | never at 100M scale (it is the cost you are avoiding) | sampled softmax, which approximates it cheaply |
+
+**Provenance.** The two-tower structure these losses train comes from the DSSM
+two-tower model (Microsoft, 2013), and in-batch sampled softmax with logQ
+correction entered wide practice through the YouTube deep recommender (Google,
+2016), which is where the sampling-bias correction for popularity-skewed catalogs
+was popularized.

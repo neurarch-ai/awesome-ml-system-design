@@ -70,6 +70,14 @@ structure both matter, especially for cold-start members. Illustrative.*
 | Heterogeneous GNN (LiGNN / TwHIN) | many node and edge types carry the signal | a homogeneous friend graph that throws away edge types |
 | Heuristic as an explicit GNN feature | you need common-neighbor counts the GNN cannot learn | expecting message passing to rediscover Adamic-Adar |
 
+**Provenance.** node2vec (Stanford, 2016) produces embeddings via biased random walks
+on a static graph. The inductive GNN line runs from GraphSAGE (Stanford, 2017), which
+learns aggregator functions so an unseen node can be embedded from its features and
+neighborhood, through PinSage (Pinterest, 2018), which scaled GraphSAGE to a
+web-scale recommendation graph. The heterogeneous, many-edge-type case is TwHIN
+(Twitter, 2022); the underlying message-passing formulations are GCN (Kipf and
+Welling, 2017) and GAT (2018).
+
 > **Open the validated graph.** Trace a GraphSAGE-style recommendation graph at
 > real dimensions in the live
 > [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo): see where

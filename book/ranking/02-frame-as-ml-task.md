@@ -62,3 +62,5 @@ Illustrative.*
 | Pairwise LambdaMART (NDCG-weighted) | You want to optimize the ranking metric directly and can define meaningful (winner, loser) pairs from click or booking data | Per-item log-loss that penalizes score magnitude rather than relative order |
 | Listwise SoftNDCG / ListNet | Small enough corpus that full-list training examples are available | Pointwise objectives when position and order carry strong business meaning |
 | Multi-task heads with per-objective binary cross-entropy | Several engagement signals (click, save, long-dwell) to blend into one utility | One collapsed binary label that loses signal by merging distinct behaviors |
+
+**Provenance.** The pairwise LambdaMART objective originated at Microsoft (2010), extending the RankNet (Microsoft, 2005) pairwise-probability gradient by weighting each (winner, loser) pair by the NDCG change that swapping the pair would cause; that weighting is why it optimizes the ranking metric rather than raw score magnitude. NDCG is the graded-relevance measure these pairwise and listwise objectives are built to move.

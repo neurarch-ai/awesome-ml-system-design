@@ -101,3 +101,7 @@ But the specifics differ by modality.
 | Joint vision-language model | harm requires both image and text to be present and neither alone is sufficient | ORing unimodal scores, which passes cross-modal violations |
 | Distilled audio model for voice | you need sub-100ms streaming inference on a rolling window | the full large audio model, which cannot meet the latency budget live |
 | Hash matching before any classifier | content has been seen before (CSAM, terrorist media, removed items) | running a classifier on known-bad material that a hash catches for free |
+
+**Provenance.** The joint vision-language framing is CLIP-style, from CLIP (OpenAI,
+2021); hash matching before the classifier uses perceptual hashing such as PDQ
+(Meta).

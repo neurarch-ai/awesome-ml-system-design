@@ -91,6 +91,20 @@ which makes it faster to train on long sequences. Spotify CoSeRNN accepts the
 recurrent structure deliberately because it only needs to react at session
 granularity, not per-action; name that tradeoff explicitly.
 
+**Q: BERT4Rec trains bidirectionally but you serve next-item prediction
+causally. Isn't that a train-serve mismatch?**
+A: It is a real subtlety, and handling it is exactly why BERT4Rec (Alibaba, 2019)
+appends a special `[mask]` token at the end of the sequence for the next-item
+task. During training it masks random interior positions and predicts them from
+both sides (the Cloze objective), which is where the bidirectional context comes
+from. At serving you cannot see the future, so you append a `[mask]` at the end
+and read the prediction off that position only; the model is deliberately trained
+with end-position masks so this readout is in-distribution. SASRec (2018) sidesteps
+the whole issue: its causal mask means every position is already trained to predict
+the next item from left context alone, so the training computation and the serving
+computation are identical. That train-serve consistency is precisely the tradeoff
+you give up when you choose BERT4Rec for bidirectional context.
+
 ## Commonly answered wrong
 
 **Q: Can I model the sequence as a bag of items, or does order really matter?**

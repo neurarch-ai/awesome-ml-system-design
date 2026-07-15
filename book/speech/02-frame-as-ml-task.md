@@ -60,6 +60,8 @@ Proposing one model for all of them is the classic red flag. Each has a differen
 causality requirement, a different latency budget, and a different metric that
 determines whether it ships.
 
+**Provenance.** The streaming framings rest on two sequence losses from Alex Graves: CTC (Graves et al., 2006) and the RNN-Transducer (Graves, 2012), the latter adding a prediction network so the model carries internal language context that plain CTC lacks. The batch framing's Conformer encoder is Google (2020), and the multilingual weak-supervision batch model is Whisper (OpenAI, 2022).
+
 **Tools.** Streaming ASR (RNN-T / CTC) is covered by NeMo (NVIDIA) and WeNet, which
 ship streaming Conformer-RNN-T and CTC models; Kaldi is the classic toolkit. Batch
 ASR (Conformer seq2seq) is served by whisper (OpenAI) and by Conformer recipes in

@@ -158,6 +158,11 @@ billions of users.
 | Geo-hierarchy or segment prior | new user or new region with usable request context | context is too coarse; blends toward specific level slowly |
 | Popularity fallback | zero-signal first request needs a safe floor | discovery is the goal; popular-gets-more-popular is the problem you are trying to escape |
 
+**Provenance.** Thompson sampling dates to Thompson (1933); the UCB optimism
+bonus is from Auer et al. (2002); and the contextual-bandit LinUCB policy comes
+from Yahoo (2010). The cold-start representation towers are two-tower models in
+the lineage of the DSSM two-tower encoder (Microsoft, 2013).
+
 ![Cumulative regret comparison](assets/fig-regret-comparison.png)
 
 *Epsilon-greedy accumulates linear regret: each step pays the same flat

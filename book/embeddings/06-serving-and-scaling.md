@@ -63,6 +63,11 @@ profile while compressing the index to fit in constrained memory.
 | IVF-PQ or HNSW+PQ | memory is the binding constraint at tens of millions of vectors | full-precision vectors that blow the memory budget |
 | Flat (exact) | small catalog, or as an offline recall ceiling to compare ANN against | ANN, which you only need once the catalog exceeds a few million |
 
+**Provenance.** HNSW as a navigable-small-world graph index comes from Malkov and
+Yashunin (2016); the IVF and product-quantization building blocks are popularized
+through FAISS (Meta), with ScaNN (Google) and Annoy (Spotify) the other widely used
+ANN libraries.
+
 ## Dimensionality vs cost
 
 Doubling the embedding dimension roughly doubles both the index memory and the
@@ -107,3 +112,12 @@ Missing this distinction leads to silently mixed index versions and degraded rec
 | Space drift on retrain | old and new vectors are incomparable | atomic full reindex on every model version | reindex cost and coordinated redeploy |
 | Big-batch training cost | in-batch negatives require large $B$ for sufficient diversity | gradient accumulation or more accelerators | compute budget |
 | Representation collapse | all similarities look high, ranking is meaningless | stronger negatives, check uniformity loss | see diagnostic section |
+
+**Details.** The popularity-bias row's fix is the logQ / sampled-softmax correction
+popularized by the YouTube deep recommender (Google, 2016): in-batch negatives
+sample each item in proportion to its frequency, so head items appear as negatives
+far more often and get pushed down; subtracting the log sampling probability from
+the logits removes that frequency bias without a separate hard-negative pipeline.
+On the ANN-search-latency row, HNSW (Malkov and Yashunin, 2016) exposes the
+recall-vs-latency tradeoff through efSearch and IVF through nprobe, so the fix is a
+probe-depth sweep at a fixed index, not a re-train.

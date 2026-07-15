@@ -80,6 +80,18 @@ on. The fix is to log served features and compare their distribution against the
 training set. Serving safely is a necessary but not sufficient condition for
 quality.
 
+**Q: Each hop in your inference chain has a p99 of 20 ms, so the end-to-end p99
+is about 20 ms, right?**
+A: No, tail latency compounds. If a request passes through N roughly independent
+hops in sequence, the chance it dodges every hop's slow tail is about
+(0.99)^N, so the end-to-end p99 drifts well past any single hop's p99. Fan-out is
+worse than a chain: a request that must wait on the slowest of K parallel feature
+shards sees the maximum of K tails, so scattering wider makes it more likely one
+shard lands in a tail. The mechanisms that fight this are hedged (backup) requests
+(fire a duplicate after a short delay and take whichever returns first) and
+tail-tolerant fan-out (proceed once a deadline passes with the shards you have).
+This is why the tail is budgeted per hop, not just measured end to end.
+
 ## Commonly answered wrong
 
 **Q: Autoscale on CPU utilization for an inference service, right?**
@@ -110,3 +122,13 @@ A: No. Shadow proves mechanical correctness and no latency regression. It cannot
 prove that the model helps users (or does not hurt them). A version that passes
 shadow has earned a canary, not a full rollout. The canary result is what earns
 the ramp to 100 percent.
+
+**Q: Prediction caching is free latency, so cache everything.**
+A: Wrong for personalized serving, because hit rate is the whole game. A cache
+only pays off when inputs repeat. For a per-user personalized ranker the key space
+is effectively unbounded, so the hit rate is near zero and the cache becomes pure
+overhead: a lookup, a miss, then the full model call anyway, plus the memory and
+invalidation cost. Caching earns its place on low-cardinality repeating inputs
+(globally popular items, static context) and is dead weight on high-cardinality
+real-time personalized inputs. Measure the projected hit rate before adding a
+cache, not after.

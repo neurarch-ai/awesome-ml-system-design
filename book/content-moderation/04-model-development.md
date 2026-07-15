@@ -130,6 +130,11 @@ retrain to ensure $\hat{p}_i \approx P(\text{violates} \mid \text{score} = \hat{
 | Shared backbone with per-policy heads | multiple policies share the same modality and have similar data distributions | fully independent models per policy when the encoder can be shared |
 | Per-policy class-weighted BCE | severe imbalance up to roughly 1:10000 | unweighted loss that learns to output near-zero probabilities for everything |
 
+**Provenance.** The fine-tuned text encoder is BERT (Google, 2018); the image
+transformer is the Vision Transformer (Google, 2020); the joint vision-language
+model is CLIP (OpenAI, 2021); the near-free hash front-end is PDQ (Meta); and
+per-policy score calibration uses Platt scaling (Platt, 1999).
+
 **Tools.** Text encoders (BERT, ModernBERT) fine-tune with Hugging Face Transformers; image models (EfficientNet, ViT) come from timm (PyTorch Image Models) or torchvision. Self-supervised speech models (wav2vec2, WavLM) ship in fairseq (Meta) and Hugging Face, and knowledge distillation to a small student is a standard PyTorch (Meta) training loop. Joint vision-language fusion uses OpenCLIP or Hugging Face CLIP checkpoints, and the near-free hash front-end runs on perceptual hashing such as PDQ (Meta) or imagehash. Per-policy threshold scans and Platt or isotonic calibration are one call each in scikit-learn (precision_recall_curve, CalibratedClassifierCV).
 
 **Worked example.** A social app moderating uploads runs a funnel rather than one model. A PDQ perceptual-hash lookup auto-actions known-bad re-uploads at near-zero cost; novel text goes to a fine-tuned ModernBERT (chosen over plain BERT because posts often exceed 512 tokens and arrive obfuscated) behind a Unicode-normalization front-end, and novel images hit EfficientNet-B0 at ingest because a large ViT would blow the per-hour compute budget. Only ambiguous caption-plus-image cases escalate to a CLIP-style joint model, gated so it never runs on everything. Live voice chat gets a distilled WavLM student to fit the sub-100ms streaming budget. Each policy trains with class-weighted BCE and gets its own threshold from a PR-curve scan, with the CSAM floor forced near-perfect while spam sits lower.

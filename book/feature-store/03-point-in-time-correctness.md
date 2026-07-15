@@ -87,6 +87,11 @@ value, then finding no historical rows to join against.
 | Log-and-replay (Uber style) | streaming features are expensive to recompute; log them at compute time | recomputing from raw events, which may not reconstruct the exact aggregate |
 | Out-of-fold target encoding with smoothing | encoding a high-cardinality categorical in training | computing the encoding over the whole training split, which leaks |
 
+**Provenance.** Point-in-time correctness (the as-of join on event time) is an
+industry-standard requirement for training/serving parity, exposed as a first-class
+API by Feast (Gojek, 2019) via `get_historical_features`. The log-and-replay pattern
+for streaming aggregates traces to Michelangelo (Uber).
+
 The out-of-fold smoothed encoding deserves a note. When a feature is a
 target-encoded category (for example, "mean CTR for this item category"), computing
 it over the whole training split leaks the label. The standard fix is out-of-fold
