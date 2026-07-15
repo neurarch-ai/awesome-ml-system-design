@@ -44,6 +44,40 @@ distinct pre-ranking (ESR) stage was formalized in Alibaba's COLD (2020). A newe
 alternative that compresses this cascade into a single large model, generative
 recommendation, is covered in the [sequential-recommendation chapter](../sequential-recommendation/04-model-development.md).
 
+## Two ways to source candidates: behavioral vs. query-driven
+
+The retrieval stage itself has two distinct modes, and naming both is a strong
+signal. They differ in where the intent signal comes from.
+
+```mermaid
+flowchart LR
+  subgraph B["behavioral (standard) retrieval"]
+    H["user history"] --> TT["two-tower / bi-encoder"] --> CP["candidate pool"]
+  end
+  subgraph Q["query-driven (pre-retrieval) search"]
+    UQ["user profile + explicit query"] --> SE["search engine<br/>(BM25 / query-conditioned)"]
+    SE --> FC["filtered candidates"] --> ER["embedding + rerank"]
+  end
+```
+
+- **Behavioral (standard) retrieval.** The classic recommender path: match the
+  user's history or embedding against item embeddings, with no explicit query. This
+  is collaborative filtering and two-tower retrieval, and it *infers* intent from past
+  actions.
+- **Query-driven (pre-retrieval) search.** Inject an explicit query or search action
+  into the context first, use a search engine (lexical BM25 or a query-conditioned
+  retriever) to produce a filtered candidate set, then embed and rerank within that
+  set. It *takes* an explicit intent signal (a typed query, a tapped category, a
+  "more like this" action) and hard-filters the pool before embedding matching.
+
+Use behavioral retrieval for a pure feed with no stated intent; reach for query-driven
+search when there is an explicit query, or when you need hard constraints (category,
+freshness, eligibility) that a pure embedding match cannot guarantee. Modern systems
+increasingly do both, the convergence of search and recommendation: a query-driven
+lexical source and a behavioral two-tower source feed the same funnel and are merged,
+the same hybrid-retrieval idea as [BM25 plus dense fusion](../search-ranking/) on the
+search side.
+
 ## Specifying the input and output
 
 The retrieval system takes a **user and their context** and returns a **ranked
