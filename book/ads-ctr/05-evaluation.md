@@ -68,6 +68,44 @@ Right: log loss penalizes probability scale errors directly. A model whose
 predicted rates are 40% of truth incurs high loss even if AUC is the same as a
 well-calibrated model. Illustrative.*
 
+## Normalized Entropy (NE): the ads-ranking workhorse
+
+In practice the number ads teams actually track is not raw log loss but
+**Normalized Entropy (NE)**, also called normalized cross-entropy. It is the
+model's average log loss divided by the log loss of a trivial model that always
+predicts the **background CTR** (the overall average click rate). The formula is:
+
+$$\text{NE} = \frac{-\frac{1}{N}\sum_{i=1}^{N}\left[y_i \log p_i + (1-y_i)\log(1-p_i)\right]}{-\left[\bar{p}\log\bar{p} + (1-\bar{p})\log(1-\bar{p})\right]}$$
+
+where $p_i$ is the predicted click probability, $y_i \in \{0,1\}$ is the click
+label, and $\bar{p}$ is the background CTR. The denominator is just the entropy
+(the inherent uncertainty) of that background rate.
+
+```python
+import numpy as np
+def normalized_entropy(y, p):
+    y = np.asarray(y, float); p = np.clip(np.asarray(p, float), 1e-15, 1 - 1e-15)
+    logloss = -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))   # model's average cross-entropy
+    pbar = y.mean()                                               # background (average) CTR
+    bg = -(pbar * np.log(pbar) + (1 - pbar) * np.log(1 - pbar))   # entropy of predicting pbar
+    return logloss / bg
+# NE = 1.0 means the model is no better than always guessing the background rate;
+# NE < 1 means it beats that baseline (lower is better). A perfect model approaches 0.
+```
+
+Why NE and not raw log loss: raw log loss depends on the background CTR, so a low-CTR
+surface (say 0.5% clicks) and a high-CTR surface (say 8%) produce very different log
+loss numbers even for equally good models. Dividing by the background entropy
+**removes that dependence**, so NE is comparable across placements, days, and traffic
+mixes. That property is exactly why it is the offline north-star for CTR models: a
+relative NE improvement (for example a 1% NE reduction) tends to translate into a
+predictable direction on the online business metrics, so teams read NE to reason
+about where ads revenue (RPM) and engagement proxies (like value-per-view) will move
+before running the A/B test. NE is usually paired with **calibration** (next
+section): NE tells you the ranking-and-pricing quality, calibration tells you whether
+the price level is right. NE was introduced in Facebook's ads-prediction work (He et
+al., 2014), and remains the standard CTR-model metric across ads-ranking teams.
+
 ## Calibration metrics
 
 Calibration measures whether predicted probabilities match observed rates.

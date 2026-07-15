@@ -101,6 +101,12 @@ def logloss(p, y):
 A model can gain AUC while its logloss worsens if it is shifting confident
 scores in the right direction but over- or under-estimating magnitudes.
 
+For engagement and ads models specifically, the metric teams track day to day is
+usually **Normalized Entropy (NE)**, this logloss divided by the entropy of the
+background rate, so it is comparable across surfaces with different base rates and
+reads as a direct proxy for online movement. It is defined and implemented in the
+[ads-ranking evaluation chapter](../ads-ctr/05-evaluation.md).
+
 ## Calibration: does 0.1 mean 10%?
 
 When ranking scores feed a downstream auction, a bid, a threshold, or a utility
