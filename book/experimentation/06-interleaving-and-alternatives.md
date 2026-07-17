@@ -58,6 +58,28 @@ The standard production pattern is therefore two-stage:
 Naming both is what shows you know ranking-specific tooling, not just generic
 statistics.
 
+### Compare and contrast: A/B test vs interleaving
+
+Because both are live, randomized comparisons of two rankers driven by real
+user clicks, the two methods get conflated; the table separates what they
+genuinely share from where they diverge.
+
+| Dimension | A/B test | Interleaving |
+|---|---|---|
+| Randomized online comparison on real traffic | Yes, with real users and real clicks | Same |
+| Needs correct assignment, logging, and validity checks | Yes (SRM, exposure logging) | Same, plus per-item attribution logging |
+| What each user experiences | One arm's pure, coherent experience | A blended list containing both rankers' items |
+| Unit of comparison | Between users: arm aggregates are compared across different people | Within user: the same person supplies evidence on both rankers at once |
+| What it estimates | The absolute effect on any business or guardrail metric (sessions, revenue, latency) | Only a relative preference: which ranker's items win clicks head-to-head |
+| Traffic required | Enough users to overcome between-user variance in baseline behavior | Orders of magnitude less, because each user's baseline cancels in the paired comparison |
+| Can it clear a launch? | Yes: it is the ship decision | No: no guardrails, no absolute magnitude, no pure-arm experience |
+
+The difference matters at the moment of decision: interleaving can tell you
+which of ten candidate rankers users prefer with a fraction of the traffic, but
+it cannot tell you whether the winner moves revenue or breaks latency, so it
+picks the finalists while the A/B test remains the only instrument that can
+authorize a ship.
+
 ## Switchback experiments for marketplaces
 
 In a ridesharing or food-delivery marketplace, a user-level split is biased by

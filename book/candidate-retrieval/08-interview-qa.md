@@ -38,6 +38,11 @@ which lifts raw recall (they are easy to hit) while shrinking coverage and
 diversity, so the feed feels generic. Diagnose with coverage and tail metrics, and
 verify the logQ correction is actually applied. A recall gain that costs diversity
 usually loses long-term.
+**Why:** the offline metric is complicit. The future hold-out is itself
+popularity-skewed (head items account for a disproportionate share of future
+interactions), so a model that leans into the head hits more hold-out labels and
+recall@k rises even as the lived experience narrows. The metric and the failure
+share a cause, which is why recall alone cannot catch it.
 
 **Q: Bigger batches give more free negatives, so should you always scale the batch?**
 A: No. If batches are request-sorted or user-concentrated, a user's own other
@@ -45,6 +50,11 @@ engaged items land in the same batch and get scored as negatives. Pinterest saw
 the in-batch false-negative rate rise from near 0% to about 30%. The fix is
 user-level masking (drop same-user items from the softmax denominator), not simply
 a larger batch.
+**Why:** every false negative is a gradient with the wrong sign: the loss
+actively pushes an item the user engaged with away from that user's embedding.
+Scaling the batch raises the chance that any given user's other positives
+co-occur in it, so the corruption grows with exactly the knob you turned for
+more signal.
 
 **Q: Everyone uses HNSW. When would you not?**
 A: When the catalog churns hard or needs filters. Airbnb chose IVF because HNSW's
@@ -52,6 +62,13 @@ rebuild cost could not absorb price and availability updates, and geo filters ra
 poorly over graph traversal; IVF turns a filter into cheap cluster selection. Match
 the index to update rate, filtering, and memory, not to a default. Use HNSW with
 product quantization (Etsy) when the index must fit memory at large N.
+**Why:** the structural reason is what an update touches. An HNSW insert or
+delete mutates a navigable graph whose search quality depends on carefully
+maintained neighbor lists, so heavy churn degrades it and deletions are often
+tombstoned rather than removed. An IVF update is appending or dropping a vector
+in a cluster's posting list, which is trivially cheap, and a filter becomes
+"only scan the eligible lists" instead of repeatedly hitting filtered-out nodes
+mid-traversal.
 
 **Q: Dot product or cosine similarity, and does it matter?**
 A: It matters. Dot product lets embedding magnitude carry signal (popular or
@@ -63,6 +80,11 @@ want popularity baked into the geometry (Airbnb reasons about exactly this).
 A: The user and item towers must be versioned and re-indexed together. If you ship
 a new user tower against an index built by the old item tower, the two embedding
 spaces drift apart and recall collapses. Coordinate the redeploy.
+**Why:** the training loss only constrains relative geometry, the dot products
+among vectors trained together; nothing pins the space to absolute coordinates,
+so each run lands in an arbitrarily rotated and scaled version of "the" space.
+A dot product between a vector from run N and a vector from run N-1 is therefore
+meaningless, even if both runs individually reached identical recall.
 
 **Q: You switched the loss from dot product to cosine, but the ANN index still
 scores with inner product. What breaks?**
@@ -77,6 +99,21 @@ vectors win for free and the retrieved set no longer matches what the loss
 optimized. The rule: the index distance metric and the training similarity must be
 the same function, normalization included.
 
+**Q: In-batch negatives and uniformly sampled negatives look similar; when does
+the difference actually matter?**
+A: Both plug the same hole (no logged negatives) and both feed the same sampled
+softmax, but they draw from different distributions. In-batch negatives are
+other users' positives, so they arrive in proportion to item popularity;
+uniform negatives arrive in proportion to nothing. The difference matters in two
+places. First, bias: popularity-proportional sampling over-penalizes head items,
+which is survivable only if you apply the logQ correction; uniform sampling
+needs no correction but mostly serves up tail items the model already scores
+low, so its gradients go soft early. Second, cost: in-batch negatives are free
+(one matrix multiply reuses the batch), while uniform negatives require a
+separate sampling and embedding path. On a small catalog with mild popularity
+skew the two train nearly identical models; at web scale with a heavy head, the
+choice plus its correction visibly moves which items the space favors.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Do the two towers share weights to save parameters?**
@@ -90,6 +127,13 @@ from the ANN results?**
 A: No. logQ is subtracted from the logits during **training**, so the embedding
 space itself comes out unbiased. Serving stays a plain dot-product or cosine lookup
 with no correction term. Applying it at serving is a common and wrong answer.
+**Why:** the bias being corrected exists only during training. In-batch
+negatives are sampled in proportion to item popularity (they are other users'
+positives), so the sampled softmax over-penalizes popular items relative to the
+full softmax; subtracting log of the sampling probability from the logit undoes
+exactly that over-sampling. At serving there is no sampling, so there is no bias
+left to correct, and subtracting log-popularity there would instead inject a new
+anti-popularity distortion the model never learned.
 
 **Q: Can you add a few cross features between user and item for accuracy?**
 A: Not in retrieval. Any early crossing makes the score depend on the user, which
@@ -101,6 +145,12 @@ A: No. Retrieval is a recall stage: get the good items into the candidate pool
 cheaply. Precision is ranking's job on the few hundred survivors. Optimizing
 precision in retrieval wastes the funnel's division of labor and usually hurts
 recall.
+**Why:** the error costs are asymmetric by construction. An item retrieval drops
+can never be ranked, so a false negative here is unrecoverable anywhere
+downstream; a false positive just gets demoted by a model that is better at
+precision than retrieval could ever be. Spending retrieval's capacity on
+precision buys accuracy the funnel already has while selling recall the funnel
+cannot get back.
 
 **Q: Harder negatives always teach more, so should you mine hard negatives from
 step one?**

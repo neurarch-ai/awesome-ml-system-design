@@ -59,6 +59,11 @@ ranking improved. The auction is now pricing slots incorrectly. Check a
 reliability curve and sliced ECE before concluding the model is better. Also
 check for training-serving skew, which can shift probabilities without changing
 the rank order, and for delayed-feedback bias, which depresses pCVR.
+**Why:** the second-price charge divides the runner-up's eCPM by the winner's
+pCTR, so a pure scale shift changes every charged price even when the same ad
+still wins. Rank metrics are invariant to exactly the transformation (a monotone
+rescaling) that the pricing formula is most sensitive to, which is why AUC can
+improve while revenue falls.
 
 **Q: Can you retrain more often to fix calibration drift without a separate
 calibration layer?**
@@ -69,6 +74,12 @@ campaign mixes and demand change. The decoupled approach used by Pinterest
 tower) is the right architecture: retrain the heavy network daily, recalibrate
 the cheap layer hourly. Coupling them forces you to choose between expensive
 retrains and stale calibration.
+**Why:** the two quantities drift at different speeds because they depend on
+different things. Ranking depends on relatively stable relations (which ad
+appeals to which user), while calibration depends on the base click rate, which
+moves with campaign mix, budgets, and time of day. A monotone layer with a
+handful of parameters needs only a small fresh window to refit, so it can track
+the fast-moving quantity while the heavy network tracks the slow one.
 
 **Q: Your model only sees clicks on ads it chose to show. Isn't that circular?**
 A: Yes. The feedback loop is real and tight: the model scores ads, high scores
@@ -78,6 +89,13 @@ shows ads off-policy (epsilon-greedy or a randomized slice); (2)
 inverse-propensity weighting that upweights rarely-served ads; (3) a position
 feature at train time, neutralized at serving, so the model learns relevance and
 not slot position.
+**Why:** each fix works by restoring the expectation the model should have seen.
+Exploration injects samples from outside the incumbent policy's support, so ads
+the old model undervalued get a chance to generate labels at all. IPW divides
+each example's loss contribution by its probability of having been served, which
+makes the reweighted training data behave, in expectation, like data from a
+uniform policy. The position feature gives the placement effect its own input to
+absorb, so it stops contaminating the relevance estimate.
 
 **Q: You said feature hashing accepts collisions. Doesn't that hurt quality?**
 A: Controlled collision is the accepted tradeoff for bounded memory and graceful
@@ -102,6 +120,20 @@ demand shifts that the single-parameter formula does not capture. The senior
 point: negative sampling changes the base rate, not the ranking, so AUC is
 untouched while every price is wrong until you correct.
 
+**Q: Platt scaling and isotonic regression look similar; when does the
+difference actually matter?**
+A: Both are monotone maps fit post-hoc on held-out data, so both preserve AUC
+exactly and both can fix a uniform scale shift. The difference is capacity
+versus data hunger. Platt fits a two-parameter sigmoid in logit space, so it is
+stable on small slices and refittable hourly, but it can only correct
+distortions that look like a logit shift-and-stretch. Isotonic fits a
+nonparametric monotone step function, so it can flatten an S-shaped or
+regionally warped reliability curve that Platt cannot touch, but each step is
+estimated only from the examples in its interval, so on a thin slice it fits
+noise and produces jumpy prices. The difference matters exactly when you slice:
+a global fit over millions of impressions can afford isotonic; per-placement
+hourly refits on sparse slices push you to Platt or to a hybrid.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Can you just use a high AUC as the launch criterion?**
@@ -124,6 +156,13 @@ sparsity of the feature space, the degree of interaction that matters, and the
 team's tolerance for feature engineering. Start with Wide and Deep as a
 baseline; move to DLRM or DCN V2 when offline eval (log loss and ECE, not just
 AUC) justifies the complexity.
+**Why:** the reason explicit cross structures exist at all is that a plain MLP is
+inefficient at learning multiplicative interactions from scratch: a product of
+two inputs is a high-curvature function of the sum-based units an MLP composes,
+so approximating it costs disproportionate width and data. FM dot products and
+DCN cross layers hard-code the multiplication so the model only has to learn how
+much each cross matters, which is why they win precisely when pairwise or
+bounded-degree crosses carry the signal.
 
 **Q: Logistic regression has naturally calibrated output; why not use it for
 production CTR?**
@@ -136,6 +175,12 @@ automatically. That said, deep models' raw heads still need post-hoc calibration
 under negative sampling and distribution shift, whereas logistic regression's
 sigmoid is naturally calibrated. The trade is interaction capacity for calibration
 ease.
+**Why:** "naturally calibrated" has a precise mechanism: maximum-likelihood
+logistic regression solves score equations that force the average predicted
+probability to match the observed positive rate on the training data (exactly so
+when an intercept is included), which is calibration in aggregate. Deep models
+trained with negative sampling, regularization, and early stopping break that
+guarantee, so their raw heads inherit no such property.
 
 **Q: Can you fit the calibration layer on the same data the model trained on, to
 keep the pipeline simple?**

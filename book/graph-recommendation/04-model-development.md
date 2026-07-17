@@ -71,6 +71,29 @@ GraphSAGE-style models, not node2vec, run in production.
 neighbors and aggregating their features inward. Sampling a fixed fan-out is what
 keeps cost bounded on a billion-edge graph.*
 
+## Compare and contrast: GraphSAGE vs GCN
+
+Both are message-passing GNNs, and at whiteboard distance their layers look
+interchangeable: aggregate neighbor vectors, combine with the node's own vector,
+apply a learned transform and a nonlinearity. The confusion is natural because
+GraphSAGE grew out of the GCN line; the split is in which neighbors each layer
+touches and what that implies for training and serving at scale.
+
+| Dimension | GCN | GraphSAGE |
+|---|---|---|
+| Core layer | message passing: aggregate, transform, nonlinearity (same) | message passing: aggregate, transform, nonlinearity (same) |
+| Over-smoothing with depth | yes, collapses past 2-3 layers (same) | yes, collapses past 2-3 layers (same) |
+| Neighborhood per layer | the full neighbor set, via the degree-normalized adjacency matrix | a fixed-size sampled fan-out (e.g. 10-25 neighbors per hop) |
+| Cost on a hub node | proportional to the hub's full degree; one celebrity node pulls in every follower | capped by the fan-out, regardless of true degree |
+| Training regime | classically full-batch over the whole graph's adjacency | minibatch over sampled subgraphs, which is what fits a billion-edge graph in memory |
+| New node at serving time | the formulation is tied to the training graph's adjacency (transductive as originally stated) | explicitly inductive: any node with features and neighbors can be embedded |
+| Aggregator | fixed degree-normalized mean | a learnable choice (mean, pooling, LSTM) concatenated with the self vector |
+
+The difference changes the design the moment the graph is power-law and growing:
+bounded sampling is what makes minibatch training tractable and per-node inference
+cost predictable, so on a social graph with hubs and a constant stream of new
+members, GraphSAGE-style sampling is a feasibility requirement, not a tuning choice.
+
 ## The link-prediction head and loss
 
 Given node embeddings, score a pair with a dot product or a small MLP, and train

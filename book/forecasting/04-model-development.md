@@ -30,6 +30,29 @@ most current foundation models handle weakly. Treat a foundation model as the ne
 "what does an off-the-shelf model get before I build anything" bar, not an automatic
 replacement for a fitted model.
 
+### Compare and contrast: global model vs time-series foundation model
+
+Both are "one model for all series," which makes them easy to conflate: neither fits
+per-series parameters, both share weights across series, and both can emit forecasts
+for series they were not specifically tuned on. The confusion hides a real
+difference in where the shared knowledge comes from and what the model can condition
+on.
+
+| Dimension | Global model (GBT or deep, trained by you) | Time-series foundation model (zero-shot) |
+|---|---|---|
+| One set of weights across series | yes, shared across your panel (same) | yes, shared across everything it pretrained on (same) |
+| Emits probabilistic output | yes, quantile heads or likelihoods (same) | yes, most emit quantiles or samples (same) |
+| Where the shared pattern comes from | your own historical panel, learned at training time | billions of external time points from other domains, learned at pretraining |
+| Has seen your distribution | yes, trained on exactly your series and their quirks | no, until you fine-tune; it forecasts from cross-domain priors |
+| Covariates (promotions, price, holidays) | consumed natively as features; often the main accuracy lever | weakly supported or absent in most current models |
+| Cold start on a brand-new series | needs attribute features or embeddings you engineered | works zero-shot; this is its strongest case |
+| Cost profile | you pay for training and retraining; inference is cheap | no training; inference is a large checkpoint or a hosted API call |
+
+The difference changes the design when demand is driven by covariates you control:
+a promotion-heavy retail panel needs a model that conditions on price and promo
+flags, so the global model remains the production choice and the foundation model
+serves as the instant baseline and the cold-start fallback rather than the workhorse.
+
 ### Why a global tree cannot extrapolate a trend
 
 The global GBT workhorse hides one structural limitation worth stating before you

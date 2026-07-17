@@ -86,6 +86,12 @@ cutoff rate, which can worsen even when WER improves; (3) on noisy and far-field
 test sets explicitly, not just a clean benchmark; (4) real-time factor on the
 target device. A model can improve aggregate WER and regress on all the conditions
 users care about.
+**Why aggregate WER hides all of this:** WER is an edit-distance ratio pooled
+over the whole test corpus, so every condition contributes in proportion to its
+token count. A minority accent or the rare-but-critical entity tokens are
+mathematically diluted by the majority-condition tokens, and endpointing and
+latency never enter the edit distance at all, so the single number can move in
+the opposite direction from the experience of an affected user group.
 
 **Q: When would you use CTC instead of RNN-T for streaming?**
 
@@ -122,6 +128,22 @@ flowchart LR
 
 *RNN-T fuses an acoustic encoder with an autoregressive prediction network in a joint network, which is the internal language model that conditionally-independent CTC does not have.*
 
+**Q: Voice activity detection (VAD) and endpointing look similar; both decide
+"is the user speaking?" When does the difference actually matter?**
+A: VAD answers an acoustic question: is there speech energy in this frame, as
+opposed to silence or noise? Endpointing answers a conversational one: has the
+user finished their turn? The two diverge on exactly the frames that matter,
+the mid-utterance pause. A user dictating "send it to..." and pausing to think
+produces frames VAD correctly labels non-speech, but an endpointer that
+finalizes on that pause cuts the user off, which is why good endpointers fuse
+acoustic silence with evidence the hypothesis is complete (the decoder's state,
+prosodic cues, a tuned silence duration) rather than reading VAD output alone.
+The difference matters at both ends of the pipeline: VAD sits in front of the
+recognizer to gate what audio gets decoded (saving compute and preventing
+hallucination on silence), while endpointing sits behind it to decide when to
+finalize; use VAD as your endpointer and you trade cutoff errors against
+hang-time, with no setting that fixes both.
+
 ## Commonly answered wrong (the traps)
 
 **Q: For wake word detection, should I optimize recall so users never miss the
@@ -135,6 +157,12 @@ operating point that matches product tolerance, and report false accepts per hou
 ambient audio, not per trial. The two-stage design exists precisely to drive the
 operating point: a loose first stage minimizes false rejects; a cloud second stage
 minimizes false accepts.
+**Why "per hour of ambient audio" instead of precision:** the negative class here
+is not a set of trials, it is an unbounded stream of living-room audio, so
+precision has no stable denominator; the same detector shows wildly different
+precision in a quiet house and a noisy one. False accepts per hour measures the
+thing users actually experience (how often the device wakes uninvited) on a
+denominator that does not depend on how you define a trial.
 
 **Q: TTS sounds robotic. Should I improve the spectrogram reconstruction loss?**
 
@@ -145,6 +173,13 @@ opinion score): have raters listen to samples and score naturalness from 1 to 5.
 Also check the vocoder separately, since the vocoder carries most of the compute
 and most of the naturalness; swapping WaveNet for HiFi-GAN is often the higher-
 leverage intervention than tuning the acoustic model loss.
+**Why MSE and naturalness diverge:** the same sentence has many valid prosodic
+renditions (different pitch contours, timing, emphasis), and MSE is minimized by
+predicting the average of them, an over-smoothed spectrogram that corresponds to
+no natural utterance. Human ears are acutely sensitive to that smoothing (it
+reads as muffled, flat, robotic) while the loss barely registers it, so
+optimizing reconstruction error harder pushes the output toward exactly the
+artifact users are complaining about.
 
 **Q: Can I just use Whisper for live dictation?**
 
@@ -165,3 +200,10 @@ per-model. On-device also means no audio logs for retraining, so you lose the
 main retraining signal and must design federated or on-device feedback channels from
 the start. Architecture choices are also constrained: RNN-T fits on a phone;
 a full bidirectional Conformer typically does not at competitive WER.
+**Why the quantization cost must be re-validated per model:** int8 quantization
+maps each layer's float range onto 256 levels, so its damage depends on how each
+model's weight and activation distributions tolerate that rounding; outlier
+activations in one architecture can consume the range and crush the resolution
+left for everything else. The 4x size reduction is guaranteed by arithmetic; the
+WER cost is a property of the specific trained model, which is why it has to be
+measured, not assumed.

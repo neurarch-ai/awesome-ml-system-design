@@ -65,3 +65,26 @@ Illustrative.*
 | Multi-task heads with per-objective binary cross-entropy | Several engagement signals (click, save, long-dwell) to blend into one utility | One collapsed binary label that loses signal by merging distinct behaviors |
 
 **Provenance.** The pairwise LambdaMART objective originated at Microsoft (2010), extending the RankNet (Microsoft, 2005) pairwise-probability gradient by weighting each (winner, loser) pair by the NDCG change that swapping the pair would cause; that weighting is why it optimizes the ranking metric rather than raw score magnitude. NDCG is the graded-relevance measure these pairwise and listwise objectives are built to move.
+
+### Compare and contrast: pointwise vs pairwise vs listwise
+
+The three framings are easy to conflate because at serving time they are
+indistinguishable: each produces one score per item and the system sorts. The
+entire difference lives in what the training loss is allowed to see, and that
+quietly decides what the scores mean afterward.
+
+| Aspect | Pointwise | Pairwise | Listwise |
+|---|---|---|---|
+| Serving behavior | One score per item, sort descending | Same | Same |
+| Training data source | The same click/engagement logs | Same logs, re-grouped | Same logs, re-grouped |
+| One training example is | A single (user, item, label) row | A (winner, loser) pair from the same query or session | An entire ranked list for one query |
+| The gradient depends on | That item's own score vs its label, in isolation | The score gap between the two items in the pair | The positions of all items in the list |
+| What the score means after training | A calibratable probability of the label | Only relative order; magnitude drifts freely | Only relative order |
+| Cost of building training data | Trivial, streams at billions of rows | Pairs per query grow quadratically | Needs full per-query lists assembled |
+
+The difference changes the design the moment any consumer treats the score as a
+probability rather than a sort key: an ads auction (bid = value times predicted
+probability) or a multi-task utility blend forces a pointwise or
+post-calibrated objective, while a pure search results page is free to take the
+pairwise or listwise accuracy gain because nothing downstream reads the
+magnitudes.

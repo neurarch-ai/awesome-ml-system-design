@@ -59,6 +59,12 @@ identical offsets. Strong systems encode the actual **time gap** between
 consecutive events, not just their rank in the sequence, so the model learns that
 a recent action carries more recency weight than an old one at the same position.
 This is the single most-skipped detail in interview answers about sequence models.
+**Why:** attention can only condition on what is in the input representation.
+With a bare 1..N index, an action from one second ago and an action from one
+month ago produce identical position features, so the model has no way to learn
+different weights for them even if the signal is strong; adding the time gap
+gives attention an actual feature that separates "same session" from "stale
+history."
 
 **Q: You said training-serving skew is the headline risk. What specifically
 causes it here?**
@@ -69,6 +75,11 @@ stream. If either set of rules differs even slightly (a different dedup window, 
 missing filter, a different tie-break), the encoder sees sequence distributions
 at serving that it never saw during training. The fix is not a better monitoring
 dashboard; it is shared code for sequence construction that both pipelines call.
+**Why a slight rule difference is enough to hurt:** the encoder's attention
+patterns are fit to the exact statistics of the training sequences (typical
+lengths, adjacency structure, duplicate patterns), so a changed dedup window
+shifts those statistics and puts every serving request slightly
+out-of-distribution, where the model degrades silently rather than erroring.
 
 **Q: Pinterest uses both TransAct and PinnerFormer. Why two models?**
 A: They cover two timescales. TransAct captures the last 100 real-time actions,
@@ -105,6 +116,23 @@ the next item from left context alone, so the training computation and the servi
 computation are identical. That train-serve consistency is precisely the tradeoff
 you give up when you choose BERT4Rec for bidirectional context.
 
+**Q: In-batch negatives and sampled-softmax negatives look similar; both replace
+the full-catalog softmax with a small negative set. When does the difference
+actually matter?**
+A: The difference is the distribution the negatives are drawn from. In-batch
+negatives reuse the other users' positive items in the same batch, so negatives
+arrive in proportion to item popularity: popular items appear in many rows and
+therefore get used as negatives far more often. Sampled softmax draws negatives
+from an explicit distribution you choose, typically uniform over the catalog.
+The difference matters exactly when catalog popularity is skewed, which is
+always: uncorrected in-batch training systematically punishes head items (the
+logQ correction exists to cancel that), while pure uniform sampling mostly
+serves up trivially easy negatives (random items the user was never close to),
+so gradients carry little signal and the embedding space stays coarse. In-batch
+popularity-weighted negatives are what make training hard enough to be useful,
+which is why production recipes start from in-batch negatives plus the
+correction rather than either pure option.
+
 ## Commonly answered wrong
 
 **Q: Can I model the sequence as a bag of items, or does order really matter?**
@@ -113,6 +141,12 @@ sequence order (removing order without removing any items) dropped recall by
 10-45% across surfaces. The bag-of-items answer is the most common wrong answer
 in this topic; it is also the easiest trap to lay because it looks harmless. If
 order did not matter, you would not need a sequence model at all.
+**Why order carries the signal:** two users with the identical item set but
+opposite orderings are moving in opposite directions (one drifting from cooking
+toward travel, the other the reverse), and their next items differ accordingly.
+A bag representation is identical for both by construction, so an order-blind
+model is forced to give them the same prediction; the information that
+distinguishes them exists only in the ordering.
 
 **Q: DIN uses attention over the user's history. Does it model sequence order?**
 A: No. DIN's local activation unit computes attention weights between each
@@ -123,6 +157,12 @@ interest intensity). DIN adapts the user representation per candidate but ignore
 the order of behaviors entirely. BST is what adds sequential order on top of that
 idea. Claiming DIN models sequence order is one of the most common and most
 revealing mistakes in this interview topic.
+**Why pooling erases order by construction:** a weighted sum is
+permutation-invariant, meaning you can shuffle the history into any order and,
+with no positional signal feeding the weights, every term in the sum is
+unchanged, so the output is bit-for-bit identical. Order sensitivity has to be
+injected explicitly (positional encodings, causal masking), which is exactly
+what BST adds.
 
 **Q: Is training-serving skew just a matter of preprocessing? Can I fix it by
 standardizing the feature pipeline?**
@@ -142,3 +182,9 @@ case. A separate model means twice the infrastructure, twice the maintenance, an
 a hard boundary at the cold-warm transition that usually creates a discontinuous
 experience. The degradation-ladder framing (session model, then content, then
 popularity) handles the full spectrum with one system.
+**Why the boundary is discontinuous:** two models trained on different data with
+different objectives produce scores in different spaces, so the day a user
+crosses the history threshold their recommendations jump to a different model's
+opinion all at once. A single model with shared parameters shifts smoothly
+instead, because each new event only incrementally updates the same
+representation that was already serving them.

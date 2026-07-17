@@ -52,6 +52,11 @@ quality if the model barely weights it. PSI and KS answer "did it move?" not
 "does it matter?" Check feature importance before acting. Similarly, a feature
 can drift from one benign range to another benign range; what matters is whether
 the new distribution is outside the model's learned support.
+**Why:** predictions only change where the model's decision function changes. A
+shifted feature with near-zero weight moves inputs through a flat region of that
+function, so nothing downstream moves. Drift metrics see only the inputs; they carry
+no information about the function's sensitivity to those inputs, which is why
+importance-weighted drift ranking exists in the first place.
 
 **Q: The monitoring dashboard shows no drift, but the product team reports
 engagement is down. What do you check?**
@@ -62,6 +67,11 @@ specific cohort that the aggregate hides. Check whether the model's predictions
 are influencing the data it is now being evaluated on (feedback loop narrowing
 the coverage). Finally, check whether the business metric itself changed
 definition.
+**Why the dashboard stays green:** drift detectors compare input marginals, but
+concept drift lives in the conditional relationship between inputs and labels. The
+same inputs can keep arriving in the same proportions while the correct answers for
+them have changed, so no input-side statistic can catch it even in principle; only
+label-based or outcome-based signals can.
 
 **Q: You detect drift in a feature and start a retrain. The retrained model
 performs worse. Why?**
@@ -83,6 +93,21 @@ does not inflate with sample count the way a significance test does. If you keep
 KS test, gate on the statistic magnitude (or a minimum-detectable-effect floor), not
 on the p-value alone.
 
+**Q: Data-quality checks and drift detection look similar; when does the difference
+actually matter?**
+A: Both watch incoming data, compare it against an expectation, and raise alerts,
+so teams often treat one as covering the other. The mechanism differs: a quality
+check asserts per-record invariants (schema, types, null rate, allowed ranges) that
+are either violated or not, deterministically; drift detection compares a window's
+distribution to a training reference statistically, and can only say "this looks
+different," never why. The difference matters because the correct responses are
+opposites. A broken upstream join surfaces in a drift-only stack as "feature
+drifted," and the reflexive response, retraining, bakes the corrupted window into
+the next model; the right response is an upstream fix plus a backfill. Genuine
+drift has no upstream fix at all; retraining is the right response. Run quality
+checks earlier in the pipeline so the bug class is caught and named
+deterministically, leaving the statistical layer to flag only changes in the world.
+
 ## Commonly answered wrong (the traps)
 
 **Q: If I have fast labels (clicks arrive in seconds), I don't need drift
@@ -92,6 +117,11 @@ what is about to happen. Drift monitoring is a leading indicator that gives you
 time to act before quality has already degraded. Second, even with fast labels,
 aggregate accuracy hides per-segment regressions. A global AUC that is holding
 steady can mask a new-user cohort that has fallen off a cliff.
+**Why drift leads accuracy:** decay starts in the small slice of traffic that has
+moved outside the training distribution. While that slice is small, aggregate
+accuracy barely moves, but the input shift on the affected features is already
+measurable. By the time the aggregate metric visibly drops, the drifted slice has
+grown, and the lead time in which a retrain would have been cheap is gone.
 
 **Q: Monitoring is expensive, so I should only log the features that matter.**
 A: Partially right, and easy to overdo. Logging only high-weight features saves
@@ -119,3 +149,8 @@ mapping. Concept drift requires fresh data that reflects the new input-to-label
 relationship. More data from before the shift reinforces the wrong mapping. The
 fix is recent data plus confirmation that the new distribution is actually
 different, not just a short-term fluctuation.
+**Why more old data actively hurts:** training minimizes average loss over the
+dataset, so examples vote in proportion to their count. Padding the set with
+pre-shift data outvotes the fresh examples that encode the new mapping and drags
+the fit back toward the old relationship; recency weighting or a sliding window is
+how you change the vote, not raw volume.

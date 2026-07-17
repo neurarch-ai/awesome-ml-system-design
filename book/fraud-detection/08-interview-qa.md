@@ -64,6 +64,12 @@ sudden shift in the mix of declined transactions is an attack signature), and
 an anomaly path that catches new attacks before labels exist. Cross-link to
 monitoring; fraud is the canonical case where drift detection is a safety system.
 
+**Why:** an adversary probes the decision boundary: they submit small variations
+until one passes, then scale that variant up. The probing phase shows up first as a
+shift in the score distribution (a cluster of attempts bunched just below the
+threshold) long before any chargeback labels arrive, which is why score-distribution
+alarms catch an attack weeks earlier than any label-based metric can.
+
 **Q: Your PR-AUC improved offline but live precision fell. What happened?**
 
 A: Several possibilities. Most likely: (1) training-serving skew in velocity
@@ -73,6 +79,13 @@ treated as negative, teaching the model that fresh fraud is fine); or (3) the
 adversary shifted between your training window and production. Diagnose by
 logging served feature values and comparing against training distributions.
 
+**Why the offline metric missed it:** in a backtest, the training and evaluation
+rows both come from the same offline feature pipeline, so a computation bug affects
+both sides consistently and cancels out of the metric. Live, the serving path
+computes the feature with different code and different timing, so the model receives
+inputs from a distribution it never trained on, and the damage appears only in
+production precision.
+
 **Q: How do you handle the block-side blind spot?**
 
 A: Blocked transactions never generate a chargeback, so the model never learns
@@ -81,6 +94,14 @@ through hold-out: occasionally allow a fraction of would-be-blocked transactions
 (say 1 to 2 percent), accept the small fraud cost, and observe what happens.
 Their settled labels give you block-precision estimates. Also lean on analyst
 review verdicts for borderline cases, since those cases span both sides.
+
+**Why the hold-out must be randomized:** if you hand-pick which blocked
+transactions to let through, the sample skews toward cases you already believe are
+safe, and the measured precision no longer generalizes to the full blocked
+population. Random selection is what makes the small sample an unbiased estimate,
+and it also keeps the model's training data from collapsing onto only the
+transactions it already approves of, which is how selection bias compounds over
+successive retrains.
 
 **Q: Is calibration important for fraud?**
 
@@ -110,6 +131,22 @@ The fix is a prior correction: shift the output log-odds by $\ln(\pi_{\text{trai
 equivalently fit isotonic or Platt calibration on a held-out set drawn from the true
 base rate before deriving the threshold.
 
+**Q: An anomaly detector and a drift alarm look similar; when does the difference
+actually matter?**
+
+A: Both flag "something unusual" and both run without labels, which is why designs
+often merge them into one box. The mechanism differs: an anomaly detector scores
+each individual event against the learned shape of normal behavior and fires per
+transaction; a drift alarm compares aggregate distributions (features, scores)
+between time windows and fires only when the population shifts. The difference
+matters in both directions. A single mule transaction can be wildly anomalous while
+leaving every population statistic untouched, so a drift alarm alone misses it.
+Conversely, a bot attack can consist of individually plausible transactions, each
+crafted to look normal, whose sheer volume shifts the score distribution; the
+anomaly path stays silent and the drift alarm is the only thing that fires. Mature
+systems run both: anomaly scores gate individual events into review, drift alarms
+trigger investigation and retraining.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Can you improve recall by adding more data with SMOTE?**
@@ -122,6 +159,13 @@ effective class ratio. Always evaluate on the true base rate, never on a
 rebalanced eval set. Try class weights or focal loss first; reach for SMOTE
 only when recall is critically low despite weighting.
 
+**Why interpolation misfires here:** SMOTE draws synthetic points on straight lines
+between minority neighbors in feature space, and fraud features are heavily
+categorical, discrete counts, and identifier-like, so "halfway between two device
+fingerprints" corresponds to no transaction that can occur. Worse, when two fraud
+clusters sit on opposite sides of a legitimate region, the interpolated positives
+land inside the legitimate region and teach the model to flag good customers.
+
 **Q: The threshold is 0.5 by default, I should tune it if needed.**
 
 A: The threshold is always derived from the cost matrix; it is never 0.5 by
@@ -130,6 +174,12 @@ cost-optimal threshold is approximately 0.09. Saying "I would tune the threshold
 if needed" misses the point: the threshold is not a hyperparameter to grid-
 search, it is a business decision computed from the cost matrix. State the
 formula and derive the number.
+
+**Why the formula:** blocking is worth it exactly when the expected fraud loss
+exceeds the expected friction cost, that is when $p \cdot c_{\text{FN}} \gt (1 - p)
+\cdot c_{\text{FP}}$; solving for $p$ gives the threshold $c_{\text{FP}} /
+(c_{\text{FP}} + c_{\text{FN}})$. A threshold of 0.5 is the special case where both
+errors cost the same, which essentially never holds in fraud.
 
 **Q: ROC-AUC is 0.97, so the model is great.**
 

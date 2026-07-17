@@ -89,6 +89,13 @@ truth for the borderline region; or a model that explicitly represents the
 selection mechanism (Heckman correction or propensity-weighted training). The
 randomized slice is the only clean solution; it has a real cost in expected losses
 on deliberately borderline approvals, and that cost is a business decision.
+**Why only randomization is clean:** reject inference and selection-model
+corrections both fill the missing labels with assumptions (that bureau outcomes
+transfer, that the selection equation is specified correctly), and those
+assumptions cannot be tested using the same biased data that created the
+problem. A randomized slice is the one mechanism that produces labels whose
+distribution does not depend on the old approval policy, which is why it is
+ground truth and the others are educated guesses.
 
 **Q: Why does Nubank use survival curves rather than a single 12-month default
 probability?**
@@ -112,6 +119,12 @@ model washed out. For a credit model, the decision cares about the tails and the
 segments: a miscalibrated new product means mis-priced risk on that product's
 entire book. Always report reliability curves sliced by segment, vintage, and
 protected group, especially for regulated decisions.
+**Why the average hides it:** calibration error is signed before it is averaged
+in effect, so a model that over-predicts risk on one segment and under-predicts
+on another by the same amount can net out to a beautiful aggregate reliability
+curve. The aggregate only certifies the mixture you measured it on; every
+decision is made on an individual from some segment, where the local error is
+what gets priced.
 
 **Q: Your fraud rate is 0.5 percent. Should you SMOTE the training set to balance
 the classes first?**
@@ -129,6 +142,24 @@ a price. The cleaner levers for a GBDT are class weighting in the loss plus
 threshold tuning on the true distribution, which leave calibration intact. Reach
 for SMOTE mainly when the model genuinely cannot express class weights and the
 features are smooth and continuous.
+
+**Q: Platt scaling and isotonic regression look similar; both are monotone
+post-hoc calibration maps fit on a holdout. When does the difference actually
+matter?**
+A: The difference is capacity. Platt scaling fits a two-parameter logistic
+curve, so it assumes the miscalibration has a specific sigmoid shape (scores too
+spread out or too compressed, symmetrically); with only two parameters it is
+hard to overfit and works on small holdouts. Isotonic regression fits a
+free-form monotone step function, so it can correct any monotone distortion,
+including lopsided ones (well calibrated in the middle, badly off in one tail,
+which is common after negative downsampling); the price is that each step is
+estimated from the examples in its score range, so a small holdout gives noisy
+steps and the "correction" can encode noise. The difference matters at the
+tails of a money-setting model: a credit or fraud threshold lives in a sparse
+score region where Platt's rigid shape may not bend enough and isotonic may not
+have enough examples, so the practical rule is Platt (or beta calibration) for
+small holdouts, isotonic once the holdout has enough events per bin, and always
+inspect the reliability curve in the region where the threshold sits.
 
 ## Commonly answered wrong
 
@@ -152,6 +183,13 @@ and in some domains (like a discount that trains price sensitivity) it actively
 backfires. Wayfair's WayLift platform makes this explicit: propensity models scale
 easily but "over-message"; uplift models require RCT data but target only the
 persuadables whose behavior the treatment actually changes.
+**Why uplift needs randomized data:** uplift is a difference between two
+outcomes for the same person (treated versus not), and you only ever observe
+one of them. Without randomization, who got treated was decided by past
+targeting policy, so treated and untreated customers differ in ways that
+correlate with the outcome, and the model cannot separate "the discount changed
+them" from "the kind of person we discounted was different." Randomization is
+what makes the comparison group a valid stand-in for the unobserved outcome.
 
 **Q: Is a higher AUC always better?**
 
@@ -173,3 +211,10 @@ full retrain. Nubank's architecture explicitly decouples the ranking model (slow
 updates) from the survival calibration layer (frequent recalibration), for exactly
 this reason. Retrain the base model when the ranking AUC or feature distributions
 shift materially; recalibrate when only the score distribution moves.
+**Why the two drift separately:** a base-rate shift (a macro downturn raises
+default rates across the board) moves every probability while leaving the
+relative ordering of applicants nearly intact, so ranking survives while
+calibration breaks; that failure lives entirely in the monotone map from score
+to probability, which is exactly the piece the calibration layer owns.
+Retraining the whole model to fix it risks disturbing a ranking that was never
+broken, in exchange for nothing the cheap recalibration does not already give.

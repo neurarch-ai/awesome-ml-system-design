@@ -61,6 +61,31 @@ text (product descriptions), images (listing photos), or event sequences (browsi
 paths), a neural architecture handles all modalities jointly. A tree cannot natively
 ingest raw text or image tensors.
 
+### Compare and contrast: GBDT vs neural net on tabular data
+
+The two families are easy to treat as interchangeable score machines, and in
+several load-bearing ways they are: both minimize the same differentiable loss
+on the same rows, both emit an uncalibrated score that needs the same Platt or
+isotonic layer before it can price anything, and both overfit without
+regularization. The genuine difference is the shape of the function each one
+can build, and that shape decides how each fails.
+
+| Aspect | GBDT | Neural net |
+|---|---|---|
+| Training objective | Gradient steps on a differentiable loss (logloss, RMSE) | Same |
+| Output | Uncalibrated score; needs the same calibration layer | Same |
+| Function it builds | A sum of axis-aligned step functions: piecewise constant | A composition of linear maps and smooth activations |
+| How it fits | One small tree at a time, each on the ensemble's residuals | All weights updated jointly by backpropagation |
+| Outside the training range | Flat: an input past the last split lands in an edge leaf and gets that leaf's constant | Keeps extrapolating; the output is unbounded and unwarranted |
+| Monotone transforms and scaling | Irrelevant; splits depend only on feature order | Load-bearing; unnormalized features distort the optimization |
+| Millions of ID values | No native mechanism; encodings explode or leak | Learned embeddings handle it natively |
+
+The difference changes the design at the edges of the data: a tree fails quiet
+on drifted inputs (a stale constant) while a net fails loud (a confidently
+extrapolated number), so risk systems favor trees for already-meaningful
+columns and bring in the net only when ID embeddings or multimodal fusion give
+it something a step function cannot represent.
+
 ### Why CatBoost's ordered target encoding matters
 
 The provenance line notes that CatBoost differs from XGBoost and LightGBM mainly

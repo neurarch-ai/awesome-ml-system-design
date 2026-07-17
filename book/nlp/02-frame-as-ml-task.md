@@ -88,6 +88,31 @@ flowchart TD
   Q -->|"generate new text"| S2S["seq2seq encoder-decoder<br/>(translation, correction)"]
 ```
 
+## Compare and contrast: fine-tuned task model vs prompted LLM
+
+Both take free text in and produce a task answer out, both are built on pretrained
+transformers, and both get better when you show them labeled examples, so from the
+product's point of view they look like two ways to buy the same capability. The
+mechanics underneath are different enough to dictate opposite places in the
+architecture.
+
+| Dimension | Fine-tuned task model (encoder + head) | Prompted LLM |
+|---|---|---|
+| Input | free text, subword-tokenized (same) | free text, subword-tokenized (same) |
+| Built on | a pretrained transformer (same) | a pretrained transformer (same) |
+| Where task knowledge lives | baked into the weights by gradient updates on your labels | restated in the prompt (instructions plus exemplars) on every single call |
+| Output form | a calibrated probability over a fixed label set, directly thresholdable | generated text that must be parsed; no native calibrated probability |
+| Labeled data needed | thousands of examples to specialize | zero to a handful of exemplars |
+| Changing the taxonomy | collect labels and retrain | edit the prompt and redeploy in minutes |
+| Per-call compute | a small encoder, single-digit milliseconds on commodity hardware | a large decoder generating tokens, orders of magnitude more compute per call |
+| Behavior stability | frozen weights; outputs change only when you retrain | shifts with prompt edits and provider model updates you may not control |
+
+The difference changes the design at the inline path: a high-QPS pipeline that
+thresholds calibrated scores and must hold a latency budget needs the fine-tuned
+model, which pushes the prompted LLM to the offline roles where its flexibility
+wins: zero-shot bootstrapping, weak-label generation, and the hard-tail cases the
+small model abstains on.
+
 ## When to use which framing
 
 | Reach for | When | Instead of |

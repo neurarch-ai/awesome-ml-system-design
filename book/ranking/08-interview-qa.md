@@ -64,6 +64,12 @@ never trained on. Other candidates: label leakage from a non-point-in-time join
 offline labels (the ranker learned to predict position, not relevance), or an
 offline metric that does not match the online objective. Run a feature
 distribution comparison between training and serving before suspecting the model.
+**Why:** the model's weights encode assumptions about the exact feature
+distribution it trained on, so a feature computed differently at serving time
+puts the model in silent extrapolation, where its errors are unbounded. And
+offline evaluation cannot catch this by construction: the eval set is built by
+the same training pipeline, so the seam between the two codepaths is invisible
+until real serving traffic crosses it.
 
 **Q: Where exactly in DLRM do the feature interactions happen? Why does the
 placement matter?**
@@ -88,6 +94,11 @@ what they say. Negative downsampling and stratified training both distort the
 base rate, so apply a post-hoc Platt or isotonic step and monitor ECE
 continuously. Spotify monitors ECE as a live metric because miscalibration
 directly means over- or under-bidding in the ad auction.
+**Why downsampling distorts the base rate:** if you keep 1 in k negatives, the
+model sees k times more positives per negative than reality contains, so the
+probabilities it learns are honest about the training data but the training data
+lied about the world. A post-hoc monotone map (Platt, isotonic) undoes exactly
+that distortion without touching the ordering.
 
 **Q: A colleague wants to add listing-id embeddings to the Airbnb ranker for
 personalization. Why is that dangerous?**
@@ -98,6 +109,13 @@ features (location, price, amenities, listing type) and contextual features that
 generalize across listings. Reserve id embeddings for entities with dense,
 repeated supervision (product ids in a marketplace with billions of transactions,
 not individual travel listings).
+**Why:** an id embedding is a block of free parameters updated only by that id's
+own training examples, and no other listing's data can correct it because no
+other listing shares those parameters. With a few hundred noisy labels driving a
+multi-dimensional vector, gradient descent memorizes which particular bookings
+happened rather than any transferable property of the listing. Content features
+do generalize because every listing with the same price band or location keeps
+updating the same shared weights.
 
 **Q: LambdaMART optimizes NDCG, but NDCG is flat almost everywhere and
 discontinuous in the model scores. How does gradient boosting train on it at
@@ -113,6 +131,19 @@ you wish existed, weighted so that mis-ordering a high-value pair near the top
 pulls hardest, which is exactly why the model moves NDCG without NDCG ever being
 differentiated.
 
+**Q: AUC and NDCG both measure ranking quality and usually move together; when
+does the difference actually matter?**
+A: AUC is position-blind: every (positive, negative) inversion counts the same,
+so fixing a mis-ordering at rank 400 moves AUC exactly as much as fixing one at
+rank 2. NDCG@k discounts gain by the log of the rank and truncates at k, so it
+only rewards fixes a user can see. The difference bites whenever the display
+surface is short: a model change that cleans up mid-list order can lift AUC
+while leaving the rendered top ten untouched, which is one honest reason an
+offline AUC win ships flat online. The reverse also happens: swapping ranks 1
+and 3 barely dents AUC over millions of pairs but visibly changes the product.
+Use AUC to confirm the model discriminates at all, and gate on NDCG@k at the k
+you actually render.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Do the two towers in a ranker share weights to save parameters?**
@@ -122,6 +153,12 @@ feature distributions). In rankers like Snap's ad system, the user-feature tower
 and ad-feature tower are separate so the user side can be computed once and
 shared across all candidate ads. Neither case involves sharing weights between
 the user side and the item side. Sharing would destroy the ability to precompute.
+**Why:** the compute saving comes from the split itself, not from the parameter
+count: because the user tower's output depends only on user features, it can be
+computed once per request (or cached) and reused across every candidate. Tying
+weights would also force one function to embed two unrelated feature spaces
+(user behavior history versus ad content) with different vocabularies and
+semantics, so nothing is gained and both representations get worse.
 
 **Q: Can you add a few user-item cross features for accuracy without rethinking
 the architecture?**
@@ -130,6 +167,13 @@ ranking, yes: cross features are the biggest accuracy lever and they belong
 exactly here, where you already have both the user and the item at hand. The
 constraint is only that the cross feature must be computable at serving latency.
 Pre-compute slow cross signals offline and serve from a feature store.
+**Why the retrieval "no" is absolute:** the two-tower factorization works because
+item vectors are user-independent, so the whole catalog can be embedded once and
+indexed in the ANN. A single user-item cross feature makes every item's
+representation a function of the current user, which means re-embedding the
+catalog per request, which is exactly the hundred-million-item cost the
+factorization exists to avoid. Ranking never precomputed item scores in the
+first place, so it has nothing to lose.
 
 **Q: Is the logQ correction applied at ranking?**
 A: No. logQ (the sampling-bias correction) is a retrieval training trick that
@@ -138,6 +182,14 @@ in-batch logits. Ranking does not use in-batch negatives and does not have a
 sampling-bias problem in the same form. The corrections relevant to ranking are
 position bias correction in the labels and negative-downsampling calibration
 correction in the output probabilities.
+**Why retrieval needs it and ranking does not:** in-batch negatives are drawn in
+proportion to item popularity (popular items appear in more training rows), so
+popular items get hammered as negatives far more often than a uniform sample
+would dictate, and the embedding space learns to underscore exactly the items
+users like most; subtracting the log-sampling-probability cancels that
+distortion. Ranking's negatives are logged impressions that were actually shown
+and not clicked, arriving at their natural serving-time rate, so there is no
+artificial sampling distribution to undo.
 
 **Q: Does adding more objectives in a multi-task ranker always help?**
 A: No. Objectives that are positively correlated (clicks and saves) help each
@@ -147,6 +199,12 @@ shared body, letting one task's gradient hurt the other. The fix is MMoE or PLE
 gating (each task picks its own mixture of experts) rather than a flat shared
 body, and monitoring per-task metrics so you can see when one task is degrading
 another.
+**Why:** shared layers receive the sum of every task's gradient; when two tasks
+want the shared representation to move in opposite directions, the updates cancel
+or seesaw, so features one task depends on get overwritten by the other (negative
+transfer). Gating routes each task's gradient mostly into its own preferred
+experts, so the conflicting updates land on different parameters instead of
+fighting over the same ones.
 
 **Q: Does applying Platt or isotonic calibration change the ranking order within
 a single model?**

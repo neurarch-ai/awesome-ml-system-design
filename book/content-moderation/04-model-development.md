@@ -51,6 +51,28 @@ the content. The mitigation is not a cleverer single hash but defense in depth (
 independent hash algorithms, periodic bank refresh from confirmed misses, and the
 downstream classifiers as the backstop for anything the bank cannot match).
 
+#### Compare and contrast: perceptual-hash matching vs learned classifier
+
+The two front-line detectors are easy to blur together because both emit a
+"this looks like a violation" signal into the same policy engine; the table
+pins down what they genuinely share and where they diverge.
+
+| Dimension | Perceptual-hash matching | Learned classifier |
+|---|---|---|
+| Signal into the policy engine | A per-item violation signal consumed by the same downstream enforcement logic | Same |
+| The one tunable knob | A precision-recall dial: the Hamming match radius $r$ | Same role, played by the score threshold $\tau$ |
+| Needs ongoing maintenance against an adversary | Yes: bank refresh from confirmed misses, multiple hash algorithms | Yes: retraining on fresh evasions, recalibration after drift |
+| What it recognizes | Specific known instances: re-uploads of material already in the bank, with zero generalization | The concept of the harm: generalizes to content never seen before |
+| Where its knowledge lives | A database of fingerprints; adding coverage is an insert, no training | Model weights; adding coverage means labels, retraining, and recalibration |
+| Error profile at the operating point | Near-zero false positives at a conservative radius; misses everything novel | Meaningful false-positive rate; needs a human-review band and calibrated scores |
+| Cost per item | Near-zero (a hash and an index lookup) | A model forward pass, from cheap CNN to expensive joint fusion |
+
+The difference decides what may be auto-actioned: a hash match against
+confirmed material is trustworthy enough to act on automatically even for the
+severest policies, while a classifier score on the same policy only prioritizes
+a human queue, and that asymmetry (not cost alone) is why the funnel runs the
+hash gate first and keeps classifiers behind it as the novel-harm backstop.
+
 ### Text classifiers
 
 Fine-tuned transformer encoders (BERT-family, ModernBERT) are the workhorse. Each

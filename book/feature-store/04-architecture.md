@@ -113,6 +113,32 @@ are right.
 | Latency | seconds to minutes | single-digit milliseconds |
 | Cost driver | storage + scan compute | memory + IOPS |
 
+## Compare and contrast: online feature store vs a plain cache
+
+Both are low-latency key-value systems, often literally the same technology (Redis),
+which is why "the online store is just a cache" is the most common misconception in
+this design. The resemblance is real, but the contract is different: a cache
+accelerates reads of data whose source of truth lives elsewhere and may drop or
+expire entries at will, while an online store is the authoritative serving copy of a
+materialized computation, written proactively by pipelines rather than filled
+lazily on read misses.
+
+| Dimension | Cache in front of a service | Online feature store |
+|---|---|---|
+| Access pattern | point read by key, millisecond latency | point read by key, millisecond latency (same) |
+| Typical technology | Redis, Memcached | often the same Redis / Cassandra / DynamoDB (same) |
+| How data gets in | lazily, on read miss, copied from a backing source | proactively, pushed by batch materialization and streaming pipelines |
+| On a miss | fall through to the source of truth and recompute | there is no fallback: recomputing a 30-day aggregate in the request path is impossible within budget, so a miss means default values |
+| Eviction / TTL | free to evict anytime; correctness unaffected, only latency | eviction silently replaces a real feature value with a default, changing model inputs and predictions |
+| Consistency contract | best effort staleness vs a backing store | must match what the offline store would say the current value is (served-vs-computed parity) |
+| Schema and lineage | opaque bytes, no registry | typed features with owner, freshness SLA, and training-side counterpart |
+
+The difference changes the design the moment you configure eviction or size limits:
+for a cache, undersizing costs latency; for an online store, undersizing or TTL
+expiry silently degrades model accuracy with no error anywhere, so capacity,
+eviction policy, and miss-rate monitoring must be treated as correctness concerns,
+not performance tuning.
+
 ## When to use which store design
 
 | Reach for | When | Instead of |

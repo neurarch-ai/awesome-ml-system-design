@@ -131,6 +131,29 @@ about the score depends on the user until that last step.
 > each tower down to the similarity layer and note that the features never mix
 > before it, which is exactly what lets you precompute one side.
 
+### Compare and contrast: bi-encoder embedding vs cross-encoder score
+
+The bi-encoder and the cross-encoder are often described as two strengths of the
+same idea, and the confusion is natural because they can share a backbone and
+train on identical pairs; what actually separates them is the artifact each one
+produces.
+
+| Dimension | Bi-encoder embedding | Cross-encoder score |
+|---|---|---|
+| Training signal | The same labeled or behavioral pairs; both learn pair relevance | Same |
+| Backbone | Can be the exact same pretrained encoder (a BERT can play either role) | Same |
+| What relevance it can express | Whatever survives compression into two independent vectors joined by one dot product | Same relevance target, but computed with full cross-attention between the two inputs |
+| The artifact produced | A standalone vector per entity: cacheable, indexable, reusable for clustering, dedup, and any future consumer | A single ephemeral scalar, valid only for this one pair at this one moment, nothing to cache or index |
+| Serving shape | Embed once offline, answer queries via ANN lookup, cost roughly flat in candidate count | One full forward pass per pair, cost linear in candidates |
+| Quality ceiling | Lower: the dot-product bottleneck cannot represent interactions between specific input parts | Higher: token-level or feature-level interactions are modeled directly |
+
+The difference dictates the design the moment you need either scale or a
+reusable representation: if the product needs an index, a clustering, or one
+vector serving many downstream consumers, only the bi-encoder produces that
+object at all, while the cross-encoder's superior per-pair judgment is
+affordable only on a shortlist, which is why the standard stack retrieves with
+the bi-encoder and re-ranks the survivors with the cross-encoder.
+
 **GraphSAGE-style (inductive graph encoder).** Instead of learning a fixed vector
 per node, learn aggregation functions that build a node's embedding from its own
 features plus a sample of its neighbors' features, stacked over $K$ hops. Because

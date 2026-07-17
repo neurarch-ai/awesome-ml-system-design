@@ -57,6 +57,11 @@ Second, point-in-time correctness: if features join post-query data naively, the
 training set leaks future clicks into features and the offline score is inflated.
 Third, the gain may be real but deep in the list, where users do not scroll. Check
 NDCG@3 and NDCG@5 specifically.
+**Why biased labels inflate NDCG without improving relevance:** clicks
+concentrate on whatever was ranked first, so undebiased click labels are partly
+a recording of the old ranking. A model that learns to reproduce the shipped
+order scores well against those labels while adding nothing users can feel, and
+the offline metric rewards it for the imitation.
 
 **Q: Your query expansion lifted recall but users started reformulating more often.
 What went wrong?**
@@ -66,6 +71,12 @@ precision for the documents actually returned. The fix is conservative expansion
 (restrict to high-confidence synonyms and stems), always keep the original query
 as a fallback retrieval path, and measure reformulation rate as an explicit cost
 alongside recall.
+**Why recall and reformulation can rise together:** recall counts whether
+relevant documents are anywhere in the candidate set, but users only react to
+the few visible slots. Expansion floods the candidate set with plausible
+near-matches that can outscore the original-term matches in those top slots, so
+the metric you optimized improved while the page the user judges got worse, and
+reformulating is how users tell you.
 
 **Q: How is search ranking different from recommendation ranking?**
 A: Three structural differences. First, there is an explicit query, so query
@@ -90,6 +101,23 @@ top ranks so a single arm's number-one result cannot steamroll the fusion. It is
 scale-free and needs no per-arm calibration, which is exactly why it is the
 production default rather than a weighted score sum.
 
+**Q: A dual-encoder and a cross-encoder look similar; both are BERT-style models
+scoring query-document relevance. When does the difference actually matter?**
+A: The difference is where the query and document first meet. A dual-encoder
+encodes them separately and meets only at a final dot product, which is exactly
+what lets document vectors be precomputed offline and searched with ANN; the
+price is that no attention layer ever sees query and document tokens together,
+so fine-grained interactions (which query term matched which passage span) are
+compressed away into two fixed vectors. A cross-encoder concatenates query and
+document and lets every layer attend across both, which is why it is markedly
+more accurate, and also why nothing can be precomputed: the score exists only
+per (query, document) pair at query time. The difference matters the moment you
+ask "over how many documents?": at corpus scale (millions) only the dual-encoder
+is feasible, and at shortlist scale (tens to hundreds) the cross-encoder's
+accuracy is affordable. That is the whole reason the funnel uses the
+dual-encoder to retrieve and the cross-encoder to rerank, rather than either
+one doing both jobs.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Should you replace BM25 with a dense retrieval model once you have a good
@@ -100,6 +128,12 @@ nouns), because embeddings average semantics across many terms and can miss
 low-frequency exact matches. Every production system that tried "dense only" found
 a class of queries where BM25 was irreplaceable. Keep both arms. "There is no
 silver bullet" (Spotify's language, confirmed by Instacart and LinkedIn).
+**Why embeddings lose exactly where BM25 wins:** a rare string like a product
+code barely appears in training data, so the encoder has no learned
+representation for it and maps it into a generic region of the space, while
+BM25 gives that same term an enormous IDF weight precisely because it is rare.
+The rarer the term, the stronger the lexical signal and the weaker the learned
+one; the two arms' strengths are mirror images by construction.
 
 **Q: Can you just train the ranker on raw click-through rates and use high CTR as
 a proxy for relevance?**
@@ -110,6 +144,12 @@ already shipped. The fix is IPW debiasing (weight each click by the inverse of i
 position's propensity) or position-as-a-train-time-feature (fix it to a neutral
 constant at serving). Without this correction, the system locks in a feedback loop
 where popular positions stay popular.
+**Why IPW works:** if position 1 is examined five times more often than position
+5, a click earned at position 5 is worth five of the cheap position-1 clicks, and
+weighting each click by the inverse of its position's examination propensity
+makes the training signal look, in expectation, like every document had been
+shown at the same position. That removes the display advantage from the label
+so what remains is closer to the document's own pull.
 
 **Q: Should retrieval optimize precision so the ranker has fewer irrelevant
 documents to score?**

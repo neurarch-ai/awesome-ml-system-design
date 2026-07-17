@@ -67,6 +67,30 @@ Netflix Kayenta automates this entirely: it compares canary and baseline metrics
 with statistical rigor and gates the ramp without a human in the loop. That is
 the production standard for teams that ship daily.
 
+### Compare and contrast: canary vs shadow
+
+Both send live production traffic through the new model, both run it on real
+hardware next to the incumbent, and both exist to catch a bad version before
+full rollout, which is why people treat them as interchangeable. The pivot is a
+single wiring decision: whether the new model's output is returned to the user
+or discarded.
+
+| Aspect | Shadow | Canary |
+|---|---|---|
+| Input traffic | Real production requests (mirrored copy) | Real production requests (routed slice) |
+| Runs on production infra | Yes | Yes |
+| Output reaches the user | Never; it is thrown away | Yes, for the slice |
+| User risk | Zero | Bounded by the slice size, never zero |
+| Can measure | Crashes, latency, prediction-distribution shifts | All of that plus actual user impact (engagement, conversion) |
+| Cannot measure | Any user-behavior effect, by construction | Full-scale-only failure modes (needs the ramp) |
+| Marginal cost | Doubles inference spend on mirrored traffic | Roughly free; the slice replaces incumbent traffic |
+
+The difference changes the design because the risk being managed is different:
+if the question is "will this break," wire a shadow and accept the compute
+bill; if the question is "does this help," no amount of shadow time can answer
+it, so you must let some users see the output and pay in bounded user risk
+instead.
+
 ## Gradual rollout (step ramp)
 
 Widen the canary in steps: 5, 25, 50, 100 percent, with health gates between

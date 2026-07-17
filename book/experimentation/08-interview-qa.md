@@ -64,6 +64,12 @@ increase must exclude a meaningful regression (say, any increase above 5 ms) for
 the experiment to pass. "Not statistically significant" is not the same as "not
 worse"; an underpowered guardrail can produce a non-significant result even
 when the regression is real.
+**Why** non-inferiority is the fix: it flips the burden of proof. A standard
+significance test only controls the rate of falsely finding harm, so collecting
+less data makes it easier to "pass," which rewards under-powering exactly where
+safety matters. Non-inferiority demands positive evidence that any harm is
+smaller than the margin, so an underpowered guardrail now fails the test
+instead of sneaking through it.
 
 **Q: Your ranking test wins in the first week. Why not ship early?**
 
@@ -72,6 +78,12 @@ the novelty of seeing different content, and the effect can decay substantially
 as novelty wears off. Plot the daily treatment effect over time: a shippable win
 stabilizes; a novelty spike decays. Also, an early read is likely a peek before
 the planned sample size, which inflates the false-positive rate.
+**Why** peeking inflates it: under the null hypothesis the running p-value
+wanders randomly as data accumulates, and each look is another chance to catch
+it on a random excursion below 0.05. The nominal 5% rate is only valid for one
+pre-planned look; checking daily and stopping at the first significant readout
+can push the realized false-positive rate several times higher, which is what
+sequential-testing corrections exist to repair.
 
 **Q: You are running a ranker experiment at a marketplace. The treatment shows
 item X more, and item X sells out. What breaks?**
@@ -82,6 +94,13 @@ arms is now biased: the control arm is harmed not by its own ranker but by the
 treatment arm's behavior. A naive user split is invalid here. Use a switchback
 (time-based alternation of the whole system) or a geo split where the two arms
 do not share inventory.
+**Why** those designs fix it: the causal estimate assumes each unit's outcome
+depends only on its own assignment, and shared inventory couples the arms
+through a common resource, so control's outcome partly reflects treatment's
+behavior. Switchbacks and geo splits redraw the arm boundary around the
+interfering resource: within any one time window or region the entire inventory
+pool lives under a single arm, so neither arm can deplete the other's supply
+and the comparison becomes a clean counterfactual again.
 
 **Q: What is interleaving and when would you use it?**
 
@@ -93,6 +112,13 @@ within-user: you cancel out per-user variance entirely. Netflix finds it roughly
 a fast screen to prune a pool of candidate rankers to the few worth a full A/B
 test, then run the A/B to measure the actual business metric and guardrails
 before shipping. Interleaving alone does not measure the full business metric.
+**Why** the sensitivity gain is so large: in a parallel A/B, the noise term
+includes the huge between-user spread in baseline click propensity (heavy
+versus light users), and the ranker effect has to be detected on top of it.
+Interleaving turns the design within-subjects: the same user in the same
+session supplies the measurement for both rankers, so each user's baseline
+propensity cancels in the comparison and the residual noise is only the
+within-session choice variability, a far smaller quantity.
 
 **Q: CUPED reduces variance by subtracting a pre-experiment covariate. Why does
 that not bias the treatment effect?**
@@ -111,6 +137,26 @@ correlation between $X$ and $Y$, which is why a covariate correlated at 0.7 remo
 roughly half the variance. The senior point: CUPED buys power for free precisely
 because the covariate is pre-treatment; using an in-experiment covariate instead
 would bias the estimate.
+
+**Q: A switchback and a geo split look similar; when does the difference
+actually matter?**
+
+A: Both contain interference the same way, by redrawing the arm boundary around
+the shared resource so that inventory or supply never straddles arms, and both
+pay for it in effective sample size (windows or regions instead of users). The
+difference is which axis they separate on, and each axis has its own leakage.
+A switchback separates in time, so its weakness is carryover: if the treatment
+leaves a persistent state behind (drivers repositioned, inventory depleted,
+users who learned something), the next window inherits it and control windows
+are contaminated by their treated predecessors; the mitigations are longer
+windows and burn-in gaps, both of which cost sample. A geo split separates in
+space, so its weakness is cross-border flow: demand, supply, or social
+influence that crosses region boundaries leaks treatment into control, and
+larger, better-isolated regions mean fewer units and higher variance. The
+choice turns on where your interference travels: pick switchbacks when effects
+decay quickly in time but the resource pool is global, and geo splits when
+regions are naturally isolated but treatment effects persist too long for
+windows to wash out.
 
 ## Commonly answered wrong (the traps)
 
@@ -141,6 +187,12 @@ exists. Use a non-inferiority test with an explicit margin (Airbnb and Spotify
 do this): the confidence interval of the guardrail change must exclude a
 meaningful harm before you declare it safe. Power each guardrail metric at the
 joint beta-star level when you need all guardrails to pass.
+**Why** the joint powering matters: the ship decision requires every guardrail
+to be clean simultaneously, and misses compound. If each of five guardrails
+individually has only a modest chance of catching its own real regression, the
+probability that at least one real regression slips through the whole panel is
+much higher than any single metric's miss rate, so each guardrail must be
+powered above the level that would suffice for it alone.
 
 **Q: What does pre-registering the experiment actually mean?**
 
@@ -151,6 +203,13 @@ rationalize a result after seeing it (HARKing: hypothesizing after results are
 known). Booking.com uses pre-registration adherence as the core of their
 experimentation quality KPI. Without it, even a well-designed experiment can
 produce a misleading ship decision.
+**Why** post-hoc freedom corrupts the statistics: with dozens of metrics,
+slices, and time windows available after the fact, some comparison will clear
+the 5% bar by pure chance, and picking the hypothesis after seeing which one
+did converts that expected fluke into an apparently confirmed finding. The
+p-value's guarantee assumes the test was chosen before the data were seen; the
+implicit search over candidate hypotheses is a multiple-comparisons problem the
+final p-value silently ignores.
 
 **Q: Your intended 50/50 split came back 50.4/49.6 across millions of users. That
 is close enough to balanced, so proceed with the analysis?**

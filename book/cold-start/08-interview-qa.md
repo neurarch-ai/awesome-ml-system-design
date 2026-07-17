@@ -78,6 +78,12 @@ the payoff. You should name this explicitly and propose measuring both a
 short-term engagement metric and a long-horizon retention or diversity metric,
 with the understanding that a small short-term dip is acceptable if the
 long-horizon metric rises.
+**Why:** session metrics structurally cannot see the payoff because of where it
+lands. The value of exploring an item accrues to future sessions and to other
+users (once an uncertain item proves good, everyone's later feeds improve), so
+impression-level attribution assigns the cost to the exploring session and the
+benefit to nobody. Only corpus-level and cohort-level metrics aggregate over
+the units where the benefit actually shows up.
 
 **Q: How would you make a bandit work at a catalog of millions of items?**
 
@@ -93,6 +99,13 @@ and neural-linear bandits scale.
 Third, make the arms ranking strategies instead of raw items (the Instacart
 approach): the bandit picks among a small set of ranking objectives or formula
 variants, not among millions of individual products.
+**Why** the feature-shared model gives a never-seen item real uncertainty: in
+LinUCB the bonus is $\sqrt{x^\top A^{-1} x}$, where $A$ accumulates the feature
+vectors of everything shown so far. The bonus therefore measures how far this
+item's features lie from the directions the data has already covered, not how
+often this exact item was shown. A new item whose features sit in well-explored
+territory correctly gets a small bonus; a new item with unusual features gets a
+large one.
 
 **Q: Why does the reward proxy matter, and how do you handle a delayed reward?**
 
@@ -106,6 +119,12 @@ design is the reference: a Bayesian filter fuses partial short-term
 observations into a belief about the eventual delayed reward, so the bandit
 can act immediately without waiting weeks for the true signal to arrive.
 You still need occasional full long-term labels to anchor the filter.
+**Why** clickbait emerges mechanically rather than by anyone's intent: the
+policy climbs whatever gradient the reward defines, and a click is decided at
+the moment of maximum curiosity, before the content has to deliver anything.
+Items that promise more than they deliver therefore sit at the exact optimum of
+the click objective, so an optimizer that is working correctly will find them;
+the fix has to change the objective, not the optimizer.
 
 **Q: When would you pick Thompson sampling over UCB?**
 
@@ -119,6 +138,13 @@ arm), it wins draws only when genuinely good. UCB is preferable when infra
 requires a deterministic choice (some caches and logging systems expect a
 fixed action per context hash), or when the uncertainty bonus needs to be
 a specific closed form for latency reasons.
+**Why** the alpha tuning is genuinely hard: the UCB bonus
+$\sqrt{\ln N / n_a}$ is expressed in count units while the mean is in reward
+units, so alpha is the exchange rate between the two, and the right rate
+depends on the reward's scale and variance. Set it too low and the bonus is
+drowned by mean differences (under-exploration); too high and it swamps them
+(over-exploration). Thompson sampling sidesteps this because the posterior
+width is already in reward units, so no exchange rate is needed.
 
 **Q: Concretely, how does Thompson sampling turn a stream of clicks into a
 per-request decision?**
@@ -151,6 +177,23 @@ flowchart TD
 and occasionally wins (exploration), while a well-observed arm's narrow Beta wins
 only when its rate is genuinely high (exploitation), with no explicit schedule.*
 
+**Q: A pure content tower and a hybrid ID-plus-content model look similar; when
+does the difference actually matter?**
+
+A: On day zero they behave identically: the hybrid's ID embedding is untrained
+(near zero), so both score the item purely from its content and metadata. The
+difference is what happens as interactions accumulate. The hybrid's ID
+embedding trains on the item's own engagement and is added to the content
+vector, so the item's observed performance can override its content prior;
+the pure content tower is capped forever at whatever its metadata implies, so
+two items with identical metadata but very different realized quality score
+identically for life. The difference matters when items are long-lived, when
+metadata is thin or gameable (an item can describe itself better than it
+performs), or when realized quality diverges widely within a metadata bucket.
+It does not matter for short-lived inventory (stories, flash listings) that
+expires before the ID embedding ever trains, which is why pure content towers
+survive there.
+
 ## Commonly answered wrong
 
 **Q: Should exploration be baked into the ranking model's objective function?**
@@ -163,6 +206,13 @@ worse at estimating reward (because it is simultaneously trying to encourage
 exploration), and the exploration policy loses the ability to be tuned or
 disabled independently. Keep them separate: the ranker estimates, the
 exploration layer decides.
+**Why:** the deeper mechanism is that exploration needs an honest uncertainty
+signal, and a model trained on a loss that rewards optimism no longer minimizes
+prediction error, so both the point estimate and any uncertainty derived from
+it are corrupted at once. The two layers also live on different clocks:
+estimates update with every batch of labels while the explore rate is a product
+decision tuned over weeks, and coupling them in one loss means retraining the
+model to change either.
 
 **Q: Can you just boost new items manually to solve cold start?**
 
@@ -189,6 +239,14 @@ leaving the team able to explore but unable to evaluate the exploration policy
 offline. Log the propensity at serve time, version it with the policy model,
 and test it by replaying known-propensity traffic and verifying the estimator
 recovers the expected outcome.
+**Why** the propensity is load-bearing: IPS multiplies each logged reward by
+the ratio of the new policy's probability to the logged policy's probability
+for that action, which is what mathematically transforms an average over the
+logged action distribution into an unbiased average over the new policy's. The
+logged propensity is the denominator of that ratio; without it the reweighting
+is undefined, and if it was effectively 1 (deterministic policy) the ratio is
+zero for every action the new policy prefers, so the estimate carries no
+information about exactly the changes you care about.
 
 **Q: Isn't exploration just A/B testing with extra steps?**
 

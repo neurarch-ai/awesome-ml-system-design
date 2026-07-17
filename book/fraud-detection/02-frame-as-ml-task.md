@@ -42,6 +42,29 @@ flowchart TD
 
 **How it works.** A single transaction feature vector fans out to two scorers that run in parallel: a supervised classifier trained on labeled fraud and an unsupervised anomaly detector that needs no labels. The supervised branch emits a calibrated fraud probability while the anomaly branch emits a reconstruction or isolation score, and a combine step reconciles the two (a max, a weighted blend, or separate thresholds) into one decision input. That combined signal hits a cost-based threshold that routes each transaction three ways: high-confidence fraud is blocked or sent to step-up auth, low risk is allowed, and borderline or novel cases go to the human review queue. The queue closes the loop: an analyst verdict becomes a fresh label that feeds the next retraining of the supervised model, so novelty caught by anomaly detection gradually becomes known patterns the classifier can score directly.
 
+## Compare and contrast: supervised fraud model vs anomaly detection
+
+From the outside the two paths look interchangeable: both consume the same feature
+vector, both run on the same real-time scoring path, and both emit a per-transaction
+risk score that can gate a block or a review. The resemblance ends at what the score
+means and where it comes from, and conflating the two leads to broken thresholds.
+
+| Dimension | Supervised fraud model | Anomaly detection |
+|---|---|---|
+| Input and serving shape | same feature vector, same low-latency scoring path (same) | same feature vector, same path (same) |
+| Emits a per-event risk score | yes (same) | yes (same) |
+| What a high score means | "resembles fraud I was trained on" | "deviates from normal traffic," which includes rare but legitimate behavior |
+| Learns from | (transaction, label) pairs; needs matured labels | the unlabeled distribution of normal traffic; no labels at all |
+| Blind spot | novel attacks it has never seen labeled | common attacks that mimic normal behavior closely |
+| Score semantics | calibratable to a true probability, so the cost-optimal threshold formula applies | arbitrary scale (isolation depth, reconstruction error); no probability interpretation, threshold set by alert-budget quantile |
+| How it improves | every labeled retrain sharpens known patterns | only by refreshing the model of "normal" as traffic evolves |
+
+The difference changes the design at the decision layer: a supervised probability
+can be pushed through the cost-based threshold to auto-block, but an anomaly score
+cannot be plugged into that formula, so anomaly hits must be routed to the review
+queue (or a separate quantile threshold) where analyst verdicts convert them into
+the labels the supervised model needs next.
+
 ## When to use which
 
 | Reach for | When | Instead of |

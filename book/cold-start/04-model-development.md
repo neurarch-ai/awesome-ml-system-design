@@ -146,6 +146,29 @@ decades; the empirical evaluation that established it as a competitive
 production default, matching or beating UCB on display-advertising and news
 data while being simpler to tune, is Chapelle and Li (2011).
 
+## Compare and contrast: Thompson sampling vs UCB
+
+The two policies are close cousins and are often described interchangeably as
+"uncertainty-driven exploration," so it is worth pinning down exactly what they
+share and exactly where they part ways.
+
+| Dimension | UCB | Thompson sampling |
+|---|---|---|
+| What drives exploration | Per-arm uncertainty: less-observed arms get favored | Same |
+| How exploration anneals | Automatically, as observations accumulate and uncertainty shrinks; no schedule to tune | Same |
+| State kept per arm | Constant-size sufficient statistics (mean and count) with constant-time updates | Same (two Beta counters) |
+| Asymptotic regret | Logarithmic in time | Same |
+| How uncertainty becomes an action | Deterministic: add an explicit optimism bonus to the mean, take the argmax | Stochastic: draw one sample per arm from the posterior, serve the highest draw |
+| Propensity of the chosen action | 1 (the argmax is fixed given the state), so replay and IPS have no randomness to exploit | Well-defined and nonzero for every arm with posterior mass, so off-policy evaluation works out of the box |
+| Main tuning burden | The alpha coefficient, an exchange rate between count units and reward units that depends on reward scale | The prior, which is usually mild (a flat Beta works) |
+
+The difference changes the design decision when off-policy evaluation is on the
+roadmap: if you will ever want to grade a new policy against logs, the
+stochastic draw that Thompson sampling gives you for free is the feature to
+optimize for, whereas an infra stack that demands a reproducible deterministic
+action per context is the one situation that argues for UCB (plus an epsilon
+perturbation to win back some loggable randomness).
+
 ## Contextual bandits: LinUCB and neural-linear
 
 The above policies assume a fixed arm set and per-arm parameters that do not

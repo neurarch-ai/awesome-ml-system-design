@@ -64,6 +64,12 @@ text or image perturbation an adversary would use to defeat the current model, a
 see if that matches the new traffic. If it is evasion, augment training data with
 the new pattern and fast-retrain. Meanwhile, add hash or rule coverage for known
 instances of the evasion technique.
+**Why** evasion produces exactly this signature: the flag rate is measured on
+traffic the adversary controls, while the true harm volume is set by adversary
+incentives that did not change overnight. A step change in the model's flags
+with no matching step in independently measured violations means the traffic
+moved around the model, not that the harm went away; genuine harm declines are
+gradual and show up in the audit stream too.
 
 **Q: How do you handle the "hateful memes" problem where neither the image nor the
 caption is harmful alone?**
@@ -75,6 +81,13 @@ image patches and text tokens for stronger joint reasoning. The joint model is t
 expensive to run on everything, so gate it behind cheap unimodal pre-filters and
 invoke it only when both modalities are present and the unimodal signals are
 ambiguous or conflicting.
+**Why** the OR of two unimodal models must fail: each model estimates the
+probability of harm given its own modality alone, and a hateful meme is by
+definition content where both of those marginal probabilities are low. The
+signal lives entirely in the interaction between image and text, a term neither
+model's input even contains, so no amount of threshold tuning on the two
+separate scores can recover it; the interaction has to be computed inside one
+model.
 
 **Q: How do you handle borderline content like satire, counter-speech, or news
 reporting of violence?**
@@ -85,6 +98,13 @@ rather than removal, an age-gate, downranking in distribution), pre-post nudge
 human reviewer with context flags. A restored appeal on borderline content is a
 confirmed false positive and a free label for retraining. Fast appeals on borderline
 content are both a fairness mechanism and a data pipeline.
+**Why** naive classifiers fail hardest exactly here: for satire and reporting,
+the label depends on context the input representation does not carry (who is
+speaking, with what intent, in what frame), so the same pixels or tokens can be
+a violation in one posting and counter-speech in another. When the deciding
+features are absent from the input, no threshold can separate the two cases;
+that is a representational limit, not a tuning problem, which is why the
+resolution is softer actions and human context rather than a better cutoff.
 
 **Q: How do you prevent over-censorship from becoming its own harm?**
 A: Several levers. Keep auto-action thresholds high so only the confident tail is
@@ -94,6 +114,13 @@ appeal-overturn rate as a live false-positive signal. Report false-block rates p
 demographic, per language, and per content type to catch disparate impact. Suppressing
 counter-speech, news coverage, or marginalized voices at scale is a real harm, not
 a rounding error.
+**Why** the appeal-overturn rate is the load-bearing signal: the two error
+directions have asymmetric visibility. A missed violation is invisible until an
+audit finds it, but a false block announces itself to the affected user, who can
+appeal, so overturns are the one error stream users surface for you in near
+real time. It is biased toward users who bother to appeal, which is why the
+per-demographic and per-language slicing matters: the groups least likely to
+appeal are exactly where silent over-censorship hides.
 
 **Q: Why does a perceptual hash catch a re-uploaded violating image that a
 cryptographic hash misses, and what is it actually comparing?**
@@ -108,6 +135,22 @@ is then a Hamming-distance threshold, not exact equality, which is why PDQ survi
 re-encoding and mild edits while remaining near-zero false positive and needing no
 per-image training. That robustness-to-edits property is exactly what a
 cryptographic hash lacks.
+
+**Q: A precision floor and an operating threshold look similar; when does the
+difference actually matter?**
+A: They live on different axes and only one of them survives a retrain. The
+threshold is a number on the model's score scale ("act above 0.87"); the
+precision floor is a constraint on outcomes ("at most 1 wrong removal per 20
+actions on this policy"). On a frozen model with frozen traffic they are
+interchangeable, because the PR curve maps each floor to exactly one threshold,
+which is why people conflate them. The difference matters the moment either the
+model or the traffic moves: a retrain changes the logit scale and drift changes
+the score-to-violation-rate mapping, so the same numeric threshold now delivers
+a different precision, silently violating the floor. The floor is the durable
+policy decision (set from the cost of a false positive); the threshold is a
+derived, disposable artifact that must be re-solved from the floor on a fresh
+calibration set after every retrain. Teams that store thresholds in config and
+forget which floor generated them lose exactly this provenance.
 
 ## Commonly answered wrong
 
@@ -150,6 +193,13 @@ you lose visibility into how the model performs on the easy majority. Also track
 the appeal-overturn rate as a live false-positive signal, the flag rate per policy
 over time for evasion detection, and time-to-action on severe harms as a latency
 bound on harm spread.
+**Why** the independent audit stream is non-negotiable: recall's denominator is
+all true violations, flagged or not, and traffic that only enters review because
+the model flagged it can never estimate that denominator. Measured on flagged
+traffic alone, you get precision but "recall" collapses into recall of what you
+already catch, which is uninformative by construction; only a random sample
+labeled blind to the model's decision recovers an unbiased estimate of what is
+slipping through.
 
 **Q: The classifier is calibrated, so a 0.9 score means about 90 percent of those
 items are violations. Safe to auto-action the whole 0.9-plus band, right?**

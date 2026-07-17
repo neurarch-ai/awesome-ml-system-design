@@ -124,5 +124,27 @@ little accuracy for a large speedup).
 embedding space, and was popularized for large-corpus item retrieval by the
 YouTube deep recommender (Google, 2016).
 
+## Compare and contrast: two-tower bi-encoder vs cross-encoder
+
+The two architectures are easy to conflate because they can be trained on the
+same engagement pairs, consume the same features, and emit the same kind of
+relevance score; the table separates what they truly share from where they
+diverge.
+
+| Dimension | Two-tower bi-encoder | Cross-encoder |
+|---|---|---|
+| Training data and features | The same (user, item) engagement pairs; identical raw features are usable | Same |
+| Output | A single scalar relevance score used to order items | Same |
+| Where user and item meet | Only at the final dot product; each side is encoded with zero knowledge of the other | In every layer; user and item features cross from the first layer onward |
+| What can be precomputed | The entire item side: embed all items offline, index them in ANN, run only the user tower per request | Nothing per item; the score is a joint function, so every (user, item) pair needs its own forward pass |
+| Cost per request over N candidates | One tower pass plus one ANN lookup, roughly independent of N | N full forward passes, linear in N |
+| Accuracy ceiling | Bottlenecked by what a single dot product can express about the pair | Higher; free to model arbitrary feature interactions |
+
+The difference flips the design decision at candidate count: over a full catalog
+only the bi-encoder is feasible because its item work is precomputable, while
+over the few hundred survivors of retrieval the cross-encoder's per-pair cost is
+affordable and its interaction capacity is worth paying for, which is exactly why
+the funnel uses one and then the other rather than choosing a winner.
+
 The next section builds the training data that teaches these towers what
 "similar" means.

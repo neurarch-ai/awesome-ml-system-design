@@ -78,6 +78,12 @@ metrics. The fix is adding a representative sample of the over-blocked segment t
 the negative class and retraining, and adding the false block rate as a first-class
 gate for every promotion.
 
+**Why aggregate F1 can improve while a segment breaks:** offline evaluation weights
+examples in proportion to traffic, so a small over-blocked cohort barely dents the
+global number, and if the learned proxy also fires on genuine abuse elsewhere, the
+measured gains outweigh the small measured loss. The online A/B counts blocked
+humans directly, which surfaces exactly the cost the offline average dilutes away.
+
 **Q: You retrained the encoder overnight and promoted it to production. The next
 morning, abuse recall dropped sharply. What went wrong?**
 
@@ -87,6 +93,13 @@ set. If the old threshold was 0.8 and the new model's scores are uniformly lower
 the same threshold now cuts off too much. Recalibrate the model on a held-out
 calibration split after every promotion, then re-tune the threshold band. Missing
 recalibration is one of the most common silent production failures.
+
+**Why the score scale moves even when F1 improves:** F1 depends only on the ranking
+of examples at the chosen operating point, while the absolute logit scale depends on
+training details such as loss weighting, label mix, regularization, and even the
+random seed. Two models can rank messages nearly identically yet map the same
+message to different raw scores. A fixed threshold is a promise about the score
+scale, and the score scale is precisely what a retrain does not preserve.
 
 **Q: You are asked to add a new abuse category (for example, coordinated
 inauthentic behavior) with no labeled examples. How do you start?**
@@ -99,6 +112,13 @@ bootstrapped abuse detection). Prompt an LLM to label a random sample. Combine
 these signals into soft labels. Fine-tune the encoder on the soft-labeled set, then
 launch the review queue to collect gold labels and retrain. The goal is a usable
 model in days, not a perfect one from scratch.
+
+**Why combining noisy sources works:** each labeling function is wrong in a
+different way, and as long as their errors are not perfectly correlated, agreement
+between independent noisy signals concentrates the true positives. The encoder
+trained on the combined soft labels then generalizes from the shared signal and
+smooths over each individual function's blind spots, which is why the ensemble of
+weak sources can bootstrap a model none of them could produce alone.
 
 **Q: Classification, NER, and entity resolution all use an encoder backbone. Can
 they share one?**
@@ -126,6 +146,25 @@ sequence and costs proportionally more to serve. The mechanism, not the model
 weights, is what makes some languages expensive; measure fertility (tokens per word)
 per language and budget latency accordingly, and consider a script-aware or
 language-balanced tokenizer if one language dominates cost.
+
+**Q: A bi-encoder and a cross-encoder look similar; when does the difference
+actually matter?**
+
+A: Both are the same transformer backbone fine-tuned to score how well two texts
+match, and on any single pair they can produce similar judgments. The difference is
+where the interaction happens. A bi-encoder encodes each text independently into a
+vector and scores the pair with a dot product, so the two texts never see each
+other inside the model; that independence is what lets you precompute millions of
+entity vectors offline and index them in an ANN store. A cross-encoder concatenates
+the pair and lets attention compare tokens across both texts, which catches subtle
+matches that independent embeddings compress away, but it produces no reusable
+vectors: every candidate requires a full forward pass at query time. The difference
+matters the moment the candidate set is large. Matching one mention against
+millions of entities is only feasible with the bi-encoder's precomputed index,
+while the final decision over the top hundred candidates is exactly where the
+cross-encoder's token-level interaction pays for its cost. That is why the standard
+design is bi-encoder retrieval feeding a cross-encoder rerank, not either model
+alone.
 
 ## Commonly answered wrong (the traps)
 
@@ -165,6 +204,14 @@ millions/day scale; the LLM handles the tail. Treating the LLM as the production
 system because the encoder has no labels yet is confusing the bootstrapping phase
 with the final design.
 
+**Why the small model can beat its teacher:** the encoder trains on thousands of
+in-domain examples with your exact taxonomy, so it learns your decision boundary
+directly, while the zero-shot LLM applies a generic notion of the label absorbed
+from pretraining. On a narrow, fixed label set, that specialization beats general
+capability, and the distillation step filters some of the teacher's noise because
+the student regresses toward the consistent majority signal across many
+teacher-labeled examples.
+
 **Q: For abuse detection, should we build a single large general model or many
 narrow specialized classifiers?**
 
@@ -174,3 +221,10 @@ models for high-recall abuse categories that the general model misses (coordinat
 inauthentic behavior, hate speech targeting a specific demographic). Narrower
 models with better-curated labels reliably outperform general models on the
 specific category they target. The wrong answer is picking one side exclusively.
+
+**Why narrow models win their category:** a general model trains with one loss over
+all categories, so a rare category's gradient contribution is drowned out by the
+bulk classes, and its operating threshold cannot be tuned independently of the
+rest. A dedicated classifier gets a curated label set, its own threshold, and all
+of its capacity spent on the single decision boundary that matters, which is where
+the extra recall on that category comes from.

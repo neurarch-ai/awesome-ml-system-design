@@ -80,6 +80,31 @@ The feedback loop through previous output tokens is what separates RNN-T from CT
 and is what makes the transducer approach more robust on context-sensitive
 transcription.
 
+### Compare and contrast: CTC vs RNN-T
+
+The two losses look almost identical on paper, and the similarity is real: both
+add a blank symbol, both marginalize over every frame-level alignment that
+collapses to the target transcript (the same $\mathcal{B}^{-1}(y)$ appears in
+both loss equations), both train without any hand-aligned timestamps, and both
+run causally for streaming. The single genuine difference is what each emission
+is conditioned on.
+
+| Aspect | CTC | RNN-T |
+|---|---|---|
+| Blank symbol and collapse rule | Yes | Yes |
+| Marginalizes over alignments, no hand alignment needed | Yes | Yes |
+| Streams causally, frame by frame | Yes | Yes |
+| Each emission conditioned on | Audio only ($x_{1:t}$) | Audio plus emitted-token history via the prediction network |
+| Internal language model | None (conditional independence across tokens) | Yes, learned in the prediction network |
+| Typical decoding | Per-frame argmax plus collapse | Search over a 2D time-by-label lattice |
+| External LM at decode time | Usually needed for competitive accuracy | Optional; the internal LM covers most of it |
+| Forced alignment | Natural byproduct (constrained trellis plus Viterbi) | Awkward; not its role |
+
+The difference decides the deployment: on-device dictation favors RNN-T because
+its internal LM removes the separate language model that would not fit the
+memory budget, while CTC wins when an external LM is acceptable or the actual
+job is alignment rather than transcription.
+
 ### The transducer emission-delay trap
 
 A subtlety senior engineers watch for: a transducer is free to emit the blank

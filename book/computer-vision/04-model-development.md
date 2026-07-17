@@ -155,6 +155,28 @@ is the intersection. IoU is the ratio of the orange area to the total area cover
 by either box. A prediction with IoU above 0.5 counts as a true positive in most
 detection benchmarks.*
 
+#### Compare and contrast: detection head vs instance segmentation head
+
+The two heads are frequently treated as interchangeable "find the objects"
+components, and the confusion is understandable because one is literally built
+on the other (Mask R-CNN is Faster R-CNN plus a mask branch); the table
+separates what they genuinely share from where they diverge.
+
+| Dimension | Detection head | Instance segmentation head |
+|---|---|---|
+| What it localizes | Individual object instances, each with a class label and a confidence score | Same |
+| Pipeline underneath | Backbone features, region proposals or anchors, per-region classification, NMS-style deduplication | Same, with a mask branch appended after the box pipeline |
+| Evaluation framework | mAP with predictions matched to ground truth by an IoU cutoff | Same framework; only the IoU is computed on masks instead of boxes |
+| Output geometry per instance | Four numbers: a box that also covers background pixels inside it | A per-pixel binary mask tracing the actual object boundary |
+| Annotation cost per object | Draw and verify a rectangle | Trace a polygon or paint a mask, several times the box cost per object |
+| Extra compute and precision demands | None beyond the box pipeline | A small FCN per region, plus RoIAlign, because the quantization error a box regressor tolerates visibly corrupts a pixel mask |
+
+The difference changes the design decision only when the downstream consumer
+needs the object's actual extent rather than its location, such as measuring
+area, separating touching objects, reasoning about occlusion, or cutting the
+object out of its background; when a rectangle answers the product question,
+the extra label cost and mask branch buy nothing.
+
 ### Embedding head
 
 A linear projection layer mapping the backbone's pooled feature to a

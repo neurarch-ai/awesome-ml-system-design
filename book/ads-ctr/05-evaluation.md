@@ -206,6 +206,27 @@ online A/B test. What to measure:
 
 Offline and online metrics can diverge significantly; the online gate is mandatory.
 
+## Compare and contrast: AUC vs NE vs calibration (ECE)
+
+The three offline metrics are often treated as interchangeable "model quality"
+numbers, but each is blind to something the others measure; the table separates
+what they genuinely share from where they diverge.
+
+| Dimension | AUC | NE | Calibration (reliability + ECE) |
+|---|---|---|---|
+| Computed from | The same offline pairs of (predicted probability, click label); no extra data or labels needed | Same | Same |
+| Role in the launch process | Offline diagnostic feeding a go/no-go decision | Same | Same |
+| What it measures | Rank order only: probability a random click outscores a random non-click | Probability quality relative to always predicting the background CTR; mixes ranking and scale | Whether predicted rates match observed rates, bin by bin; scale only, no ranking signal |
+| Monotone rescaling of all scores | Invariant: a 20% uniform inflation changes nothing | Penalized: the numerator's log loss rises | Penalized directly: the whole reliability curve leaves the diagonal |
+| Sensitivity to background CTR | Largely insensitive; comparable across surfaces by construction | Normalized out by dividing by the background entropy; that is its whole point | Absolute by design: ECE is read within a surface and must be sliced |
+| Failure mode it catches | Rank inversions (the wrong ad wins on order) | A model no better than the base-rate guess, or regression in overall probability quality | Systematic scale drift that mis-prices every auction while order is unchanged |
+
+The distinction changes the design decision the moment a candidate model shifts
+its probability scale without changing its ordering: AUC passes it, NE degrades
+mildly, and only calibration flags the shift that would repay itself as
+mis-priced auctions, so the launch gate must include all three rather than any
+one.
+
 ## When to use which metric
 
 | Reach for | When | Instead of |

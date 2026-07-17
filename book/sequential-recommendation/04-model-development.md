@@ -92,6 +92,31 @@ for inference), and it needs more data to outperform SASRec. It is also the
 natural choice when one model must serve many surfaces (Instacart uses this
 pattern), since the masked objective is flexible.
 
+### Compare and contrast: SASRec vs BERT4Rec
+
+The two are easy to conflate because the architecture diagram is nearly the
+same: item embedding table, positional encoding, a stack of self-attention
+blocks, a softmax over the catalog. The real fork is one line of code, the
+attention mask, and everything that separates them in practice flows from that
+line.
+
+| Aspect | SASRec | BERT4Rec |
+|---|---|---|
+| Backbone | Transformer self-attention over the item sequence | Same |
+| Input representation | Item embeddings plus positional encoding | Same |
+| Attention mask | Causal: position t sees only 1..t | None during training: every position sees both sides |
+| Training objective | Next-item prediction at every position | Cloze: reconstruct randomly masked interior items |
+| Supervision per sequence | Every position is a training target in one pass | Only the masked positions (a fraction of the sequence) |
+| Serving readout | Last position's vector, exactly as trained | Append a `[mask]` token and read the prediction there |
+| Train-serve consistency | Identical computation both times | Different: trained on interior masks, served on an end mask |
+
+The difference changes the design at serving: SASRec's causal training means
+the deployed computation is the one it practiced, while BERT4Rec buys richer
+bidirectional context at the cost of a masking protocol you must reproduce
+exactly at inference (and more data to make the trade pay), which is why teams
+default to SASRec and reach for BERT4Rec only when the data and the masking
+discipline are both in place.
+
 ## The loss
 
 All three families are trained with a variant of **cross-entropy over next-item

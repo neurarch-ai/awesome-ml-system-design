@@ -91,6 +91,29 @@ Feature distributions were stable; the label relationship flipped. A feature-
 drift dashboard stayed green while model quality degraded. The fix here is
 monitoring the feature-to-label relationship, not just the marginals.
 
+## Compare and contrast: data drift vs concept drift vs label drift
+
+All three are called "drift," all three are distribution shifts between training
+time and serving time, and all three degrade model quality silently while the
+service metrics stay green. That shared surface is why they get lumped together;
+the mechanics, the detector that can catch each one, and the correct response are
+different.
+
+| Dimension | Data drift (covariate shift) | Concept drift | Label drift (prior shift) |
+|---|---|---|---|
+| A shift between training and serving | yes (same) | yes (same) | yes (same) |
+| Degrades quality while serving stays healthy | yes (same) | yes (same) | yes (same) |
+| What actually moves | $P(X)$: the inputs | $P(y \mid X)$: the input-to-label mapping | $P(y)$: the base rate of the outcome |
+| Do inputs look different? | yes, by definition | not necessarily; marginals can be flat | not necessarily |
+| Which layer can see it | layer 2 (input drift), no labels needed | only the feature-to-label relationship or layer 4; input dashboards stay green | prediction-score shift hints at it; labels confirm it |
+| Cleanest response | retrain on fresh inputs; the old mapping still holds | retrain on fresh labeled data that encodes the new mapping; old data reinforces the wrong one | often recalibration or a threshold move, not necessarily a new model |
+
+The distinction changes the design because it dictates what you must log and how
+you respond: a monitoring stack built only on input-distribution tests is
+structurally blind to concept drift, and a team that answers every alarm with
+"retrain" will bake in the wrong fix whenever the real shift was a base rate or a
+flipped relationship.
+
 ## When to use which monitoring layer
 
 | Reach for | When | Instead of |

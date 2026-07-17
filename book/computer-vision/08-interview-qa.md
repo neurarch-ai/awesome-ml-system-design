@@ -57,6 +57,12 @@ still ranking items correctly, mAP is unchanged but the chosen threshold now
 hits a different precision-recall point. Always re-calibrate the threshold on
 the validation set after retraining, and track precision and recall at the fixed
 operating point, not just mAP.
+**Why:** mAP is computed from the ranking of scores (the area under the
+precision-recall curve as the threshold sweeps), so it is invariant to any
+monotone deflation of the confidences. A fixed absolute threshold is not: the
+same 0.7 cutoff now slices the new score distribution at a different point on
+the curve, so the deployed operating point moved even though the curve itself
+did not get worse.
 
 **Q: The visual search returns visually similar but irrelevant items. How do you fix it?**
 A: The embedding is optimizing visual feature similarity (texture, color, shape)
@@ -66,6 +72,13 @@ embedding learns intent-aligned similarity; (2) add a re-ranking step over the
 ANN candidates with a supervised model that sees both the query and the candidate.
 Pinterest addressed this by training with proxy metric learning on engagement-
 derived datasets, not just visual similarity.
+**Why:** an embedding space has no intrinsic notion of "similar"; it encodes
+whatever relation its training pairs supervised. Pairs built from visual
+augmentations or co-occurring pixels teach the space that texture and palette
+are what matter, so nearest neighbors are texture matches. Swapping in
+engagement pairs (query, item-clicked-after-query) redefines the geometry so
+that "near" means "users treated these as substitutes," which is the relation
+the product actually needs.
 
 **Q: You added a ViT backbone and mAP improved 4 points. Should you ship it?**
 A: Not automatically. Measure: (1) inference latency (ViT is slower than ResNet
@@ -83,6 +96,11 @@ A byte-identical preprocessing path should produce the same logits. If they
 diverge, instrument each step (decode, resize, normalization constants, channel
 order) until you find the mismatch. This bug is silent in offline metrics and
 shows up only as a production accuracy regression.
+**Why** offline metrics cannot catch it: offline evaluation feeds the model
+through the training pipeline, so both the weights and the eval images share
+the same preprocessing, bug or not. The skew exists only on the serving path
+that offline eval never exercises, which is why the paired-inference probe (the
+same bytes through both paths) is the only test that can expose it.
 
 **Q: Your detector's mAP looks fine, but in production it draws two boxes on one
 object. What is the mechanism, and where is the knob?**
@@ -96,6 +114,23 @@ evaluates the ranked box list against ground truth with its own IoU matching and
 is fairly forgiving of duplicates, so the operating-point NMS threshold has to be
 tuned separately from the metric. For crowded domains, soft-NMS (decay scores
 instead of hard-suppressing) is the usual fix.
+
+**Q: The NMS IoU threshold and the evaluation IoU threshold look similar; when
+does the difference actually matter?**
+A: They are both "IoU cutoffs" but they act on different pairs at different
+times, and confusing them is common. The NMS threshold compares predicted boxes
+to each other at inference: above it, the lower-scoring box is suppressed as a
+duplicate. The evaluation threshold compares a surviving predicted box to a
+ground-truth box at scoring time: above it, the prediction counts as a true
+positive. Nothing links them; you can change one without touching the other.
+The difference matters in two situations. First, crowded scenes: a low NMS
+threshold merges genuinely adjacent objects into one surviving box, which the
+evaluator then counts as one true positive and one miss, so recall drops for a
+reason no evaluation-threshold sweep will reveal. Second, localization-critical
+products: raising the evaluation IoU (say 0.5 to 0.75) tightens what "correct"
+means and can reorder model comparisons entirely while the deployed NMS
+behavior is unchanged. Tune NMS to scene density, and pick the evaluation IoU
+to match how precise a box the product actually needs.
 
 ## Commonly answered wrong (the traps)
 
@@ -115,6 +150,13 @@ possible when tasks are related (Shopify's multi-level taxonomy), but forcing
 a single head to serve three product requirements with different metric targets
 and operating points will degrade all three. Share the trunk; keep the heads
 separate.
+**Why** the trunk shares well but the heads do not: early layers learn general
+features (edges, textures, parts) that every task consumes, so their gradients
+from different tasks mostly point in compatible directions. The final layer,
+by contrast, must commit to an output geometry: independent per-class
+probabilities, a calibrated binary score, and a unit-sphere vector are
+mutually exclusive shapes, and one set of output weights cannot satisfy all
+three losses at once.
 
 **Q: Should the EXIF orientation fix happen in the model (augment with random
 rotations) rather than in ingest?**
@@ -125,6 +167,12 @@ augmentation to absorb EXIF errors means the model wastes capacity learning
 invariance to a bug that should not exist in the serving pipeline, and the
 augmentation does not guarantee the model actually learns the right rotation
 for each image.
+**Why** invariance is the wrong tool here: teaching a model to be
+rotation-invariant means teaching it to produce the same output for all four
+orientations, which forces it to discard orientation information even on the
+majority of images that were already correct. A metadata error with a known
+deterministic inverse should be inverted, not marginalized over; you pay zero
+model capacity and get a guaranteed fix instead of a probabilistic one.
 
 **Q: A higher confidence threshold on the moderation gate makes the system safer.
 Is that right?**

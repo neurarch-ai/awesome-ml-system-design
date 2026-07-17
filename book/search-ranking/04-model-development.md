@@ -100,6 +100,30 @@ risks as recommendation retrieval apply here; see the
 [candidate-retrieval chapter](../candidate-retrieval/04-model-development.md) for
 the correction strategies.
 
+### Compare and contrast: BM25 vs dense retrieval
+
+The two arms are more alike than the "lexical vs neural" framing suggests: both
+score the same thing (query-document relevance), both rank the whole corpus
+against the query, and both lean on a precomputed index so query-time work stays
+sublinear. Where they genuinely diverge is the unit of matching, and everything
+else follows from that.
+
+| Aspect | BM25 | Dense dual-encoder |
+|---|---|---|
+| What it scores | Query-document relevance, one number per doc | Same |
+| Precomputed index | Inverted index: term to posting list | ANN index over document embedding vectors |
+| Unit of matching | Exact term overlap, IDF-weighted and length-normalized | Proximity in a learned vector space |
+| Can match synonyms or paraphrases | No; zero term overlap means zero score | Yes; that is the point of the shared space |
+| Behavior on rare exact strings (codes, names) | Strong; a rare term has huge IDF and dominates | Weak; a low-frequency string is poorly represented and averaged away |
+| Needs training data | No; it is a closed-form formula over corpus statistics | Yes; quality tracks the (query, doc) pairs it trained on |
+| New document visible | On the next index write, exactly | After its embedding is computed and upserted; retrieval is approximate |
+| Score scale | Unbounded sum | Bounded similarity (for example cosine in [-1, 1]) |
+
+The divergence changes the design at the fusion step and at the query router:
+because the failure modes are complementary and the score scales are
+incomparable, production systems run both arms and fuse on rank (RRF) rather
+than picking a winner or summing raw scores.
+
 ## Fusing the two retrieval arms
 
 The arms produce candidate sets with incomparable score scales. Two fusion
