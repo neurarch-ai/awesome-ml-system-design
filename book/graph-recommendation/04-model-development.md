@@ -110,7 +110,15 @@ or three hops the representations wash out and become indistinguishable, so a
 link-prediction head can no longer separate pairs. This **over-smoothing** is why
 production GNNs stay shallow (two to three layers) and why the useful escape hatches
 are residual or jumping-knowledge connections (which re-inject earlier, sharper
-representations) rather than more depth. It is also why long-range graph signal is
+representations) rather than more depth.
+
+![Over-smoothing: embeddings collapse as layers stack](assets/fig-over-smoothing.png)
+
+*Simulated on a random 60-node graph with pure mean-aggregation propagation: the mean
+pairwise cosine similarity between node embeddings climbs from about 0 toward 1.0 as
+layers stack, meaning every node converges to the same vector. Learned transforms and
+residual connections slow this collapse but do not remove it, which is why production
+GNNs stay at two or three hops.* It is also why long-range graph signal is
 usually better captured by a heuristic feature or a subgraph method than by simply
 adding layers.
 
