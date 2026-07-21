@@ -240,3 +240,17 @@ one.
 **Tools.** scikit-learn computes AUC (roc_auc_score), log loss, and calibration curves. ECE is a small bucketing over predicted probabilities, available from netcal or a short custom routine, and sliced ECE is the same computation grouped by segment. The online A/B on RPM and advertiser ROI runs through the in-house experiment platform, with significance testing via scipy.stats or statsmodels.
 
 **Worked example.** An ad network evaluates a new pCTR model with both lenses. It reports AUC (scikit-learn) to compare rank-order quality against the current model, but never as the final word, because a systematic scale shift leaves AUC unchanged while it moves every price. It tracks log loss as a proper scoring rule that rewards ranking and calibration together, and it plots a reliability curve with ECE (netcal) to confirm the raw scores are trustworthy before they feed the auction. Since a model calibrated on average can be badly miscalibrated on high-value slices, it slices ECE by placement and device rather than trusting one global number. The launch itself is gated on an online A/B test measuring revenue per thousand requests and advertiser ROI, which offline metrics alone cannot capture.
+
+## The metrics matrix: offline vs online, component vs end-to-end
+
+The metrics above sort onto two axes: offline (replayed on logged impressions) versus
+online (measured on live traffic), and component (the pCTR model in isolation) versus
+end-to-end (the full auction as it moves money).
+
+| | Offline | Online |
+|---|---|---|
+| **Component metric** | AUC, log loss, NE, and ECE for the pCTR model in isolation | Per-request scoring latency and score-distribution drift for the prediction service |
+| **End-to-end metric** | Golden-set score: replay held-out auctions through the full predict-then-bid chain and check calibrated prices | A/B test on revenue per thousand requests and advertiser ROI for the whole auction |
+
+A component metric localizes a regression (ECE drifted, so the model miscalibrated);
+only the online end-to-end metric justifies a launch.

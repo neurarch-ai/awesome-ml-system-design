@@ -122,3 +122,17 @@ The guardrail to state out loud: an offline NDCG gain must survive an online
 interleaving or A/B test against engagement and reformulation rate before it ships.
 NDCG is computed against labels that are themselves biased clicks plus a thin
 layer of human judgments; it is the fastest signal, not the most reliable one.
+
+## The metrics matrix: offline vs online, component vs end-to-end
+
+The metrics above split on two axes: offline (replayed on logged queries) versus online
+(measured on live traffic), and component (the ranker in isolation) versus end-to-end
+(what the searcher actually experiences).
+
+| | Offline | Online |
+|---|---|---|
+| **Component metric** | NDCG@k and MRR for the ranking model in isolation | Per-stage query latency and score drift for the ranking service |
+| **End-to-end metric** | Golden-set score: replay a fixed judged query set through the full search stack and score the returned page | A/B test on engagement and query-reformulation rate (or an interleaving experiment) for the whole system |
+
+A component metric localizes a regression (NDCG fell, so the ranker moved); only the
+online end-to-end metric justifies a launch.

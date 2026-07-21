@@ -126,3 +126,18 @@ applies SpecAugment as the default first augmentation, and adds noise plus rever
 mixing because the product must survive far-field phone-quality audio. To bootstrap
 the wake word before any field recordings exist, it synthesizes trigger examples with
 TTS rather than waiting for a live collection campaign.
+
+## Where the labels come from
+
+For speech, the label is the transcript (or the frame-level alignment behind it), and
+it arrives from three sources with different biases.
+
+| Label source | What it gives you | The bias, and the fix |
+|---|---|---|
+| Weak supervision from paired audio-text | Abundant and cheap: subtitles, captions, podcast transcripts, plus forced alignment to recover frame-level timing | Coverage and selection bias toward clean studio speech and popular languages; noisy on silence and mismatched captions. Gate with VAD and confidence thresholds, and lean on multilingual pretraining for thin languages. |
+| Human transcribers | High-quality, verbatim gold transcripts, unbiased by any model | Slow and costly (per-hour rates run into the tens of dollars). Reserve for the golden eval set and to calibrate the weakly-supervised model's WER. |
+| Targeted collection / synthesis | Coverage for cold-start (a new wake word, a rare accent or language) via TTS synthesis, noise and reverb augmentation, and open speech corpora | Synthetic and augmented audio drifts from live far-field conditions, so validate against real field recordings before trusting it. |
+
+Speech logs are time-ordered and speaker-correlated, so split train and test by time
+and by speaker, never by a random shuffle, to keep the same voice or session from
+sitting on both sides and leaking the answer.

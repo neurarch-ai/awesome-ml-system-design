@@ -86,3 +86,18 @@ combined into a utility score.
 | Negative downsampling with calibration correction | Click rate under 5%, billions of rows | Training on the full imbalanced set when compute is limited |
 | Cross features (user x item) | Always; they are the biggest accuracy lever | Relying on separate user and item features hoping the MLP learns interactions |
 | Content and context features for cold items | New items with few or no interactions | Per-item id embeddings, which are uninformative for new ids |
+
+## Where the labels come from
+
+Ranking labels come from three sources, and knowing which one produced a row tells you
+how much to trust it and how to correct it.
+
+| Label source | What it gives you | The bias, and the fix |
+|---|---|---|
+| Implicit feedback (interaction logs) | Abundant and cheap: clicks, dwell, and downstream conversions on every impression | Position, exposure, and selection bias: top slots win clicks regardless of relevance, and you only log outcomes for items the current ranker surfaced. Correct with position-as-feature (fixed at serve), inverse-propensity weighting, and a slice of exploration data. |
+| Human raters | High-quality relevance judgments that are unbiased by the product's own exposure | Slow, costly, low volume. Use for the golden eval set and to calibrate a cheaper learned model. |
+| Targeted collection / synthesis | Coverage for cold-start and rare queries or items where logs are thin | Not organic, so treat as a supplement. Use open relevance datasets, augmentation, or a stronger model as a teacher to seed sparse regions. |
+
+Because interaction logs are time-ordered, split train and test by time (train on
+earlier sessions, evaluate on later ones), never by a random shuffle, so future
+outcomes cannot leak backward into training.

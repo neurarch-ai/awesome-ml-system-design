@@ -84,3 +84,18 @@ the delay if possible, and hold out long-horizon cohorts to detect proxy drift.
 
 With data and features designed, the next section builds the exploration
 policies that use them.
+
+## Where the labels come from
+
+Cold-start is defined by the absence of the cheap label, so knowing the three sources
+and their biases is the whole game.
+
+| Label source | What it gives you | The bias, and the fix |
+|---|---|---|
+| Implicit feedback (interaction logs) | Abundant and cheap once traffic exists, but nearly empty for a brand-new user or item | Exposure and selection bias, and worse, sparsity: a new arm gets almost no signal unless you show it. Log propensity and use a stochastic exploration policy so new arms accumulate unbiased reward. |
+| Human raters | High-quality judgments that need no interaction history, so they work on day zero | Slow, costly, low volume. Use for the golden eval set and to calibrate a cheaper content-based model that scores cold items. |
+| Targeted collection / synthesis | The cold-start workhorse: open datasets, content-feature augmentation, and a stronger model as a teacher to score items before any clicks exist | Not organic, so treat it as a warm-start prior that the exploration policy corrects once real feedback arrives. |
+
+Because feedback is time-ordered, split train and test by time (train on earlier
+cohorts, evaluate on later ones), never by a random shuffle, so a warm item's future
+engagement cannot leak into the cold-start evaluation.

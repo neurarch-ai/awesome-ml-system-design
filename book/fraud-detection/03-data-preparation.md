@@ -121,3 +121,18 @@ random split leaks future chargeback patterns into training, inflates every
 offline metric, and destroys trust in the evaluation. Hold the most recent
 settled window as the validation set and treat any data inside the maturation
 window as unlabeled rather than negative.
+
+## Where the labels come from
+
+The fraud label has three origins, and each one arrives with a different delay and a
+different bias.
+
+| Label source | What it gives you | The bias, and the fix |
+|---|---|---|
+| Implicit feedback (chargebacks) | The ground-truth economic label on nearly every settled transaction, cheaply | Long delay (30 to 120 days), so recent rows have no mature label. Enforce a maturation window and never treat unmatured data as negative. |
+| Human investigators / analyst verdicts | High-quality adjudicated labels from the review queue, unbiased by the current rules | Slow, costly, low volume, and covers only the cases routed for review. Use for the golden eval set and to calibrate a cheaper model; reconcile against settled chargebacks. |
+| Targeted collection / synthesis | Coverage for cold-start and rare fraud types: known-fraud seed lists, red-team simulated attacks, and minority-class oversampling for the 0.2 percent tail | Synthetic patterns lag real adversaries, so treat them as a supplement and refresh as attack patterns shift. |
+
+As the previous section states, the split is time-based (train on the past, validate on
+the future), never random, because chargebacks are time-ordered and a shuffle leaks
+future fraud patterns backward.

@@ -182,6 +182,22 @@ def false_discovery_rate(labels, scores, tau):   # FP / (TP + FP) among flagged;
 # false_discovery_rate([1,0,1,0], [0.9,0.8,0.2,0.1], 0.5) -> 1/2 = 0.5
 ```
 
+## The metrics matrix: offline vs online, component vs end-to-end
+
+The metrics above sort onto two axes: offline (replayed on logged transactions with a
+time-based split) versus online (measured on live traffic against settled labels), and
+component (the scoring model in isolation) versus end-to-end (the whole block-or-allow
+system as the business feels it).
+
+| | Offline | Online |
+|---|---|---|
+| **Component metric** | PR-AUC (average precision), precision at a fixed recall, and calibration/ECE for the fraud scorer in isolation | Score-distribution drift and per-decision serving latency for the scoring service |
+| **End-to-end metric** | Cost at the chosen threshold on a held-out, time-split period, using the c_FP and c_FN cost matrix | A/B or holdback on blocked-fraud dollars against the settled-label false-positive rate |
+
+The split is what makes a regression actionable: a component number (PR-AUC dropped)
+localizes the model, but only the online end-to-end number (net fraud dollars saved
+minus good-user friction) justifies shipping a new threshold or model.
+
 ## When to use which metric
 
 | Reach for | When | Instead of |

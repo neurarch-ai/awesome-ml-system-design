@@ -126,3 +126,18 @@ plus a precision-recall curve for the minority class.
 | Class-weighted cross-entropy | positive class is rare but the boundary is clear | uniform loss that the majority class dominates |
 | Hard-negative mining | easy negatives are no longer teaching the model | random negatives once the model can already separate obvious cases |
 | Per-class F1 and PR curves | any imbalanced classification task | accuracy, which a trivial majority-class predictor maximizes |
+
+## Where the labels come from
+
+Stepping back from the techniques above, an NLP label lands from one of three sources,
+each with its own bias to manage.
+
+| Label source | What it gives you | The bias, and the fix |
+|---|---|---|
+| Implicit feedback (product logs) | Abundant and cheap: resolved ticket categories, user reply-or-not, click-through on suggested answers | Selection and exposure bias: you only observe outcomes for text the product routed or surfaced, and easy cases dominate. Reweight rare classes, mine hard negatives, and mix in exploration samples. |
+| Human raters / specialized annotators | High-quality gold labels, and the only reliable signal on ambiguous or policy-bound text | Slow, costly, low volume. Reserve for the golden eval set and to calibrate cheaper labelers (weak supervision, an LLM annotator). |
+| Targeted collection / synthesis | Coverage for cold-start tasks and rare classes: open text corpora, augmentation (back-translation, paraphrase), a stronger LLM as a teacher | Synthetic text drifts from real user language, so keep it a supplement and validate against human-labeled gold. |
+
+When the text is time-ordered (a stream of tickets or posts), split train and test by
+time, not by a random shuffle, so vocabulary and topic drift do not leak the future
+into training.

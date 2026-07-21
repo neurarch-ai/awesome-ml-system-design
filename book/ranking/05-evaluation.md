@@ -185,3 +185,17 @@ ship decision. The ship decision is an online A/B test on the business metric.
 **Tools.** AUC and logloss are one call each in scikit-learn (roc_auc_score, log_loss); TorchMetrics provides RetrievalNormalizedDCG for NDCG@k, and TensorFlow Ranking (Google) implements NDCG-driven learning-to-rank end to end. Calibration reliability curves come from scikit-learn (calibration_curve); ECE and other calibration summaries are packaged in netcal. The final online A/B ship decision leans on a stats library such as statsmodels or SciPy for significance testing.
 
 **Worked example.** A streaming service tuning its click model tracks AUC as the cheap threshold-free offline signal over billions of impressions, since click rate is a low single-digit percentage and AUC does not need balanced classes. Because those scores feed an ad auction, it does not stop at AUC: it watches logloss for probability sharpness and monitors ECE with a reliability diagram, applying isotonic regression when downsampled-negative training bows the curve off the diagonal. NDCG@k is reserved for its search surface, where the position of the top result matters more than binary separation. None of these offline wins is treated as a ship decision; the model only launches after an online A/B on the engagement metric clears, guarding against a training-serving skew the offline numbers cannot see.
+
+## The metrics matrix: offline vs online, component vs end-to-end
+
+The metrics above sort onto two axes: offline (replayed on logged data) versus online
+(measured on live traffic), and component (one model or stage in isolation) versus
+end-to-end (the whole ranking system as the user sees it).
+
+| | Offline | Online |
+|---|---|---|
+| **Component metric** | NDCG@k, AUC, logloss, and ECE for the ranker in isolation | Per-stage serving latency and score-distribution drift for the ranking service |
+| **End-to-end metric** | Golden-set score: replay held-out sessions through the full retrieve-then-rank stack and score the final ordering | A/B test on the business metric (engagement, dwell) for the whole system |
+
+A component metric localizes a regression (NDCG dropped, so the ranker changed); only
+the online end-to-end metric justifies a launch.

@@ -83,3 +83,17 @@ only resurfaces popular items can win recall and lose the product.
 **Tools.** End-to-end Recall@k is measured by loading the item vectors into a real ANN index (FAISS (Meta), ScaNN (Google), hnswlib, or Annoy (Spotify)) and querying at the k you actually forward, so the number reflects the approximate index rather than a brute-force ideal. TorchMetrics provides RetrievalRecall for the aggregation, and coverage or diversity is a short pandas groupby over the retrieved sets. The time-based split is a pandas or SQL cut on interaction timestamps, and the final online A/B leans on the platform's experiment stack.
 
 **Worked example.** A marketplace evaluating a new retrieval tower measures Recall@k at the few-hundred k it actually hands to ranking (not Recall@10), computed against a FAISS index so the metric includes approximate-search loss, and it does not headline precision because the retrieved set is mostly unjudged. It uses a time-based split, holding out future interactions, since a random split would leak the future and flatter the model. Before trusting the recall gain, it checks coverage and diversity, because a tower that just resurfaces popular items can lift recall while collapsing the catalog. The launch is gated on an online A/B that must clear on engagement and coverage together, not offline recall alone.
+
+## The metrics matrix: offline vs online, component vs end-to-end
+
+The metrics above sort onto two axes: offline (replayed on logged interactions) versus
+online (measured on live traffic), and component (the retrieval tower in isolation)
+versus end-to-end (the retrieve-then-rank feed the user sees).
+
+| | Offline | Online |
+|---|---|---|
+| **Component metric** | Recall@k against the ANN index, plus coverage and diversity of the retrieved set | Per-query ANN latency and new-item retrievability for the retrieval service |
+| **End-to-end metric** | Golden-set score: replay held-out sessions through the full retrieve-then-rank stack and score the final feed | A/B test on engagement and catalog coverage for the whole system |
+
+A component metric localizes a regression (Recall@k dropped, so the tower changed);
+only the online end-to-end metric justifies a launch.

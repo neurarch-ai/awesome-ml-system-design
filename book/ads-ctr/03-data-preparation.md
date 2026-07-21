@@ -141,3 +141,19 @@ def ipw_weights(propensities):
 **Tools.** Feature hashing is available as the hashing trick in scikit-learn's FeatureHasher or as category hashing in TorchRec (Meta), and row-per-id embedding tables come from PyTorch (Meta) nn.Embedding, sharded through TorchRec when they grow large. The bounded attribution window, fake-negative weighted loss, and two-model delay correction are custom label-pipeline and loss logic rather than off-the-shelf libraries, as are inverse-propensity weighting and the exploration policy in training and serving code.
 
 **Worked example.** An ad network prepares impression logs at scale. For user ids and ad ids that grow without bound it hashes into a fixed-size table (TorchRec), since a row-per-id table cannot bound memory or absorb new ids, while for its dozen fixed placements it keeps a small row-per-id embedding because collisions there would be needless overhead. Conversions land hours later, so for short, predictable delays it finalizes labels with a bounded attribution window; for continuous training on fast-moving campaigns it switches to a fake-negative weighted loss rather than waiting days, and when delay is long and variable it uses the two-model delay correction instead. Because it only logs outcomes for ads it chose to show, it routes a slice of exploration traffic and applies inverse-propensity weighting to gather unbiased labels for calibration rather than entrenching the current model's biases.
+
+## Where the labels come from
+
+Before any of the treatments above, ask the plainer question: where does the label
+on each row actually originate. In ads CTR three sources feed the pipeline, and each
+carries a different bias you have to correct for.
+
+| Label source | What it gives you | The bias, and the fix |
+|---|---|---|
+| Implicit feedback (click and conversion logs) | Abundant and nearly free; every served impression is a labeled row | Position, exposure, and selection bias: you only see outcomes for ads the old policy chose to show, and top slots get clicked regardless of quality. Correct with inverse-propensity weighting and exploration (hold-back) traffic. |
+| Human raters / policy reviewers | High-quality judgments (ad quality, landing-page policy, brand-safety flags) that are unbiased by what the model served | Slow, costly, low volume. Reserve for the golden eval set and to calibrate a cheaper model. |
+| Targeted collection / synthesis | Coverage for cold or rare cases: new advertisers, fresh creatives, thin verticals | Not organic traffic, so treat as a supplement, not a replacement. Use open datasets, augmentation, or a stronger model as a teacher to seed the rare classes. |
+
+Because impressions are time-ordered, split train and test by time (train on earlier
+days, evaluate on later days), never by a random shuffle. A random split lets
+future conversions leak into training and inflates every offline number.
