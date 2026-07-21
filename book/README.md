@@ -24,6 +24,13 @@ screenshots.
 - Run the platform underneath it all: embeddings, feature stores, real-time serving, experimentation, and monitoring.
 - Connect every modeling choice to the architecture underneath it, traced on a real graph rather than a box diagram.
 
+## Start here
+
+**[0. The method: how to approach an ML system design interview](00-the-method.md)** -
+the repeatable six-step playbook (clarify, metrics, architecture, training data,
+features, model) that every chapter below applies to a different system. Read this
+first; the chapters are the method worked once each.
+
 ## Chapters
 
 | # | Chapter | Covers |
