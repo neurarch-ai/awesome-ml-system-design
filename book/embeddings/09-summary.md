@@ -64,6 +64,10 @@ flowchart LR
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  embedding trainer.
 - Dense reference (math, all case studies, quadrant plots): [../../topics/07-embeddings-and-representation-learning.md](../../topics/07-embeddings-and-representation-learning.md)
 - Per-company teardowns (GraphSAGE, LightGCN, SimCSE, PinSage, Airbnb, Spotify, Instacart, Wayfair): [../../tools/teardowns/07.md](../../tools/teardowns/07.md)
 - System comparison and decision table: [../../tools/comparisons/07.md](../../tools/comparisons/07.md)

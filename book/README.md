@@ -69,10 +69,24 @@ the architecture opens live in the editor at real dimensions. The chapters name
 the supporting tooling (an ANN index, a feature store, a serving stack, an
 experimentation platform) but do not require you to install anything to read them.
 
+Each chapter's capstone closes with a runnable program that uses the Python
+standard library only. If you want to execute those, any Python 3 works; nothing
+else is needed, and no chapter asks you to install a framework.
+
 ## How to use this book
 
 Open a chapter folder and read its sections in order (start at the folder's
 README). Each chapter ends with an interview Q&A and a self-test, and links a set
 of first-party production engineering writeups. Read a chapter, open its figures,
 attempt the questions, then follow the further reading to see how real teams
-shipped the same system. Built by [Neurarch](https://www.neurarch.com).
+shipped the same system.
+
+Every chapter then closes with a capstone ("Putting it together: the complete
+build") that assembles the chapter's techniques into one complete decided build:
+an opinionated default stack for a first system, the chapter's scenario built end
+to end with the sizing and cost arithmetic, the same pipeline re-derived under two
+contrasting constraint sets, and a tested zero-dependency runnable reference (a
+point-in-time join, a gradient booster, a replica-pool simulation, a bandit, a
+peeking-inflation A/A test, and so on). If a chapter feels like a menu of options,
+the capstone is the worked answer to "which ones do I actually pick, under my
+constraints." Built by [Neurarch](https://www.neurarch.com).

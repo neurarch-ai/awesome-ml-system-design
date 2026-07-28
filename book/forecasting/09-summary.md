@@ -41,6 +41,9 @@ flowchart TD
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file rolling-origin backtest.
 - Dense reference with production case studies, comparison tables, and math: [../../topics/14-demand-forecasting-and-time-series.md](../../topics/14-demand-forecasting-and-time-series.md)
 - Per-company teardowns with interview questions per system: [../../tools/teardowns/14.md](../../tools/teardowns/14.md)
 - Method comparison table and design-space quadrant: [../../tools/comparisons/14.md](../../tools/comparisons/14.md)

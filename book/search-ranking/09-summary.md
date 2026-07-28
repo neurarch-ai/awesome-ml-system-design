@@ -84,6 +84,9 @@ is the seam that has to stay stable.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file BM25-plus-rerank funnel.
 - Dense reference (comparison, math, all case studies): [topics/09-search-ranking.md](../../topics/09-search-ranking.md).
 - Side-by-side comparison of named systems: [tools/comparisons/09.md](../../tools/comparisons/09.md).
 - Per-company teardowns: [tools/teardowns/09.md](../../tools/teardowns/09.md).

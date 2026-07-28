@@ -60,6 +60,10 @@ produces the final order.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  two-tower retriever.
 - Dense reference (comparison, math, all case studies): [topics/01-candidate-retrieval.md](../../topics/01-candidate-retrieval.md).
 - Per-company teardowns: [CASE-TEARDOWNS.md](../../CASE-TEARDOWNS.md).
 - Trace a two-tower graph live: [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).

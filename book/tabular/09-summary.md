@@ -90,6 +90,9 @@ the point-in-time join at the top is non-negotiable.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file gradient booster.
 - Dense reference with all case studies and comparison diagrams:
   [../../topics/15-predictive-modeling-tabular.md](../../topics/15-predictive-modeling-tabular.md)
 - Monitoring and drift: [../../topics/11-ml-monitoring-and-drift.md](../../topics/11-ml-monitoring-and-drift.md)

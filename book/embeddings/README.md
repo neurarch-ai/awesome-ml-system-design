@@ -24,6 +24,7 @@ Spotify, and Instacart actually ship it.
 7. [How teams do it in production](07-how-teams-do-it-in-production.md) - GraphSAGE, LightGCN, SimCSE, PinSage, Airbnb, Spotify, Instacart, Wayfair, and where they diverge.
 8. [Interview Q&A](08-interview-qa.md) - commonly asked, tricky, and commonly answered wrong, with clear answers.
 9. [Summary](09-summary.md) - one-page recap, mermaid, five test-yourself questions, and further reading.
+10. [Putting it together: the complete build](10-putting-it-together.md) - a default stack, the scenario built end to end with index and cadence math, the same system under three different constraint sets, and the smallest runnable embedding trainer.
 
 ## The whole pipeline on one page
 

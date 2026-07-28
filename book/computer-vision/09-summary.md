@@ -81,6 +81,9 @@ pipeline, which periodically ships a new backbone, closing the loop.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, costed, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file NMS.
 - Dense reference with all case studies, comparisons, math, and production
   diagrams: [../../topics/12-computer-vision.md](../../topics/12-computer-vision.md).
 - Model Zoo (trace ResNet-50, EfficientNet-B0, U-Net, ViT-B/16, Swin-Tiny, CLIP

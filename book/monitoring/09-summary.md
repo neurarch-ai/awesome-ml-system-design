@@ -85,6 +85,10 @@ flowchart TD
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  drift monitor.
 - Dense reference (math, all case studies, comparison quadrant): [topics/11-ml-monitoring-and-drift.md](../../topics/11-ml-monitoring-and-drift.md).
 - Per-company teardowns (Evidently, Uber D3, Uber MES, Uber deploy-safety, Lyft, Netflix, Shopify): [tools/teardowns/11.md](../../tools/teardowns/11.md).
 - Side-by-side comparison (choices table, mermaid decision tree): [tools/comparisons/11.md](../../tools/comparisons/11.md).

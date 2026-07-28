@@ -99,6 +99,9 @@ and accuracy trade-off.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file WER and DTW demo.
 - Dense reference (comparison tables, all math, full case-study links):
   [topics/17-speech-and-audio.md](../../topics/17-speech-and-audio.md)
 - Trace the architecture graphs live:

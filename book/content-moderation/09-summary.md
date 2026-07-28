@@ -86,6 +86,10 @@ flowchart TD
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, costed, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  threshold sweep.
 - Dense reference with comparison table, math, and all production case studies:
   [topics/16-content-moderation.md](../../topics/16-content-moderation.md).
 - Per-company teardowns (Roblox, Pinterest, LinkedIn, Bumble, Meta, Google,

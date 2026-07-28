@@ -26,6 +26,7 @@ Tecton, and Google actually ship it.
 7. [How teams do it in production](07-how-teams-do-it-in-production.md) -- Uber, LinkedIn, Feast, Tecton, Google.
 8. [Interview Q&A](08-interview-qa.md) -- commonly asked, tricky, and commonly-answered-wrong.
 9. [Summary](09-summary.md) -- the one-page recap and self-test.
+10. [Putting it together: the complete build](10-putting-it-together.md) -- a default stack, the scenario built end to end with sizing and latency math, the same platform under three different constraint sets, and the smallest runnable point-in-time join.
 
 ## The whole system on one page
 

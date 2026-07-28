@@ -72,6 +72,10 @@ flowchart LR
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  point-in-time join.
 - Dense reference (comparison, math, all case studies):
   [topics/04-feature-store-and-training-serving-skew.md](../../topics/04-feature-store-and-training-serving-skew.md)
 - Tool comparisons (Uber vs. LinkedIn vs. Feast vs. Tecton vs. Google):

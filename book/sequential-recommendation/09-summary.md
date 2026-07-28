@@ -74,6 +74,9 @@ encoder power the whole stack.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file sequence recommender.
 - Dense reference (comparison, math, all 12 case studies, quadrant chart):
   [topics/03-sequential-recommendation.md](../../topics/03-sequential-recommendation.md).
 - Per-company teardowns (BST, DIN, TransAct, PinnerFormer, TWIN V2, Netflix,

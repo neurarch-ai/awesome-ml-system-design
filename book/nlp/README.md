@@ -41,6 +41,7 @@ label factory and long-tail fallback. This chapter makes that argument concrete.
 7. [How teams do it in production](07-how-teams-do-it-in-production.md): where eleven real systems diverge, with first-party links.
 8. [Interview Q&A](08-interview-qa.md): commonly asked, tricky, and commonly-answered-wrong, with clear answers.
 9. [Summary](09-summary.md): the one-page recap, a full-pipeline mermaid, and self-test questions.
+10. [Putting it together: the complete build](10-putting-it-together.md): a default stack, the scenario built end to end with label, latency, and cost math, the same system under three different constraint sets, and the smallest runnable text classifier.
 
 ## The whole system on one page
 

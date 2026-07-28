@@ -94,6 +94,9 @@ so the caller always gets an answer.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file replica-pool simulation.
 - Dense reference with comparison table, math, and case teardowns:
   [../../topics/05-realtime-serving-and-deployment.md](../../topics/05-realtime-serving-and-deployment.md).
 - System comparisons side by side:

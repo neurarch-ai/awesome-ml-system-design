@@ -33,6 +33,7 @@ shape every design decision in this chapter.
 7. [How teams do it in production](07-how-teams-do-it-in-production.md) - Amazon, LinkedIn, Pinterest, Instacart, Yelp, Spotify, Booking, GetYourGuide, and why they diverge.
 8. [Interview Q&A](08-interview-qa.md) - commonly asked, tricky, and commonly-answered-wrong, with clear answers.
 9. [Summary](09-summary.md) - the one-page recap, mermaid, and self-test.
+10. [Putting it together: the complete build](10-putting-it-together.md) - a default stack, the scenario built end to end with funnel and latency math, the same system under three different constraint sets, and the smallest runnable ranking funnel.
 
 ## The whole system on one page
 

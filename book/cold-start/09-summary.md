@@ -82,6 +82,9 @@ flowchart TD
 
 ## Further reading
 
+- The capstone: an opinionated default stack, the complete costed build, and
+  the smallest runnable exploration loop:
+  [10-putting-it-together.md](10-putting-it-together.md)
 - Dense reference with comparison table, full math, and all case studies:
   [../../topics/18-cold-start-and-exploration.md](../../topics/18-cold-start-and-exploration.md)
 - Per-company teardowns (Spotify, Yahoo, Stitch Fix, Instacart, Google, Duolingo):

@@ -37,6 +37,10 @@ Lyft, Booking.com, and Spotify actually run theirs.
    commonly-answered-wrong questions with clear answers.
 9. [Summary](09-summary.md) -- one-page recap, mermaid, and test-yourself
    questions.
+10. [Putting it together: the complete build](10-putting-it-together.md) -- a
+    default stack, the scenario designed end to end with sizing and duration
+    math, the same experiment under three different constraint sets, and the
+    smallest runnable experiment.
 
 ## The whole process on one page
 

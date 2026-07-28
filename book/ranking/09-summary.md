@@ -84,6 +84,10 @@ that ordered list is trusted in production.
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  debiased ranker.
 - Dense reference (comparison table, math, all case studies): [topics/02-ranking-model.md](../../topics/02-ranking-model.md).
 - Company teardowns with Q&A and gotchas: [tools/teardowns/02.md](../../tools/teardowns/02.md).
 - System comparison diagram and decision tree: [tools/comparisons/02.md](../../tools/comparisons/02.md).

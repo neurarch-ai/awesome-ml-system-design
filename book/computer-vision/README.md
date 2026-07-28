@@ -35,6 +35,10 @@ others actually ship them.
    answered wrong, with clear answers.
 9. [Summary](09-summary.md) - one-page recap, mermaid pipeline, test-yourself
    questions, further reading.
+10. [Putting it together: the complete build](10-putting-it-together.md) - a
+    default stack, the scenario built end to end with labeling and serving math,
+    the same system under three different constraint sets, and the smallest
+    runnable NMS.
 
 ## The whole system on one page
 

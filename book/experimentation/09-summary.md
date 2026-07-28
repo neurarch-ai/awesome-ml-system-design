@@ -71,6 +71,10 @@ flowchart TD
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, sized, rebuilt
+  under two other constraint sets, and compressed into a runnable A/A peeking
+  simulation.
 - Dense reference (comparison tables, math, all case studies):
   [../../topics/06-online-experimentation-and-ab-testing.md](../../topics/06-online-experimentation-and-ab-testing.md)
 - Kohavi, Tang, Xu: *Trustworthy Online Controlled Experiments* -- the

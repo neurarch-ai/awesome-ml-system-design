@@ -49,5 +49,9 @@ flowchart LR
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, costed, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  link predictor.
 - Trace a graph recommendation model live in the [Model Zoo](https://github.com/neurarch-ai/awesome-llm-model-zoo).
 - Related dense references: [Embeddings and representation learning](../../topics/07-embeddings-and-representation-learning.md) and [Candidate retrieval](../../topics/01-candidate-retrieval.md).

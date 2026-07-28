@@ -15,6 +15,7 @@ The signal that separates strong answers from weak ones: you know that the **for
 7. [How teams do it in production](07-how-teams-do-it-in-production.md) - Uber, Amazon, Zalando, and how they differ.
 8. [Interview Q&A](08-interview-qa.md) - commonly asked, tricky, and commonly answered wrong.
 9. [Summary](09-summary.md) - recap, system diagram, test-yourself questions, further reading.
+10. [Putting it together: the complete build](10-putting-it-together.md) - a default stack, the scenario built end to end with backtest and error math, the same system under three different constraint sets, and the smallest runnable backtest.
 
 ## The whole system on one page
 
