@@ -63,3 +63,8 @@ model learns from today's impressions.
 
 Read the sections in order the first time; they build on each other. Each opens
 with the question an interviewer actually asks, then answers it.
+
+## Companion chapter
+
+The LLM companion book covers the same ground from the other side:
+[rag-serving](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/rag-serving/) is what changes when the ranked results feed a generator that must cite them instead of a user who clicks them.

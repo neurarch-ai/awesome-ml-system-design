@@ -73,3 +73,8 @@ while each head keeps its own output contract.
 
 Read the sections in order the first time; each opens with the question an
 interviewer actually asks, then answers it.
+
+## Companion chapter
+
+The LLM companion book covers the same ground from the other side:
+[multimodal](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/multimodal/) is what happens when the vision encoder feeds a language model instead of a detection head.

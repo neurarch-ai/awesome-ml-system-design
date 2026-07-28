@@ -49,3 +49,8 @@ flowchart TD
 
 Read the sections in order the first time; they build on each other. Each opens with
 the question an interviewer actually asks, then answers it.
+
+## Companion chapter
+
+The LLM companion book covers the same ground from the other side:
+[safety](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/safety/) is the model-facing version of the same problem: prompt injection, jailbreaks, and output filtering on a generative system.

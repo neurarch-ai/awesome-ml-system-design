@@ -47,3 +47,8 @@ flowchart TD
 
 Read the sections in order the first time; they build on each other. Each opens
 with the question an interviewer would ask next, then answers it.
+
+## Companion chapter
+
+The LLM companion book covers the same ground from the other side:
+[inference-serving](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/inference-serving/) is how serving changes when a request is a variable-length generation, which is what breaks the queueing intuitions here.

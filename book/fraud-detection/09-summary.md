@@ -85,6 +85,10 @@ flowchart TD
 
 ## Further reading
 
+- The capstone: [the complete build](10-putting-it-together.md), where every
+  choice in this chapter is committed once for the scenario, costed, rebuilt
+  under two other constraint sets, and compressed into a runnable one-file
+  threshold sweep.
 - Dense reference with all comparisons, math, and quadrant plots:
   [topics/08-fraud-and-anomaly-detection.md](../../topics/08-fraud-and-anomaly-detection.md).
 - Per-company teardowns with interview questions and gotchas:

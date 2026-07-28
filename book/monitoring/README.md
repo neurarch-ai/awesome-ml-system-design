@@ -51,3 +51,8 @@ flowchart TD
 
 Read the sections in order the first time; they build on each other. Each opens
 with the question an interviewer actually asks, then answers it.
+
+## Companion chapter
+
+The LLM companion book covers the same ground from the other side:
+[monitoring](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/monitoring/) is the LLM treatment of the same job: tracing token-level traffic, judging quality without labels, and hallucination detection.
