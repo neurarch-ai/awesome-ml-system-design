@@ -170,6 +170,50 @@ engagement win. The most common reasons for the gap:
 The guardrail to state out loud: a positive offline metric is a pre-gate, not a
 ship decision. The ship decision is an online A/B test on the business metric.
 
+## Is the offline delta real?
+
+A metric moving from 0.412 to 0.415 is not a result until you say how wide the
+number is. Offline evaluation is an experiment on a sample of queries, so it carries
+sampling error the same way an A/B test does, and the analysis is the paired one.
+
+**Compare per query, not per corpus.** Both models scored the same queries, so the
+per-query difference $d_i = m_i^{\text{cand}} - m_i^{\text{base}}$ removes everything
+the two models have in common, which is most of the variance. Report the mean of
+$d_i$ with an interval, not the difference of two corpus means.
+
+**Cluster at the unit that was sampled.** Impressions inside one query, or queries
+inside one session or one user, are correlated. Bootstrap by resampling *queries*
+(or users), not rows, or the interval comes out too narrow and every change looks
+significant.
+
+```python
+import random
+def paired_bootstrap(per_query_deltas, reps=2000):   # one delta per query
+    n, out = len(per_query_deltas), []
+    for _ in range(reps):
+        s = [per_query_deltas[random.randrange(n)] for _ in range(n)]  # resample queries
+        out.append(sum(s) / n)
+    out.sort()
+    return out[int(0.025 * reps)], out[int(0.975 * reps)]              # 95% CI on the delta
+# CI excludes 0 -> a real offline movement; CI spans 0 -> not distinguishable yet
+```
+
+**Control the comparison count.** A slice table (by locale, query length, device,
+new versus returning) run at 5 percent significance produces false winners by
+construction. Apply a false-discovery-rate correction across the slices you report,
+and pre-declare which slice decides.
+
+**Know the label-noise floor.** Relevance labels disagree between annotators, and a
+metric cannot resolve differences smaller than the noise their disagreement induces.
+Measure it once by scoring the same eval set against two independent label passes;
+that number is the smallest delta you are entitled to discuss.
+
+The same statistics carry over to benchmarking a language model, where the item
+counts are small enough that the effect is dramatic (a 200-item benchmark carries a
+roughly 7-point interval on a single score). The companion LLM book works that case
+in detail in
+[benchmarking a model](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/benchmark-eval/).
+
 ## When to use which metric
 
 | Reach for | When | Instead of |

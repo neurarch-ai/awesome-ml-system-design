@@ -144,6 +144,20 @@ and 3 barely dents AUC over millions of pairs but visibly changes the product.
 Use AUC to confirm the model discriminates at all, and gate on NDCG@k at the k
 you actually render.
 
+**Q: Your candidate lifts NDCG@10 from 0.412 to 0.415 on the eval set. Do you send
+it to an A/B test?**
+A: Not on that number alone, because nothing said yet about how wide it is. The
+delta is computed per query and bootstrapped by resampling queries (impressions
+inside a query are correlated, so resampling rows understates the interval); if the
+95 percent interval on the paired delta spans zero, the honest answer is "not
+distinguishable," and the fix is more eval queries rather than more argument. Two
+further checks before the A/B slot, which is the scarce resource: the label-noise
+floor, measured by scoring the same set against two independent annotation passes,
+since a delta below that floor is not resolvable by any sample size; and the slice
+table, where a 0.003 aggregate gain that comes entirely from one locale while
+another regresses is a different launch decision. A/B slots are limited, so offline
+significance is what earns one.
+
 ## Commonly answered wrong (the traps)
 
 **Q: Do the two towers in a ranker share weights to save parameters?**
