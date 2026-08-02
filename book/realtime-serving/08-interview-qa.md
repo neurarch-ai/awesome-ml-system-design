@@ -132,6 +132,19 @@ is not better, and an A/B test is far too slow to be your rollback mechanism.
 
 ## Commonly answered wrong
 
+**Q: How often should you retrain? Daily sounds about right.**
+A: A number without a derivation is the wrong answer. Derive it from a staleness
+curve: freeze a model trained on data up to time T, evaluate it on held-out data
+from T+1, T+7, and T+30, and read off where the decay crosses the smallest lift
+worth shipping. That also tells you what kind of problem you have, since a curve
+that recovers is seasonality rather than drift. The cadence then follows the driver:
+adversarial domains (fraud, abuse) decay in hours and need rules that ship faster
+than models, catalog churn decays in days, preference drift in weeks. Two follow-ups
+worth volunteering: often the right fix is **feature** freshness rather than model
+freshness, because stale counts and recency features degrade faster than the weights
+do; and if you warm start every run, schedule a periodic cold rebuild as the anchor,
+since a warm chain quietly accumulates state that no data snapshot can reproduce.
+
 **Q: Autoscale on CPU utilization for an inference service, right?**
 A: Wrong. The bottleneck for an inference service is almost never CPU
 utilization; it is GPU memory bandwidth, request queue depth, or batch latency.

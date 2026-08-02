@@ -31,6 +31,12 @@ the repeatable six-step playbook (clarify, metrics, architecture, training data,
 features, model) that every chapter below applies to a different system. Read this
 first; the chapters are the method worked once each.
 
+Three companion pages sit alongside the chapters:
+
+- **[Reading paths](reading-paths.md)** - which chapters to read in which order for a specific loop (recsys, ads, search, trust and safety, perception, platform, forecasting), plus a one-week plan.
+- **[Numbers to know](numbers-to-know.md)** - the quantities you should be able to produce from memory, each with the formula that generates it.
+- **[A mock interview, end to end](mock-interview.md)** - a full 45-minute transcript with the interviewer's scoring notes and the rubric they fill in afterwards.
+
 ## Chapters
 
 | # | Chapter | Covers |
