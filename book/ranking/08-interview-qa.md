@@ -160,6 +160,28 @@ significance is what earns one.
 
 ## Commonly answered wrong (the traps)
 
+**Q: Your feed is accused of creating echo chambers. You run a two-week A/B with a
+diversity term added, engagement drops, so you conclude diversity is not worth it.
+What is wrong?**
+A: The experiment cannot see the effect being argued about. The feedback loop closes
+over months (exposure shapes logs, logs train the next model, the catalog's effective
+size shrinks), and inside a two-week window the treatment group's model was trained
+on the control group's exposure history, so the amplification the diversity term
+targets has barely had a chance to move. What a short A/B does measure honestly is
+the short-term engagement cost, which is why the result looks like a clean negative
+and is not. The right instrumentation is a **long-run holdback** (a small user
+fraction kept off new ranking models and compared months later) plus **trend
+monitoring** of exposure Gini, catalog coverage, and per-user topic entropy, rather
+than a point comparison. And the framing should change: diversity is a constraint,
+not an objective, so the decision is "hold the diversity floor while maximizing the
+primary metric," with the floor as a product decision and the cost measured.
+
+**Deeper:** the same closed loop is why the offline metric agrees with the incumbent.
+Logged data rewards a model for reproducing the ranker that produced it, so a genuinely
+different model looks worse offline. Keeping a small randomized slice with logged
+propensities is the cheap fix, and it is what makes inverse-propensity or
+doubly-robust offline evaluation possible at all.
+
 **Q: Do the two towers in a ranker share weights to save parameters?**
 A: The question confuses retrieval two-towers with the user and ad towers in
 rankers like Snap. In retrieval, the user and item towers stay separate (different

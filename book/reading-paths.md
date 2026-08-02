@@ -1,6 +1,6 @@
 # Reading paths
 
-Nineteen chapters is a lot to read front to back before a loop next week. These are
+Twenty chapters is a lot to read front to back before a loop next week. These are
 the orders that make sense for a specific interview, each with what the loop
 actually tests.
 
@@ -36,7 +36,8 @@ correction is a question you should expect verbatim.
 
 **Search and relevance.** [Search ranking](search-ranking/) then
 [candidate retrieval](candidate-retrieval/) then [embeddings](embeddings/) then
-[experimentation](experimentation/) (interleaving especially), then the LLM
+[video and multimodal search](video-search/) if the product has video or images,
+then [experimentation](experimentation/) (interleaving especially), then the LLM
 companion's [semantic search](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/semantic-search/)
 and [RAG](https://github.com/neurarch-ai/awesome-llm-system-design/tree/main/book/rag-serving/)
 chapters if the role touches generative retrieval.
@@ -77,6 +78,7 @@ statistics transfer directly.
 | "Design a recommendation system" | [Candidate retrieval](candidate-retrieval/), [ranking](ranking/), [sequential recommendation](sequential-recommendation/), [experimentation](experimentation/) |
 | "Design ads ranking" | [Ads CTR](ads-ctr/), [ranking](ranking/), [experimentation](experimentation/) |
 | "Design search" | [Search ranking](search-ranking/), [candidate retrieval](candidate-retrieval/), [embeddings](embeddings/) |
+| "Design video or image search" | [Video and multimodal search](video-search/), [embeddings](embeddings/), [computer vision](computer-vision/), [speech](speech/) |
 | "Detect fraud or abuse" | [Fraud detection](fraud-detection/), [content moderation](content-moderation/), [monitoring](monitoring/) |
 | "Our model degraded in production" | [Monitoring](monitoring/), [feature store](feature-store/), [real-time serving](realtime-serving/) |
 | "How would you test this" | [Experimentation](experimentation/), [ranking](ranking/) (offline metrics), [monitoring](monitoring/) |

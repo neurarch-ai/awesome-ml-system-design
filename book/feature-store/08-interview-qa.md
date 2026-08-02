@@ -154,6 +154,25 @@ ad-hoc warehouse tables cannot guarantee.
 
 ## Commonly answered wrong (the traps)
 
+**Q: A user requests deletion. You drop their rows from the online store. Done?**
+
+A: No, and the shape of the answer matters more than the legal detail. A feature
+store's job is to copy one team's data everywhere, so a single user's data sits in
+the raw event log, the offline store, the online store and its caches, every
+training snapshot built since, and potentially the model weights. Deleting only the
+online store is theatre. The workable policy: delete the rows everywhere, let models
+age out on their normal retraining cadence when features are aggregates over many
+users (no single user is recoverable from the weights), but **delete the artifact**
+when the model holds per-user state, since a per-user embedding table and the
+nearest-neighbor index built from it are both user data. Then two things that make
+it real rather than aspirational: retention windows declared per feature so the
+compliance rule and the training window cannot silently disagree, and an audited job
+with a completion record rather than a script someone runs.
+
+**Why:** the design test is enumerable coverage. For a given user id, can you list
+every place their data exists and show the deletion reaches all of them. If that
+takes more than a page, the finding is the architecture, not the pipeline.
+
 **Q: Can you compute heavy features (neural embeddings, expensive aggregates) on
 the serving path to keep the online store small?**
 

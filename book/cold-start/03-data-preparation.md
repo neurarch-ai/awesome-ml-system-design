@@ -85,6 +85,59 @@ the delay if possible, and hold out long-horizon cohorts to detect proxy drift.
 With data and features designed, the next section builds the exploration
 policies that use them.
 
+## Time-boxed items: cold start with no second chance
+
+Standard item cold start is a race against time: the item is new, it accumulates
+signal, and eventually it graduates. **Time-boxed items never graduate.** An event
+next Saturday, a limited-time offer, a live stream, a seat on a specific flight, a
+same-day delivery slot: by the time enough interaction data exists, the item is
+worthless.
+
+Three properties change the design.
+
+**The item is always cold, so content features are not a bootstrap, they are the
+model.** There is no "eventually the collaborative signal takes over" phase. Features
+come from what the item *is* (category, price, venue, host, description embedding)
+and from where and when it is (distance from the user, hours until it starts, day of
+week, whether it falls on a weekend).
+
+**Relevance decays on a clock, and not monotonically.** A concert three months out
+is interesting, three days out is urgent, three hours out is unreachable for most
+users, and one minute after it starts it is unrankable. That is not a decay curve
+you can learn as a single feature: encode time-to-event explicitly, and expect the
+optimal recommendation to depend on the interaction of time-to-event with distance
+and with the user's planning horizon.
+
+**Supply is finite and consumption is exclusive.** Recommending a sold-out event or
+an unavailable slot is worse than a mediocre recommendation, because it costs the
+user a click and the platform a slot. This pushes availability into a hard filter
+before ranking rather than a feature inside it, and it makes the candidate set
+change minute to minute.
+
+| Property | Standard item cold start | Time-boxed items |
+|---|---|---|
+| Interaction data | Sparse, then grows | Sparse, then the item expires |
+| What carries the model | Content features until the collaborative signal arrives | Content, time, and location features, permanently |
+| Label volume | Grows with item age | Bounded by the item's lifetime |
+| Failure mode | New items never get exposure | Items get exposure too late to convert |
+| Candidate set | Slowly changing | Changes by the minute as items expire or sell out |
+| Exploration cost | Recoverable; a bad impression today is a better model tomorrow | Partly unrecoverable; the item may be gone before the learning pays off |
+
+The design consequences are concrete. Retrieval becomes **filter-first**: eligible by
+time, location, and availability, and only then ranked, which keeps the candidate
+set small enough that a heavier ranker is affordable. Features are computed at
+request time relative to *now* rather than materialized (hours-until-start is not a
+column you can precompute). And evaluation must be **time-aware**: a random train and
+test split leaks the future, so backtest by time and score each request against the
+items that were actually available at that moment, which is the same discipline as
+[forecasting](../forecasting/).
+
+Exploration also needs re-pricing. In a standard catalog, exploration buys
+information you will use for months. On a perishable item it buys information that
+expires with the item, so the budget should be spent on **item classes** (this venue,
+this category, this price band) rather than on individual items, which is where the
+learning transfers.
+
 ## Where the labels come from
 
 Cold-start is defined by the absence of the cheap label, so knowing the three sources

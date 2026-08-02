@@ -81,6 +81,82 @@ candidate items. Only the item tower and the cross-interaction head run per
 candidate. This is the Snap architecture choice: the expensive user-side
 computation is amortized over the full candidate batch.
 
+## The feedback loop the ranker creates
+
+A ranker does not observe the world; it observes the part of the world it chose to
+show. Today's exposure becomes tomorrow's training data, which produces three
+effects that no single-model metric can see.
+
+```mermaid
+flowchart LR
+  R["ranker"] --> E["exposure<br/>(what got shown, and where)"]
+  E --> B["behavior<br/>(clicks, watches, skips)"]
+  B --> L["training logs"]
+  L --> R
+  E -.->|"never shown"| U["items with no signal<br/>-> look bad -> never shown"]
+```
+
+**Popularity amplification.** Popular items get more exposure, more exposure produces
+more engagement, more engagement raises their score. The catalog's effective size
+shrinks even though nothing about user preference changed.
+
+**Per-user narrowing.** The same mechanism runs per user: a mild early preference
+gets reinforced until the feed is a caricature of it. Whether that is a problem is a
+product question, but it should be a measured one rather than a discovered one.
+
+**Closed-loop evaluation bias.** Offline metrics computed on logged data reward
+agreeing with the ranker that produced the logs. A genuinely better model that
+surfaces different items scores worse, which is the same trap as evaluating retrieval
+against the current system's clicks.
+
+### Measure it before you fix it
+
+| Signal | What it catches | How to compute |
+|---|---|---|
+| Catalog coverage | Amplification | Fraction of the catalog receiving any impression in a window |
+| Exposure concentration | Amplification | Gini coefficient over impressions per item, tracked over time |
+| Intra-list diversity | Narrowing within a session | Average pairwise distance between recommended items in embedding space |
+| Novelty | Narrowing over time | Mean negative log popularity of recommended items |
+| Per-user topic entropy | Narrowing per user | Entropy of a user's consumed categories, trended over months |
+| Explored share | Whether the loop is being broken at all | Fraction of impressions from randomized or exploration slots |
+
+The trend matters more than the level. A stable Gini is a system in equilibrium; a
+Gini rising month over month is a loop closing.
+
+### Breaking the loop
+
+Four levers, in the order of cost to implement:
+
+1. **Log propensities and keep a randomized slice.** A small fraction of traffic with
+   randomized ranking is what makes unbiased offline evaluation (inverse-propensity
+   or doubly-robust estimators) possible at all. It is the cheapest thing here and
+   the one most often skipped.
+2. **Diversity at re-ranking.** Apply diversification over the top-k after scoring
+   (marginal-relevance style selection, or slot quotas per category, creator, or
+   source). Doing it in the ranker's loss instead conflates estimating relevance with
+   choosing a slate.
+3. **Popularity debiasing in training.** Down-weight or correct for exposure
+   frequency so the model stops learning "popular" as a synonym for "good"; the logQ
+   correction in [candidate retrieval](../candidate-retrieval/) is the retrieval-side
+   version of the same idea.
+4. **Exploration budget for cold and long-tail items**, which is the
+   [cold-start](../cold-start/) chapter's machinery pointed at this problem.
+
+### The A/B blind spot
+
+The loop closes over weeks and months; an A/B runs for one or two. Within the test
+window the treatment group's model was trained on the control group's exposure
+history, so the amplification effect is largely invisible. Two standard defenses:
+a **long-run holdback** (a small fraction of users never exposed to new ranking
+models, compared against months later) and **trend monitoring** of the diversity
+metrics above rather than point comparisons. Say this out loud in an interview when
+someone proposes proving diversity impact with a two-week test.
+
+A final honest note: **diversity is a constraint, not an objective.** Pushing it
+costs short-term engagement almost by construction, so the useful framing is "hold
+the diversity metric at or above a floor while maximizing the primary metric," with
+the floor set by a product decision and the cost measured rather than assumed.
+
 ## Bottlenecks
 
 | Bottleneck | First sign | Fix | Tradeoff |
