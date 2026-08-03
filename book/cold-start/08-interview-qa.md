@@ -196,6 +196,26 @@ survive there.
 
 ## Commonly answered wrong
 
+**Q: Recommending events is just item cold start with a date feature. Right?**
+
+A: It is cold start where the item never graduates. A standard new item accumulates
+interaction data and eventually the collaborative signal takes over; an event next
+Saturday expires before that happens, so content, time, and location features are not
+a bootstrap, they are permanently the model. Three design consequences follow.
+Relevance decays on a clock and non-monotonically (three months out is interesting,
+three hours out is unreachable), so time-to-event is an explicit feature that
+interacts with distance and with the user's planning horizon. Supply is finite and
+consumption is exclusive, so availability is a hard filter before ranking rather than
+a feature inside it, and the candidate set changes minute to minute. And exploration
+has to be re-priced: on a perishable item the information you buy expires with the
+item, so spend the budget on item *classes* (this venue, this category, this price
+band) where the learning transfers, rather than on individual items.
+
+**Why:** the tell in an interview is the evaluation answer. A random train/test split
+leaks the future and scores a system against items that had already expired, so
+time-aware backtesting against the set that was actually available at each request is
+mandatory rather than a refinement.
+
 **Q: Should exploration be baked into the ranking model's objective function?**
 
 A: No. The ranking model's job is to produce an accurate point estimate of

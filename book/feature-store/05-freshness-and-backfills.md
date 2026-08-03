@@ -152,6 +152,66 @@ recomputing years of history. Whichever path it takes, it validates with the par
 metric afterward, since that is how backfill skew is caught before it surfaces as
 online degradation.
 
+## Deletion, PII, and the data lifecycle
+
+Freshness is about data arriving on time. The mirror problem is data **leaving** on
+time, and it is a design constraint rather than a legal footnote: a user exercises
+their deletion right, and that request has to propagate through a system explicitly
+built to copy their data into many places.
+
+**Where a single user's data ends up.** The raw event log, the offline store, the
+online store, the training snapshots used to build every model since, the model
+weights themselves, and the caches in front of all of it. A deletion pipeline that
+only clears the online store is theatre.
+
+```mermaid
+flowchart LR
+  DEL["deletion request"] --> RAW["raw event log"]
+  DEL --> OFF["offline store"]
+  DEL --> ON["online store + caches"]
+  DEL --> SNAP["training snapshots"]
+  SNAP --> MODEL{"is the user's data<br/>recoverable from the model?"}
+  MODEL -->|"aggregate features only"| OK["retrain on schedule"]
+  MODEL -->|"per-user embedding or memorized row"| RETRAIN["drop the row and retrain,<br/>or delete the embedding"]
+```
+
+The practical policy most teams land on:
+
+- **Delete the rows, and let the model age out on its normal retraining cadence.**
+  Defensible when features are aggregates over many users, because no single user is
+  recoverable from the weights.
+- **Delete the artifact, not just the row, when the model holds per-user state.** A
+  per-user embedding table is user data. So is a nearest-neighbor index built from
+  it, and so is a feature keyed by user id in the online store.
+- **Set retention windows per feature, not per system.** A 30-day interaction window
+  is both a modeling choice and a compliance one; making it explicit in the feature
+  definition means the retention rule and the training window cannot silently
+  disagree.
+- **Make deletion auditable.** A tested job with a completion record beats a
+  hand-run script, because the thing being demonstrated is that it ran.
+
+**PII in features.** The rule that matters at design time: **the feature store is
+where PII spreads**, since its job is to make one team's data available to every
+model. Three defenses that cost little if built in early and are expensive to
+retrofit: tag columns with a sensitivity class in the feature definition and enforce
+it in the serving API; prefer derived features (a count, a bucketed age, a hashed
+id) over raw identifiers, since a model rarely needs the email address that produced
+the count; and keep the raw-to-derived mapping in one pipeline so a policy change
+happens in one place.
+
+**When the constraint is stricter than "delete on request."** Two patterns worth
+naming in an interview because they change the architecture rather than the
+paperwork: keeping the sensitive computation **on device** and shipping only
+aggregates or gradients (which is how a keyboard or a photos app can personalize at
+all), and adding **noise with a stated privacy budget** to published aggregates when
+the output itself is the leak. Both trade accuracy for a property you can state
+precisely, and both belong in the requirements conversation rather than being
+bolted on later.
+
+The design test to apply at the end: for a given user id, can you enumerate every
+place their data exists and show that a deletion request reaches all of them. If the
+answer takes more than a page, that is the finding.
+
 ## Implementation and training pitfalls
 
 Feature stores rarely fail on the modeling side; they fail on time and skew, where a

@@ -17,7 +17,7 @@ screenshots.
 ## What you will learn
 
 - Build the recommendation stack end to end: two-tower retrieval, ranking, sequential personalization, cold start, exploration, and graph-based link prediction.
-- Design advertising and search systems: calibrated CTR prediction under an auction, query understanding, and learning-to-rank.
+- Design advertising and search systems: calibrated CTR prediction under an auction, query understanding, learning-to-rank, and text-to-video retrieval over multimodal documents.
 - Handle adversarial and imbalanced problems: fraud and anomaly detection, and content moderation across text, image, and audio.
 - Ship perception systems: computer vision, speech and audio, and task-specific NLP.
 - Predict the future and the tail: demand forecasting and time series, and predictive modeling on tabular data.
@@ -59,12 +59,29 @@ Three companion pages sit alongside the chapters:
 | 16 | [Real-Time Serving and Deployment](realtime-serving/) | Model servers, batching, shadow and canary, rollback, autoscaling |
 | 17 | [Online Experimentation and A/B Testing](experimentation/) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
 | 18 | [ML Monitoring and Drift](monitoring/) | Feature drift, label drift, performance decay, alerting |
-| 19 | [Graph Recommendation and Link Prediction](graph-recommendation/) | People You May Know, GNNs (GraphSAGE, PinSage), link prediction, negative sampling on graphs, serving embeddings |
+| 19 | [Video and Multimodal Search](video-search/) | Text-to-video retrieval, transcripts and frames, query-aware fusion, moment retrieval, index cost and re-embedding |
+| 20 | [Graph Recommendation and Link Prediction](graph-recommendation/) | People You May Know, GNNs (GraphSAGE, PinSage), link prediction, negative sampling on graphs, serving embeddings |
 
 A companion book covers the LLM half (RAG, serving, agents, evaluation, safety)
 in the
 [LLM System Design Interview](https://github.com/neurarch-ai/awesome-llm-system-design)
 repository.
+
+## Influences and credit
+
+Several chapters carry a style note naming their influences. The main one, collected
+here so it is not scattered: the Candidate/Interviewer dialogue that opens each
+chapter and the frame-data-model-evaluate-serve arc are inspired by Ali Aminian and
+Alex Xu's *Machine Learning System Design Interview* (ByteByteGo, 2023), which is
+worth reading on its own. What we borrow is the **shape of the reasoning**, and in a
+few cases the observation that a subject deserves coverage at all. Everything here is
+written from primary sources (papers and first-party engineering blogs, linked
+inline), and no text, figure, or number is reproduced from that book or any other.
+
+Where our treatment differs on purpose: every chapter closes with a costed capstone
+and a runnable reference, production case studies are cited to first-party
+write-ups rather than summarized second-hand, and the architecture figures are
+validated graphs you can open and edit rather than static pictures.
 
 ## Technical requirements
 
