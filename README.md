@@ -28,6 +28,26 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 > Every chapter closes with a capstone that decides the whole build once, costs it,
 > re-derives it under two other constraint sets, and ships a runnable
 > zero-dependency reference you can execute with nothing but Python 3.
+
+> **Want a sidebar and a search box?** The same material is published as a site at
+> **[neurarch-ai.github.io/awesome-ml-system-design](https://neurarch-ai.github.io/awesome-ml-system-design/)**,
+> generated from these exact files. Searching there covers every page at once, which is
+> the fastest way to find the one paragraph that answers a question you are stuck on.
+
+---
+
+## What else is here, and what it is for
+
+Four things ship alongside the text, and each one exists because reading about a system
+is not the same as being able to produce its numbers under pressure.
+
+| | What it is | Use it to |
+|---|---|---|
+| [**Model Zoo**](https://github.com/neurarch-ai/awesome-llm-model-zoo) ([gallery](https://neurarch-ai.github.io/awesome-llm-model-zoo)) | 92 reference architectures as validated graphs at real dimensions, MIT, including DLRM, DeepFM, SASRec, BERT4Rec and GraphSAGE | Trace an embedding table or a feature cross on the real model instead of a diagram of it |
+| [**papers.md**](papers.md) | The reading list per topic, eight papers maximum each | Read the handful an interviewer will not stop to explain |
+| [**datasets.md**](datasets.md) | The public datasets per problem, with what each is for and what is wrong with it | Answer "where would the data come from", which is the question candidates answer worst |
+| [**CASE-STUDIES.md**](CASE-STUDIES.md) + [**teardowns**](CASE-TEARDOWNS.md) | Shipped systems from first-party engineering writeups, with per-system teardowns | Ground an answer in what a real team did, and what it cost them |
+
 ## How to use this repo
 
 1. **Read the [answer framework](framework/answer-framework.md) first.** It is the
