@@ -1,10 +1,10 @@
 # Case studies, by company
 
-The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by company so you can see how one org approaches the same ML problem across problems. 218 case studies, 74 companies. Deep teardowns of many of these live in [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md).
+The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by company so you can see how one org approaches the same ML problem across problems. 222 case studies, 76 companies. Deep teardowns of many of these live in [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md).
 
 ---
 
-### Google (19)
+### Google (20)
 
 - [Sampling-Bias-Corrected Neural Modeling for Large Corpus Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/) *(Candidate Retrieval)*
 - [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) *(Ranking Model)*
@@ -13,6 +13,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(Online Experimentation And Ab Testing)*
 - [On the Factory Floor: ML engineering for industrial-scale ads](https://arxiv.org/abs/2209.05310) *(Ads Ctr Prediction)*
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(ML Monitoring And Drift)*
+- [Hidden Technical Debt in Machine Learning Systems](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html) *(ML Monitoring And Drift)*
 - [Mapping Africa's Buildings with Satellite Imagery](https://research.google/blog/mapping-africas-buildings-with-satellite-imagery/) *(Computer Vision)*
 - [Deep Learning for Detection of Diabetic Eye Disease](https://research.google/blog/deep-learning-for-detection-of-diabetic-eye-disease/) *(Computer Vision)*
 - [A Neural Network for Machine Translation, at Production Scale](https://research.google/blog/a-neural-network-for-machine-translation-at-production-scale/) *(Natural Language Processing)*
@@ -133,10 +134,11 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Modernizing real-time availability prediction for hundreds of millions of items](https://company.instacart.com/tech-innovation/how-instacart-modernized-the-prediction-of-real-time-availability-for-hundreds-of-millions-of-items-while-saving-costs) *(Demand Forecasting And Time Series)*
 - [Contextual Bandit models in large action spaces](https://company.instacart.com/tech-innovation/using-contextual-bandit-models-in-large-action-spaces-at-instacart) *(Cold Start And Exploration)*
 
-### Meta (8)
+### Meta (9)
 
 - [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) *(Ranking Model)*
 - [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) *(Ads Ctr Prediction)*
+- [Practical Lessons from Predicting Clicks on Ads at Facebook](https://research.facebook.com/publications/practical-lessons-from-predicting-clicks-on-ads-at-facebook/) *(Ads Ctr Prediction)*
 - [Mask R-CNN](https://ai.meta.com/research/publications/mask-r-cnn/) *(Computer Vision)*
 - [How AI is getting better at detecting hate speech](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/) *(Natural Language Processing)*
 - [Transitioning entirely to neural machine translation](https://engineering.fb.com/2017/08/03/ml-applications/transitioning-entirely-to-neural-machine-translation/) *(Natural Language Processing)*
@@ -300,6 +302,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [PySurvival Tutorial: Churn Modeling](https://developer.squareup.com/blog/pysurvival-tutorial-churn-modeling/) *(Predictive Modeling Tabular)*
 
+### Burges (1)
+
+- [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) *(Search Ranking)*
+
 ### Canva (1)
 
 - [Ship Shape](https://www.canva.dev/blog/engineering/ship-shape/) *(Computer Vision)*
@@ -375,6 +381,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### He et al. (1)
 
 - [LightGCN](https://arxiv.org/abs/2002.02126) *(Embeddings And Representation Learning)*
+
+### Kohavi, Tang, Xu (1)
+
+- [Trustworthy Online Controlled Experiments](https://experimentguide.com/) *(Online Experimentation And Ab Testing)*
 
 ### Mercado Libre (1)
 

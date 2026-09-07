@@ -87,7 +87,7 @@ const IND = {}; const put = (i, ...cs) => cs.forEach(c => IND[c] = i);
 put('Big Tech and cloud','Criteo','Yahoo','Google','Meta','Microsoft','Amazon','Apple','NVIDIA','IBM','Alibaba','Snowflake','Databricks','Cloudflare','Dropbox','Salesforce','Elastic','Vespa','Red Hat','AMD','PyTorch','Hugging Face','Kuaishou');
 put('AI labs and foundation models','OpenAI','Anthropic','DeepSeek','Character.AI','Cognition','Mistral','Moonshot AI','Ai2','OpenGVLab');
 // Method and paper names used as labels where no single vendor owns the result.
-put('Research and academia','TALLRec','P5','RQ-VAE','Scaling laws');
+put('Research and academia','TALLRec','P5','RQ-VAE','Scaling laws','Burges');
 put('AI infra and developer tools','Anyscale','Baseten','Together','Fireworks','Modal','LangChain','vLLM','llm-d','LMSYS','LMSYS / SGLang','Replit','GitHub','GitLab','Sourcegraph','Vercel','Glean','Datadog','Honeycomb','Grafana','Slack','Discord','Twilio','Stack Overflow','Grammarly','Krisp','Vapi','Daily','LiveKit','Deepgram','AssemblyAI','ElevenLabs','Cartesia','KIVI','Feast','Tecton','MongoDB','Canva','Figma','Intercom','Segment','Algolia');
 put('E-commerce and retail','Allegro','Instacart','Etsy','Wayfair','Walmart','Shopify','Mercari','Zalando','Faire','Stitch Fix','Nextdoor','Asos','Nordstrom','Ocado','Oda','Coupang','Mercado Libre','OLX','eBay','Cars24','Gousto','Picnic');
 put('Media and streaming','Netflix','Spotify','Vimeo');

@@ -1,10 +1,10 @@
 # Case studies, by industry
 
-The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by industry so you can see which the same ML problem patterns recur in your domain. 218 case studies across 11 industries.
+The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by industry so you can see which the same ML problem patterns recur in your domain. 222 case studies across 11 industries.
 
 ---
 
-## Big Tech and cloud (41)
+## Big Tech and cloud (43)
 
 | Company | Case study | Topic |
 | --- | --- | --- |
@@ -22,6 +22,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Google | [Better Generalization with Semantic IDs](https://arxiv.org/abs/2306.08121) | Generative Recommendation |
 | Google | [Child safety toolkit: Content Safety API and CSAI Match](https://protectingchildren.google/tools-for-partners/) | Content Moderation |
 | Google | [Deep Learning for Detection of Diabetic Eye Disease](https://research.google/blog/deep-learning-for-detection-of-diabetic-eye-disease/) | Computer Vision |
+| Google | [Hidden Technical Debt in Machine Learning Systems](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html) | ML Monitoring And Drift |
 | Google | [Improving On-Device Speech Recognition with VoiceFilter-Lite](https://research.google/blog/improving-on-device-speech-recognition-with-voicefilter-lite/) | Speech And Audio |
 | Google | [Long-Term Value of Exploration](https://arxiv.org/abs/2305.07764) | Cold Start And Exploration |
 | Google | [Mapping Africa's Buildings with Satellite Imagery](https://research.google/blog/mapping-africas-buildings-with-satellite-imagery/) | Computer Vision |
@@ -44,6 +45,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Meta | [Hateful Memes Challenge and dataset](https://ai.meta.com/blog/hateful-memes-challenge-and-data-set/) | Content Moderation |
 | Meta | [How AI is getting better at detecting hate speech](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/) | Natural Language Processing |
 | Meta | [Mask R-CNN](https://ai.meta.com/research/publications/mask-r-cnn/) | Computer Vision |
+| Meta | [Practical Lessons from Predicting Clicks on Ads at Facebook](https://research.facebook.com/publications/practical-lessons-from-predicting-clicks-on-ads-at-facebook/) | Ads Ctr Prediction |
 | Meta | [SeamlessM4T: a foundational multimodal model for speech translation](https://ai.meta.com/blog/seamless-m4t/) | Speech And Audio |
 | Meta | [Transitioning entirely to neural machine translation](https://engineering.fb.com/2017/08/03/ml-applications/transitioning-entirely-to-neural-machine-translation/) | Natural Language Processing |
 | NVIDIA | [NeMo Parakeet ASR Models](https://developer.nvidia.com/blog/pushing-the-boundaries-of-speech-recognition-with-nemo-parakeet-asr-models/) | Speech And Audio |
@@ -255,11 +257,12 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Yelp | [Beyond Matrix Factorization: Using hybrid features for user-business recommendations](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html) | Ranking Model |
 | Yelp | [Learning to Rank for Business Matching](https://engineeringblog.yelp.com/2014/12/learning-to-rank-for-business-matching.html) | Search Ranking |
 
-## Research and academia (17)
+## Research and academia (19)
 
 | Company | Case study | Topic |
 | --- | --- | --- |
 | Berkeley RISELab | [Clipper: A Low-Latency Online Prediction Serving System](https://arxiv.org/abs/1612.03079) | Realtime Serving And Deployment |
+| Burges | [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) | Search Ranking |
 | Chawla et al. | [SMOTE: Synthetic Minority Over-sampling Technique](https://arxiv.org/abs/1106.1813) | Fraud And Anomaly Detection |
 | Cheng et al. | [Wide & Deep Learning](https://arxiv.org/abs/1606.07792) | Fraud And Anomaly Detection |
 | Cheng et al. | [Wide & Deep Learning](https://arxiv.org/abs/1606.07792) | Search Ranking |
@@ -269,6 +272,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Gao et al. | [SimCSE: Simple Contrastive Learning of Sentence Embeddings](https://arxiv.org/abs/2104.08821) | Embeddings And Representation Learning |
 | Guo et al. | [DeepFM](https://arxiv.org/abs/1703.04247) | Ads Ctr Prediction |
 | He et al. | [LightGCN](https://arxiv.org/abs/2002.02126) | Embeddings And Representation Learning |
+| Kohavi, Tang, Xu | [Trustworthy Online Controlled Experiments](https://experimentguide.com/) | Online Experimentation And Ab Testing |
 | P5 | [Recommendation as Language Processing](https://arxiv.org/abs/2203.13366) | Generative Recommendation |
 | RQ-VAE | [Autoregressive Image Generation using Residual Quantization](https://arxiv.org/abs/2203.01941) | Generative Recommendation |
 | Scaling laws | [Understanding Scaling Laws for Recommendation Models](https://arxiv.org/abs/2208.08489) | Generative Recommendation |
