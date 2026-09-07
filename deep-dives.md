@@ -361,8 +361,6 @@ Alignment measures how close positive pairs land, $\mathbb{E}\big[\lVert u - v^+
 
 ## Features, leakage, and training-serving skew
 
-## Features, leakage, and training-serving skew
-
 **Q: What exactly is target leakage, and why is it more dangerous than a simple bug?**
 
 Target leakage is when a feature carries information that would not be available at prediction time, usually because it is derived from the outcome itself or from events that happen after the prediction point. It is dangerous because it does not throw an error or crash; it silently inflates offline metrics and passes code review, so it survives all the way to production before failing. The model looks excellent in the notebook and then collapses on live traffic where the leaked signal does not exist. The guard is to fix a strict prediction timestamp for every row and ask of each feature: "could I have computed this value using only data that existed before this timestamp?" Any feature that fails that question is disqualified regardless of how much it helps the score.

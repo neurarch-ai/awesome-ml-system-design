@@ -69,6 +69,7 @@ predictive), plus the cross-cutting platform layer they all run on.
 | 01 | [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness |
 | 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget |
 | 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features |
+| 19 | [Generative recommendation](topics/19-generative-recommendation.md) | Semantic IDs and the vocabulary collapse, retrieval as constrained decoding, generative ranking and the scaling-law bet, the LLM in the loop, and why the standard metrics flatter all of it |
 | 18 | [Cold start and exploration](topics/18-cold-start-and-exploration.md) | New-user and new-item cold start, content towers, explore-exploit, contextual bandits, off-policy evaluation |
 
 ### Advertising
@@ -133,7 +134,7 @@ predictive), plus the cross-cutting platform layer they all run on.
 | 06 | [Online experimentation and A/B testing](topics/06-online-experimentation-and-ab-testing.md) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
 | 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting |
 
-All eighteen topics are written and ready.
+All nineteen topics are written and ready.
 
 **Going deeper than the whiteboard?** [**deep-dives.md**](deep-dives.md) is a
 bank of ~186 rapid-fire, depth-probing questions: the follow-ups an interviewer

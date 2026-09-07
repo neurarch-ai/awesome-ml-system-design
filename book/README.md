@@ -44,23 +44,24 @@ Three companion pages sit alongside the chapters:
 | 1 | [Candidate Retrieval with Two-Tower Models](candidate-retrieval/) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness |
 | 2 | [Ranking Models](ranking/) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration |
 | 3 | [Sequential and Personalized Recommendation](sequential-recommendation/) | Behavior-sequence modeling, attention over interactions, session-based recsys, cold start, real-time features |
-| 4 | [Cold Start and Exploration](cold-start/) | New-user and new-item cold start, content towers, explore-exploit, contextual bandits, off-policy evaluation |
-| 5 | [Ads Click-Through-Rate Prediction](ads-ctr/) | Calibration (it feeds the auction), cross features, bidding signals, delayed conversions |
-| 6 | [Search Ranking](search-ranking/) | Query understanding, learning-to-rank, relevance labels, position bias |
-| 7 | [Fraud and Anomaly Detection](fraud-detection/) | Class imbalance, label delay, cost-sensitive thresholds, graph features, adversaries |
-| 8 | [Content Moderation and Trust and Safety](content-moderation/) | Per-policy harm taxonomy, recall at a precision floor, multi-modal, human-in-the-loop, adversarial evasion |
-| 9 | [Computer Vision](computer-vision/) | Task taxonomy, transfer learning, labeling cost, GPU serving cost, moderation recall, visual search |
-| 10 | [Speech and Audio](speech/) | Streaming vs batch ASR, RNN-T and Conformer, WER pitfalls, wake word, diarization, TTS, on-device |
-| 11 | [Natural Language Processing](nlp/) | Text classification, NER and extraction, intent, entity resolution, translation, encoder vs LLM |
-| 12 | [Demand Forecasting and Time Series](forecasting/) | Probabilistic and hierarchical forecasts, classical vs deep, backtesting, forecast-then-optimize |
-| 13 | [Predictive Modeling on Tabular Data](tabular/) | Why trees still win, calibration, uplift and causal decisions, delayed labels, survival, LTV, fairness |
-| 14 | [Embeddings and Representation Learning](embeddings/) | Contrastive learning, negative sampling, dimensionality, index choice |
-| 15 | [Feature Stores and Training-Serving Skew](feature-store/) | Online and offline parity, point-in-time correctness, backfills, freshness |
-| 16 | [Real-Time Serving and Deployment](realtime-serving/) | Model servers, batching, shadow and canary, rollback, autoscaling |
-| 17 | [Online Experimentation and A/B Testing](experimentation/) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
-| 18 | [ML Monitoring and Drift](monitoring/) | Feature drift, label drift, performance decay, alerting |
-| 19 | [Video and Multimodal Search](video-search/) | Text-to-video retrieval, transcripts and frames, query-aware fusion, moment retrieval, index cost and re-embedding |
-| 20 | [Graph Recommendation and Link Prediction](graph-recommendation/) | People You May Know, GNNs (GraphSAGE, PinSage), link prediction, negative sampling on graphs, serving embeddings |
+| 4 | [Generative Recommendation](generative-recommendation/) | Semantic IDs, retrieval as constrained decoding, generative ranking, the LLM in the loop, and the evaluation traps |
+| 5 | [Cold Start and Exploration](cold-start/) | New-user and new-item cold start, content towers, explore-exploit, contextual bandits, off-policy evaluation |
+| 6 | [Ads Click-Through-Rate Prediction](ads-ctr/) | Calibration (it feeds the auction), cross features, bidding signals, delayed conversions |
+| 7 | [Search Ranking](search-ranking/) | Query understanding, learning-to-rank, relevance labels, position bias |
+| 8 | [Fraud and Anomaly Detection](fraud-detection/) | Class imbalance, label delay, cost-sensitive thresholds, graph features, adversaries |
+| 9 | [Content Moderation and Trust and Safety](content-moderation/) | Per-policy harm taxonomy, recall at a precision floor, multi-modal, human-in-the-loop, adversarial evasion |
+| 10 | [Computer Vision](computer-vision/) | Task taxonomy, transfer learning, labeling cost, GPU serving cost, moderation recall, visual search |
+| 11 | [Speech and Audio](speech/) | Streaming vs batch ASR, RNN-T and Conformer, WER pitfalls, wake word, diarization, TTS, on-device |
+| 12 | [Natural Language Processing](nlp/) | Text classification, NER and extraction, intent, entity resolution, translation, encoder vs LLM |
+| 13 | [Demand Forecasting and Time Series](forecasting/) | Probabilistic and hierarchical forecasts, classical vs deep, backtesting, forecast-then-optimize |
+| 14 | [Predictive Modeling on Tabular Data](tabular/) | Why trees still win, calibration, uplift and causal decisions, delayed labels, survival, LTV, fairness |
+| 15 | [Embeddings and Representation Learning](embeddings/) | Contrastive learning, negative sampling, dimensionality, index choice |
+| 16 | [Feature Stores and Training-Serving Skew](feature-store/) | Online and offline parity, point-in-time correctness, backfills, freshness |
+| 17 | [Real-Time Serving and Deployment](realtime-serving/) | Model servers, batching, shadow and canary, rollback, autoscaling |
+| 18 | [Online Experimentation and A/B Testing](experimentation/) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
+| 19 | [ML Monitoring and Drift](monitoring/) | Feature drift, label drift, performance decay, alerting |
+| 20 | [Video and Multimodal Search](video-search/) | Text-to-video retrieval, transcripts and frames, query-aware fusion, moment retrieval, index cost and re-embedding |
+| 21 | [Graph Recommendation and Link Prediction](graph-recommendation/) | People You May Know, GNNs (GraphSAGE, PinSage), link prediction, negative sampling on graphs, serving embeddings |
 
 A companion book covers the LLM half (RAG, serving, agents, evaluation, safety)
 in the
