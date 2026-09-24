@@ -13,7 +13,7 @@ from the underlying engineering writeups. Then the systems themselves. For the f
 per-case teardown of any one, see [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md); browse the
 same systems [by company](CASE-STUDIES-BY-COMPANY.md) or [by industry](CASE-STUDIES-BY-INDUSTRY.md).
 
-212 systems across the taxonomy, and growing.
+222 systems across the taxonomy, and growing.
 
 ---
 ### [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) · 13 systems
@@ -435,6 +435,128 @@ quadrantChart
 
 ---
 
+### [Generative recommendation](topics/19-generative-recommendation.md) · 12 systems
+
+**What they share.** Every system here stops treating an item as an opaque integer. Each one gives the item a representation a model can generalize over (a tuple of content-derived codes, or the item's metadata as text), models the user's history as a sequence in that vocabulary, and then produces the next item by generating rather than by looking it up. All of them still filter, deduplicate and rank afterwards, because a generative retriever that cannot be constrained is not shippable. They diverge on which representation they chose and on how much of the existing cascade they were willing to replace.
+
+**The reference pipeline.** Read every design below as a specialization of this flow. The offline path builds the item representation and trains the sequence model on it; the online path decodes candidates and hands them to the same downstream stages a two-tower retriever would feed.
+
+```mermaid
+flowchart LR
+  CONTENT["item content<br/>(title, description, image)"] --> ENC["content encoder"]
+  ENC --> RQ["RQ-VAE quantizer"]
+  RQ --> SID["semantic IDs<br/>(c1..cm per item)"]
+  LOGS["interaction logs"] --> SEQ["user history as<br/>a sequence of item codes"]
+  SID -.defines the vocabulary.-> SEQ
+  SEQ --> TRAIN["train the sequence model<br/>(next-item as next codes)"]
+  TRAIN --> SERVE["online: decode next codes<br/>(constrained beam search)"]
+  SERVE --> MAP["map beams to items,<br/>dedup across beams"]
+  MAP --> FILT["hard filters, freshness,<br/>diversity"]
+  FILT --> RANK["ranking stage<br/>(unchanged)"]
+  RQ -.refresh cycle.-> TRAIN
+```
+
+**Reading the diagram.** Follow the top row first, because it is the part that does not exist in a classic recommender. An item's content is embedded and then quantized into a short tuple of discrete codes, coarse to fine, so two items with similar content share their leading codes. That is the entire generalization mechanism: a new item inherits a neighbourhood from its content instead of waiting for interactions. It also collapses the output vocabulary, from one logit per item (tens of millions) to $K$ logits per code position (typically 256), which is what makes decoding a catalogue tractable at all. The bottom row is the familiar sequence recommender with its vocabulary swapped, and the dotted edge back from the quantizer is the operational trap: retrain the quantizer and every item's ID changes, which invalidates the sequence model trained on the old codes, so the two refresh cycles are coupled whether or not anyone planned for it. On the serving side, decoding is constrained to prefixes that actually exist, beams are deduplicated because several can land on one item, and the result enters the same filter and ranking stages as before. Nothing downstream gets simpler; what changes is where candidates come from and what they cost, since a beam decode is several sequential forward passes against a single ANN probe.
+
+**Where they diverge.** The fork is the item representation, and each choice commits you to a different cost and a different failure mode.
+
+```mermaid
+flowchart TD
+  Q{"how do you name an item<br/>to the model?"} -->|"atomic ID"| ATOM["classic embedding table<br/>(two-tower, SASRec)"]
+  Q -->|"content codes"| SEMID["semantic IDs"]
+  Q -->|"text"| VERB["verbalized metadata"]
+  SEMID --> Q2{"used where?"}
+  Q2 -->|"replace retrieval"| TIGER["generative retrieval<br/>(TIGER)"]
+  Q2 -->|"feature in ranking"| RANKF["semantic IDs as features<br/>(Google ranking)"]
+  Q2 -->|"one model for both"| ONE["unified retrieve and rank<br/>(OneRec)"]
+  VERB --> Q3{"how much of the stack?"}
+  Q3 -->|"ranker for some surfaces"| GENREC["LLM ranker<br/>(Netflix GenRec)"]
+  Q3 -->|"the whole task as text"| P5["text-to-text recsys<br/>(P5, M6-Rec, TALLRec)"]
+  ATOM --> SCALE["scale the sequence model instead<br/>(HSTU)"]
+```
+
+**The choices, side by side.**
+
+| System | Representation | Replaces | The bet | Watch out |
+| --- | --- | --- | --- | --- |
+| TIGER (Google) | RQ-VAE semantic IDs | The retrieval index | Content codes generalize to cold and tail items | Collisions, and the quantizer refresh cycle |
+| Semantic IDs for ranking (Google) | Semantic IDs as features | Nothing; it augments the ranker | Cheapest way to get the generalization | The gain lives in a slice, so an aggregate hides it |
+| HSTU (Meta) | Actions as a sequence, atomic items | The ambition is the whole cascade | Quality follows a scaling law, not features | Serving cost, and an organizational commitment |
+| OneRec (Kuaishou) | Semantic IDs, one model | Retrieval and ranking together | The cascade is the accidental complexity | One model failing is a whole-surface failure |
+| Netflix foundation model | Pretrained user-history model | Nothing directly; it feeds surfaces | One pretrained model amortizes across surfaces | Integration effort per surface |
+| Netflix GenRec | Verbalized history and metadata | The ranker, on some surfaces | Engineering velocity on new content types | Token cost and latency per request |
+| P5, M6-Rec, TALLRec | Text prompts | Varies by task | An LLM's world knowledge transfers | Sampled-metric optimism, prompt drift |
+| DSI (Google) | Document identifiers | Document retrieval, not recsys | The ancestor of the whole idea | Index updates are a retrain |
+
+**The math that separates them.** Three expressions decide whether any of this is worth it.
+
+$$\textbf{vocabulary collapse: } \underbrace{|V| = N_{\text{items}}}_{\text{atomic, } 10^{7}\text{ to }10^{8}} \quad \longrightarrow \quad \underbrace{|V| = K \text{ per position}, \ m \text{ positions}}_{K = 256,\ m = 4 \ \Rightarrow \ K^{m} \approx 4.3 \times 10^{9}}$$
+
+$$\textbf{retrieval cost: } \underbrace{C_{\text{ANN}} \approx 1 \text{ index probe}}_{\text{milliseconds}} \quad \text{versus} \quad \underbrace{C_{\text{gen}} \approx m \text{ sequential steps} \times b \text{ beams}}_{\text{several forward passes}}$$
+
+$$\textbf{where the gain is: } \Delta\text{recall} = \sum_{s \in \text{slices}} w_s \cdot \Delta\text{recall}_s, \qquad \Delta\text{recall}_{\text{tail}} \gg \Delta\text{recall}_{\text{head}}$$
+
+The first says why decoding a catalogue is possible: you never score 50 million things, you score 256 things four times. The second says what it costs, and it is the number most candidates never mention. The third is the reporting rule: the head slice usually moves little or not at all, so an aggregate number both understates the effect and hides the risk.
+
+```mermaid
+quadrantChart
+  title Generalization gained vs cost and risk added
+  x-axis "little added cost" --> "large added cost"
+  y-axis "little generalization gained" --> "real generalization gained"
+  quadrant-1 "worth a pilot"
+  quadrant-2 "do this first"
+  quadrant-3 "avoid"
+  quadrant-4 "only at frontier scale"
+  "content features in the ranker": [0.15, 0.4]
+  "semantic IDs as ranking features": [0.3, 0.7]
+  "generative retrieval (TIGER)": [0.6, 0.8]
+  "unified retrieve and rank": [0.85, 0.85]
+  "scaled sequence transducer": [0.9, 0.8]
+  "LLM ranker on all traffic": [0.95, 0.6]
+  "LLM ranker on a new surface": [0.5, 0.75]
+  "atomic IDs, bigger embedding table": [0.4, 0.15]
+```
+
+**When to use which.** Decide what you are short of first: interaction data, engineering velocity, or nothing in particular.
+
+| Reach for | When | Instead of |
+|---|---|---|
+| Semantic IDs as ranking features | You want the generalization without changing the serving path | Rebuilding retrieval first, which is the expensive half |
+| Generative retrieval | Cold start and the long tail are the actual pain | Replacing a healthy ANN path, which buys latency you did not want |
+| A unified retrieve-and-rank model | Frontier scale, and the cascade's coordination cost is the bottleneck | A first project, since one model failing takes the whole surface |
+| A scaled sequence transducer | You can commit to data, parameters and compute as the improvement axis | Expecting scaling-law gains from a model you cannot afford to grow |
+| An LLM ranker on one surface | A new content type has no features and no history | An LLM on all traffic, which is the cost trap |
+| Keeping the cascade | Stable catalogue, rich interactions, tuned pipeline | Rebuilding because the frontier is interesting |
+| Full-catalogue offline metrics | Comparing any of these to your current system | Sampled-candidate metrics, which flatter generative retrieval most |
+| An online test with slice reporting | Any adoption decision | An aggregate offline number, which hides where the gain and the risk both live |
+
+**Interview watch-outs.**
+
+- **Name the representation before the model.** Atomic ID, semantic ID or text is the decision that determines everything else. Candidates who lead with "we would use a transformer" have not answered the question.
+- **"No index to maintain" is not true, it is different.** You maintain a valid-prefix structure and the item table instead, and you added a quantizer with its own training and refresh cycle.
+- **It is usually not cheaper to serve.** A beam decode is several sequential forward passes against one ANN probe. It buys generalization, not latency.
+- **The quantizer refresh is the operational trap.** Retraining it changes every item's ID and invalidates the sequence model trained on the old codes. Version the codebook and migrate both together.
+- **Report per slice.** Gains concentrate on cold and tail items. An aggregate both understates the effect and hides the popularity collapse that beam search can cause.
+- **Count the hallucinated and unavailable items.** Decoded tuples that map to nothing, or to something the user cannot see, are a metric with a target, not something to silently filter.
+- **Say what you would pilot.** The cascade is what nearly everyone runs; the honest answer names one surface, shadow mode, and slice-level decision criteria, rather than proposing to replace a working funnel in one step.
+
+**The systems**
+
+- **Google** [Recommender Systems with Generative Retrieval (TIGER)](https://arxiv.org/abs/2305.05065): RQ-VAE semantic IDs plus a sequence-to-sequence model that decodes the next item, and the reference design for generative retrieval. *(model)*
+- **Google** [Better Generalization with Semantic IDs](https://arxiv.org/abs/2306.08121): Semantic IDs used as features in a production ranking model, with the gains reported on cold-start and long-tail slices. *(product design)*
+- **Meta** [Actions Speak Louder than Words (HSTU)](https://arxiv.org/abs/2402.17152): Recommendation as sequential transduction at trillion-parameter scale, and the clearest statement of the scaling-law bet. *(model)*
+- **Kuaishou** [OneRec](https://arxiv.org/abs/2502.18965): Retrieval and ranking unified in one generative model with iterative preference alignment, deployed at scale. *(deployment)*
+- **Netflix** [Foundation Model for Personalized Recommendation](https://netflixtechblog.com/foundation-model-for-personalized-recommendation-1a0bd8e02d39): One pretrained sequence model over user history, amortized across many personalization surfaces. *(deployment)*
+- **Netflix** [GenRec: Towards LLM-Native Recommendation](https://netflixtechblog.com/genrec-towards-llm-native-recommendation-at-netflix-f20be6f643e3): An LLM ranker over verbalized histories and item metadata, motivated by how expensive it is to onboard a new content type onto a stack of thousands of hand-crafted features. *(deployment)*
+- **Google** [Transformer Memory as a Differentiable Search Index](https://arxiv.org/abs/2202.06991): The document-retrieval ancestor of all of this: map a query directly to a document identifier by decoding it. *(model)*
+- **Alibaba** [M6-Rec](https://arxiv.org/abs/2205.08084): Open-ended recommendation from a generative pretrained language model, an early and honest account of what breaks. *(model)*
+- **TALLRec** [Aligning an LLM with recommendation](https://arxiv.org/abs/2305.00447): Tuning a language model on recommendation data efficiently, and where the sample efficiency comes from. *(model)*
+- **P5** [Recommendation as Language Processing](https://arxiv.org/abs/2203.13366): Many recommendation tasks as one text-to-text model, the paper that framed the paradigm. *(model)*
+- **RQ-VAE** [Autoregressive Image Generation using Residual Quantization](https://arxiv.org/abs/2203.01941): The quantizer semantic IDs are built on, from a different field. *(model)*
+- **Scaling laws** [Understanding Scaling Laws for Recommendation Models](https://arxiv.org/abs/2208.08489): What actually scales in a recommender, which is the evidence base for the bet the frontier is making. *(eval bar)*
+
+---
+
 ### [Ads CTR prediction](topics/10-ads-ctr-prediction.md) · 11 systems
 
 **What they share.** Every system pulls eligible ads, scores each with a sparse-embedding model into a calibrated pCTR, and feeds `eCPM = bid x pCTR` into the auction; they diverge only on how feature interactions are carried and how calibration is defended as labels drift and conversions land late.
@@ -551,7 +673,7 @@ quadrantChart
 - **Guo et al.** [DeepFM](https://arxiv.org/abs/1703.04247): factorization-machine plus deep network for CTR. *(model)*
 - **Wang et al.** [DCN V2](https://arxiv.org/abs/2008.13535): explicit bounded-degree feature crosses for CTR ranking. *(model)*
 - **Cheng et al.** [Wide & Deep Learning](https://arxiv.org/abs/1606.07792): memorization plus generalization, the Google Play CTR model. *(model)*
-- **Facebook** Practical Lessons from Predicting Clicks on Ads (GBDT + logistic regression): the classic recipe of boosted-tree features feeding a calibrated linear model, with hard-won notes on calibration and data freshness. Find it via the index below. *(deployment)*
+- **Meta** [Practical Lessons from Predicting Clicks on Ads at Facebook](https://research.facebook.com/publications/practical-lessons-from-predicting-clicks-on-ads-at-facebook/): the classic recipe of boosted-tree features feeding a calibrated linear model, with hard-won notes on calibration and data freshness. Find it via the index below. *(deployment)*
 - **Pinterest** [AutoML, multi-task, multi-tower models for Pinterest Ads](https://medium.com/pinterest-engineering/how-we-use-automl-multi-task-learning-and-multi-tower-models-for-pinterest-ads-db966c3dc99e): A Platt-scaling calibration layer cut day-to-day error up to 80%. *(product design)*
 - **LinkedIn** [Lessons from a deep-learning ads CTR prediction model](https://www.linkedin.com/blog/engineering/machine-learning/challenges-and-practical-lessons-from-building-a-deep-learning-b): Replacing GLMix with a three-tower DNN; calibration under exposure bias. *(deployment)*
 - **Instacart** [Calibrating CTR Prediction with Transfer Learning](https://tech.instacart.com/calibrating-ctr-prediction-with-transfer-learning-in-instacart-ads-3ec88fa97525): Transfer learning aligns predicted CTR with observed click frequency. *(eval bar)*
@@ -693,7 +815,7 @@ quadrantChart
 
 - **Wang et al.** [DCN V2: Improved Deep & Cross Network](https://arxiv.org/abs/2008.13535): Explicit, efficient feature crosses in a ranking model used at web scale. *(ranking model)*
 - **Cheng et al.** [Wide & Deep Learning](https://arxiv.org/abs/1606.07792): Memorization (wide linear over crossed features) plus generalization (deep net) for ranking. *(ranking model)*
-- **Burges** "From RankNet to LambdaRank to LambdaMART: An Overview": the canonical learning-to-rank reference, walking from a pairwise RankNet loss to LambdaRank's NDCG-weighted gradients to the LambdaMART tree ensemble. The clearest single source on why ranking losses are pairwise and listwise rather than pointwise. *(learning-to-rank)*
+- **Burges** [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/): An Overview": the canonical learning-to-rank reference, walking from a pairwise RankNet loss to LambdaRank's NDCG-weighted gradients to the LambdaMART tree ensemble. The clearest single source on why ranking losses are pairwise and listwise rather than pointwise. *(learning-to-rank)*
 - **Amazon** [From structured search to learning-to-rank-and-retrieve](https://www.amazon.science/blog/from-structured-search-to-learning-to-rank-and-retrieve): Unifies retrieval and ranking via learning-to-rank-and-retrieve with contextual bandits. *(product design)*
 - **LinkedIn** [Improving Post Search at LinkedIn](https://www.linkedin.com/blog/engineering/search/improving-post-search-at-linkedin): Multi-stage retrieval plus learning-to-rank for member post search. *(product design)*
 - **Pinterest** [SearchSage: learning search query representations](https://medium.com/pinterest-engineering/searchsage-learning-search-query-representations-at-pinterest-654f2bb887fc): A query embedding model powering search retrieval and ranking relevance. *(deployment)*
@@ -2067,7 +2189,7 @@ quadrantChart
 
 ---
 
-### [Real-time serving & deployment](topics/05-realtime-serving-and-deployment.md) · 11 systems
+### [Real-time serving & deployment](topics/05-realtime-serving-and-deployment.md) · 10 systems
 
 **What they share.** Every system separates the model artifact from the server that runs it, loads versioned artifacts by pointer from a registry into stateless replicas, and stages a candidate through shadow or canary before it widens. They diverge on who owns the stack, where inference runs, how batches form, and how a deploy is made safe.
 
@@ -2187,7 +2309,6 @@ quadrantChart
 
 - **Berkeley RISELab** [Clipper: A Low-Latency Online Prediction Serving System](https://arxiv.org/abs/1612.03079): a serving system with caching, batching, and model abstraction. *(serving system)*
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): deployment discipline, staged rollout, and not letting serving drift from training. *(discipline)*
-- **Uber, DoorDash, and Netflix** have all published model-serving and deployment writeups (real-time prediction services, staged rollouts, and model registries); they are indexed in the database below rather than linked individually here. *(platform)*
 - **Uber** [Meet Michelangelo: Uber's Machine Learning Platform](https://www.uber.com/us/en/blog/michelangelo-machine-learning-platform/): An online prediction service serving batched RPC requests at sub-10ms P95. *(deployment)*
 - **Grab** [Catwalk: serving machine learning models at scale](https://engineering.grab.com/catwalk-serving-machine-learning-models-at-scale): Self-service TensorFlow Serving on Kubernetes with autoscaling for hundreds of models. *(deployment)*
 - **Lyft** [Millions of real-time decisions with LyftLearn Serving](https://eng.lyft.com/powering-millions-of-real-time-decisions-with-lyftlearn-serving-9bb1f73318dc): A decentralized inference platform with versioning, shadowing, ms-latency predictions. *(deployment)*
@@ -2199,7 +2320,7 @@ quadrantChart
 
 ---
 
-### [Online experimentation & A/B testing](topics/06-online-experimentation-and-ab-testing.md) · 11 systems
+### [Online experimentation & A/B testing](topics/06-online-experimentation-and-ab-testing.md) · 10 systems
 
 **What they share.** Every platform runs one spine: hash a diversion unit into stable arms, log a pre-declared success metric next to guardrails, squeeze variance, then decide ship-or-hold. All divergence lives in how they cut variance, contain interference, and pull the trigger.
 
@@ -2312,8 +2433,7 @@ quadrantChart
 **The systems**
 
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): emphasizes measuring real online impact, not just offline metrics. *(discipline)*
-- **Kohavi, Tang, Xu** *Trustworthy Online Controlled Experiments* (the A/B testing book): the canonical reference on OEC choice, sample ratio mismatch, peeking, interference, and running experiments at scale. *(reference)*
-- **Netflix, Microsoft (ExP), Airbnb, LinkedIn** experimentation engineering writeups: first-party accounts of large-scale experimentation platforms, variance reduction, interleaving, and interference-robust designs. *(platform)*
+- **Kohavi, Tang, Xu** [Trustworthy Online Controlled Experiments](https://experimentguide.com/): the canonical reference on OEC choice, sample ratio mismatch, peeking, interference, and running experiments at scale. *(reference)*
 - **Netflix** [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55): Interleaving prunes ranking algorithms with 100x fewer subscribers before A/B confirmation. *(eval bar)*
 - **Uber** [Under the Hood of Uber's Experimentation Platform](https://www.uber.com/blog/xp/): An XP platform with CUPED variance reduction, monitoring, and statistical methodology. *(deployment)*
 - **Netflix** [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21): Modular analysis infra letting scientists add custom metrics and causal models. *(deployment)*
@@ -2430,7 +2550,7 @@ quadrantChart
 - **Chip Huyen** [Data Distribution Shifts and Monitoring](https://huyenchip.com/2022/02/07/data-distribution-shifts-and-monitoring.html): the clearest single read on covariate vs concept drift, label delay, and what to actually monitor. *(foundations)*
 - **Google** [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml): the production discipline, including watching for silent failures in the data feeding the model. *(discipline)*
 - **Evidently AI** [open-source drift detection](https://github.com/evidentlyai/evidently): concrete drift metrics (PSI, KS, distribution tests) and report tooling; the methods implemented and runnable. *(tooling)*
-- **"Hidden Technical Debt in Machine Learning Systems"** (Sculley et al., NeurIPS 2015): the classic paper on why ML systems rot in production: entanglement, feedback loops, the CACE principle. *(foundations)*
+- **Google** [Hidden Technical Debt in Machine Learning Systems](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html): the classic paper on why ML systems rot in production: entanglement, feedback loops, the CACE principle. *(foundations)*
 - **Uber** [D3: an automated system to detect data drifts](https://www.uber.com/blog/d3-an-automated-system-to-detect-data-drifts/): Column-level data-drift detection with Prophet anomaly detection across 300+ datasets. *(deployment)*
 - **Uber** [Model Excellence Scores: enhancing ML quality at scale](https://www.uber.com/en-GB/blog/enhancing-the-quality-of-machine-learning-systems-at-scale/): An SLA-style scoring framework measuring model quality across lifecycle phases. *(eval bar)*
 - **Uber** [Raising the Bar on ML Model Deployment Safety](https://www.uber.com/us/en/blog/raising-the-bar-on-ml-model-deployment-safety/): Shadow testing, automated rollbacks, and real-time data-quality checks. *(deployment)*

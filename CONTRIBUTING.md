@@ -1,5 +1,10 @@
 # Contributing
 
+**Writing something new rather than fixing something?** Start from
+[**template/**](template/): a skeleton for a topic walkthrough and one for a full book
+chapter, plus the list of places a new file has to be registered before anything links
+to it. This page is what CI rejects; that one is what to write.
+
 Thanks for improving this book. A few house rules keep every chapter rendering
 correctly on GitHub and reading consistently. CI runs the validator on every push
 and pull request, so please run it locally before opening a PR.

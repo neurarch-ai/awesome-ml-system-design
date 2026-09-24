@@ -24,6 +24,24 @@ This rebuilds four files from `topics/` plus the sources in this folder:
 3. Refresh `tools/comparisons/NN.md` so the diagram/table/quadrant include the new company.
 4. Run `node tools/build.mjs`.
 
+## The site
+
+`build-site.mjs` stages the repo into `.site/` (gitignored) and writes the mkdocs config
+that renders it at <https://neurarch-ai.github.io/awesome-ml-system-design/>. Nothing in
+it is a second copy of the content: page titles are read from each file's H1, and the
+chapter list is read from the table in `book/README.md`, so a new chapter reaches the
+sidebar by being listed there.
+
+```
+pip install -r tools/requirements-site.txt
+node tools/build-site.mjs && mkdocs serve -f .site/mkdocs.yml
+```
+
+Deployed by `.github/workflows/site.yml` on every push to `main`. The companion
+[LLM repo](https://github.com/neurarch-ai/awesome-llm-system-design) runs the same
+generator; the only differences are the site name, the URL, and that its book README
+groups chapters under `###` headings while this one is a flat table.
+
 ## Conventions
 
 No em or en dashes anywhere. Math is GitHub-flavored LaTeX; do not use `\operatorname` (GitHub's KaTeX rejects it, use `\text{...}`) and never put `#` inside math (use `n_{\text{bins}}` style). Every Mermaid code fence must be closed; `quadrantChart` point labels with spaces must be quoted.

@@ -9,6 +9,7 @@ const csOrder = [
   ['01-candidate-retrieval.md', 'Candidate retrieval (two-tower)'],
   ['02-ranking-model.md', 'Ranking model'],
   ['03-sequential-recommendation.md', 'Sequential & personalized recommendation'],
+  ['19-generative-recommendation.md', 'Generative recommendation'],
   ['10-ads-ctr-prediction.md', 'Ads CTR prediction'],
   ['09-search-ranking.md', 'Search ranking'],
   ['08-fraud-and-anomaly-detection.md', 'Fraud & anomaly detection'],
@@ -61,7 +62,7 @@ function buildCaseStudies() {
 }
 
 // ---- CASE-TEARDOWNS.md (concatenate per-topic teardown sections) ----
-const tdOrder = ['01','02','03','18','10','09','08','16','12','17','13','14','15','07','04','05','06','11'];
+const tdOrder = ['01','02','03','19','18','10','09','08','16','12','17','13','14','15','07','04','05','06','11'];
 function buildTeardowns() {
   const blocks = tdOrder.map(nn => fs.readFileSync(`${TD}/${nn}.md`, 'utf8').trim());
   const header = [
@@ -85,6 +86,8 @@ const norm = (c) => ({'Google Research':'Google','Google DeepMind':'Google','Dee
 const IND = {}; const put = (i, ...cs) => cs.forEach(c => IND[c] = i);
 put('Big Tech and cloud','Criteo','Yahoo','Google','Meta','Microsoft','Amazon','Apple','NVIDIA','IBM','Alibaba','Snowflake','Databricks','Cloudflare','Dropbox','Salesforce','Elastic','Vespa','Red Hat','AMD','PyTorch','Hugging Face','Kuaishou');
 put('AI labs and foundation models','OpenAI','Anthropic','DeepSeek','Character.AI','Cognition','Mistral','Moonshot AI','Ai2','OpenGVLab');
+// Method and paper names used as labels where no single vendor owns the result.
+put('Research and academia','TALLRec','P5','RQ-VAE','Scaling laws','Burges');
 put('AI infra and developer tools','Anyscale','Baseten','Together','Fireworks','Modal','LangChain','vLLM','llm-d','LMSYS','LMSYS / SGLang','Replit','GitHub','GitLab','Sourcegraph','Vercel','Glean','Datadog','Honeycomb','Grafana','Slack','Discord','Twilio','Stack Overflow','Grammarly','Krisp','Vapi','Daily','LiveKit','Deepgram','AssemblyAI','ElevenLabs','Cartesia','KIVI','Feast','Tecton','MongoDB','Canva','Figma','Intercom','Segment','Algolia');
 put('E-commerce and retail','Allegro','Instacart','Etsy','Wayfair','Walmart','Shopify','Mercari','Zalando','Faire','Stitch Fix','Nextdoor','Asos','Nordstrom','Ocado','Oda','Coupang','Mercado Libre','OLX','eBay','Cars24','Gousto','Picnic');
 put('Media and streaming','Netflix','Spotify','Vimeo');

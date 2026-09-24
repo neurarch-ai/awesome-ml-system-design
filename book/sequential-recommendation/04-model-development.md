@@ -215,6 +215,11 @@ production today, and the generative foundation model is the direction the front
 moving, not yet a drop-in replacement. Naming both, and the tradeoff, is the senior
 signal.
 
+This chapter treats it in a paragraph because it is a variation on the sequence model
+built above. The full treatment, including semantic IDs, constrained decoding, the
+evaluation traps and what it costs to serve, is its own chapter:
+[Generative Recommendation](../generative-recommendation/).
+
 ## Implementation and training pitfalls
 
 Sequence models are unusually easy to leak: a single off-by-one in the mask or a

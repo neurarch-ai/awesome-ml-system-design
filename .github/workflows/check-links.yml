@@ -1,6 +1,6 @@
 name: Check external links
 
-# Runs monthly (and on demand) to catch link rot in book/ citations.
+# Runs monthly (and on demand) to catch link rot in book/, papers.md and datasets.md.
 # Not part of the push/PR gate: external sites rate-limit and bot-block, which would
 # make a required check flaky. Fails only on genuinely DEAD links (404 / DNS / TLS).
 on:

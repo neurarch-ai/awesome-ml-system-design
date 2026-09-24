@@ -1,10 +1,10 @@
 # Case studies, by company
 
-The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by company so you can see how one org approaches the same ML problem across problems. 206 case studies, 70 companies. Deep teardowns of many of these live in [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md).
+The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by company so you can see how one org approaches the same ML problem across problems. 222 case studies, 76 companies. Deep teardowns of many of these live in [CASE-TEARDOWNS.md](CASE-TEARDOWNS.md).
 
 ---
 
-### Google (16)
+### Google (20)
 
 - [Sampling-Bias-Corrected Neural Modeling for Large Corpus Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/) *(Candidate Retrieval)*
 - [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) *(Ranking Model)*
@@ -13,6 +13,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(Online Experimentation And Ab Testing)*
 - [On the Factory Floor: ML engineering for industrial-scale ads](https://arxiv.org/abs/2209.05310) *(Ads Ctr Prediction)*
 - [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) *(ML Monitoring And Drift)*
+- [Hidden Technical Debt in Machine Learning Systems](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html) *(ML Monitoring And Drift)*
 - [Mapping Africa's Buildings with Satellite Imagery](https://research.google/blog/mapping-africas-buildings-with-satellite-imagery/) *(Computer Vision)*
 - [Deep Learning for Detection of Diabetic Eye Disease](https://research.google/blog/deep-learning-for-detection-of-diabetic-eye-disease/) *(Computer Vision)*
 - [A Neural Network for Machine Translation, at Production Scale](https://research.google/blog/a-neural-network-for-machine-translation-at-production-scale/) *(Natural Language Processing)*
@@ -22,6 +23,9 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Tacotron 2: Generating Human-like Speech from Text](https://research.google/blog/tacotron-2-generating-human-like-speech-from-text/) *(Speech And Audio)*
 - [Improving On-Device Speech Recognition with VoiceFilter-Lite](https://research.google/blog/improving-on-device-speech-recognition-with-voicefilter-lite/) *(Speech And Audio)*
 - [Long-Term Value of Exploration](https://arxiv.org/abs/2305.07764) *(Cold Start And Exploration)*
+- [Recommender Systems with Generative Retrieval (TIGER)](https://arxiv.org/abs/2305.05065) *(Generative Recommendation)*
+- [Better Generalization with Semantic IDs](https://arxiv.org/abs/2306.08121) *(Generative Recommendation)*
+- [Transformer Memory as a Differentiable Search Index](https://arxiv.org/abs/2202.06991) *(Generative Recommendation)*
 
 ### Pinterest (16)
 
@@ -91,6 +95,20 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Automated Fake Account Detection at LinkedIn](https://www.linkedin.com/blog/engineering/trust-and-safety/automated-fake-account-detection-at-linkedin) *(Content Moderation)*
 - [Viral spam content detection at LinkedIn](https://www.linkedin.com/blog/engineering/trust-and-safety/viral-spam-content-detection-at-linkedin) *(Content Moderation)*
 
+### Netflix (11)
+
+- [Integrating Netflix Foundation Model into Personalization](https://netflixtechblog.medium.com/integrating-netflixs-foundation-model-into-personalization-applications-cf176b5860eb) *(Sequential Recommendation)*
+- [Automated Canary Analysis with Kayenta](https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69) *(Realtime Serving And Deployment)*
+- [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) *(Online Experimentation And Ab Testing)*
+- [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21) *(Online Experimentation And Ab Testing)*
+- [ML Observability: transparency for payments and beyond](https://netflixtechblog.com/ml-observability-bring-transparency-to-payments-and-beyond-33073e260a38) *(ML Monitoring And Drift)*
+- [Accelerating Video Quality Control with Pixel Error Detection](https://netflixtechblog.com/accelerating-video-quality-control-at-netflix-with-pixel-error-detection-47ef7af7ca2e) *(Computer Vision)*
+- [Building In-Video Search](https://netflixtechblog.com/building-in-video-search-936766f0017c) *(Computer Vision)*
+- [Artwork Personalization at Netflix](https://netflixtechblog.com/artwork-personalization-c589f074ad76) *(Cold Start And Exploration)*
+- [Infra for Contextual Bandits and Reinforcement Learning](https://netflixtechblog.com/ml-platform-meetup-infra-for-contextual-bandits-and-reinforcement-learning-4a90305948ef) *(Cold Start And Exploration)*
+- [Foundation Model for Personalized Recommendation](https://netflixtechblog.com/foundation-model-for-personalized-recommendation-1a0bd8e02d39) *(Generative Recommendation)*
+- [GenRec: Towards LLM-Native Recommendation](https://netflixtechblog.com/genrec-towards-llm-native-recommendation-at-netflix-f20be6f643e3) *(Generative Recommendation)*
+
 ### Spotify (10)
 
 - [Introducing Voyager: Spotify's nearest-neighbor search library](https://engineering.atspotify.com/2023/10/introducing-voyager-spotifys-new-nearest-neighbor-search-library) *(Candidate Retrieval)*
@@ -116,27 +134,17 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Modernizing real-time availability prediction for hundreds of millions of items](https://company.instacart.com/tech-innovation/how-instacart-modernized-the-prediction-of-real-time-availability-for-hundreds-of-millions-of-items-while-saving-costs) *(Demand Forecasting And Time Series)*
 - [Contextual Bandit models in large action spaces](https://company.instacart.com/tech-innovation/using-contextual-bandit-models-in-large-action-spaces-at-instacart) *(Cold Start And Exploration)*
 
-### Netflix (9)
-
-- [Integrating Netflix Foundation Model into Personalization](https://netflixtechblog.medium.com/integrating-netflixs-foundation-model-into-personalization-applications-cf176b5860eb) *(Sequential Recommendation)*
-- [Automated Canary Analysis with Kayenta](https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69) *(Realtime Serving And Deployment)*
-- [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) *(Online Experimentation And Ab Testing)*
-- [Reimagining Experimentation Analysis at Netflix](https://netflixtechblog.com/reimagining-experimentation-analysis-at-netflix-71356393af21) *(Online Experimentation And Ab Testing)*
-- [ML Observability: transparency for payments and beyond](https://netflixtechblog.com/ml-observability-bring-transparency-to-payments-and-beyond-33073e260a38) *(ML Monitoring And Drift)*
-- [Accelerating Video Quality Control with Pixel Error Detection](https://netflixtechblog.com/accelerating-video-quality-control-at-netflix-with-pixel-error-detection-47ef7af7ca2e) *(Computer Vision)*
-- [Building In-Video Search](https://netflixtechblog.com/building-in-video-search-936766f0017c) *(Computer Vision)*
-- [Artwork Personalization at Netflix](https://netflixtechblog.com/artwork-personalization-c589f074ad76) *(Cold Start And Exploration)*
-- [Infra for Contextual Bandits and Reinforcement Learning](https://netflixtechblog.com/ml-platform-meetup-infra-for-contextual-bandits-and-reinforcement-learning-4a90305948ef) *(Cold Start And Exploration)*
-
-### Meta (7)
+### Meta (9)
 
 - [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) *(Ranking Model)*
 - [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) *(Ads Ctr Prediction)*
+- [Practical Lessons from Predicting Clicks on Ads at Facebook](https://research.facebook.com/publications/practical-lessons-from-predicting-clicks-on-ads-at-facebook/) *(Ads Ctr Prediction)*
 - [Mask R-CNN](https://ai.meta.com/research/publications/mask-r-cnn/) *(Computer Vision)*
 - [How AI is getting better at detecting hate speech](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/) *(Natural Language Processing)*
 - [Transitioning entirely to neural machine translation](https://engineering.fb.com/2017/08/03/ml-applications/transitioning-entirely-to-neural-machine-translation/) *(Natural Language Processing)*
 - [Hateful Memes Challenge and dataset](https://ai.meta.com/blog/hateful-memes-challenge-and-data-set/) *(Content Moderation)*
 - [SeamlessM4T: a foundational multimodal model for speech translation](https://ai.meta.com/blog/seamless-m4t/) *(Speech And Audio)*
+- [Actions Speak Louder than Words (HSTU)](https://arxiv.org/abs/2402.17152) *(Generative Recommendation)*
 
 ### Wayfair (7)
 
@@ -169,6 +177,12 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Shopify's Playbook for Scaling Machine Learning](https://shopify.engineering/shopify-playbook-scaling-machine-learning) *(ML Monitoring And Drift)*
 - [Using Rich Image and Text Data to Categorize Products at Scale](https://shopify.engineering/using-rich-image-text-data-categorize-products) *(Computer Vision)*
 
+### Alibaba (3)
+
+- [Behavior Sequence Transformer for E-commerce Recommendation](https://arxiv.org/abs/1905.06874) *(Sequential Recommendation)*
+- [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978) *(Sequential Recommendation)*
+- [M6-Rec](https://arxiv.org/abs/2205.08084) *(Generative Recommendation)*
+
 ### Amazon (3)
 
 - [From structured search to learning-to-rank-and-retrieve](https://www.amazon.science/blog/from-structured-search-to-learning-to-rank-and-retrieve) *(Search Ranking)*
@@ -192,11 +206,6 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 - [Shop the Look with Deep Learning](https://engineering.zalando.com/posts/2018/09/shop-look-deep-learning.html) *(Computer Vision)*
 - [Building a dynamic inventory optimisation system](https://engineering.zalando.com/posts/2025/06/inventory-optimisation-system.html) *(Demand Forecasting And Time Series)*
 - [How Zalando optimized large-scale inference and streamlined ML operations](https://aws.amazon.com/blogs/machine-learning/how-zalando-optimized-large-scale-inference-and-streamlined-ml-operations-on-amazon-sagemaker/) *(Predictive Modeling Tabular)*
-
-### Alibaba (2)
-
-- [Behavior Sequence Transformer for E-commerce Recommendation](https://arxiv.org/abs/1905.06874) *(Sequential Recommendation)*
-- [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978) *(Sequential Recommendation)*
 
 ### Asos (2)
 
@@ -232,6 +241,11 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [Candidate generation using a two-tower approach](https://medium.com/expedia-group-tech/candidate-generation-using-a-two-tower-approach-with-expedia-group-traveler-data-ca6a0dcab83e) *(Candidate Retrieval)*
 - [Expedia Group's Customer Lifetime Value Prediction Model](https://medium.com/expedia-group-tech/expedia-groups-customer-lifetime-value-prediction-model-7927cdd44342) *(Predictive Modeling Tabular)*
+
+### Kuaishou (2)
+
+- [TWIN V2: ultra-long user behavior sequence modeling](https://arxiv.org/abs/2407.16357) *(Sequential Recommendation)*
+- [OneRec](https://arxiv.org/abs/2502.18965) *(Generative Recommendation)*
 
 ### Roblox (2)
 
@@ -287,6 +301,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Block (1)
 
 - [PySurvival Tutorial: Churn Modeling](https://developer.squareup.com/blog/pysurvival-tutorial-churn-modeling/) *(Predictive Modeling Tabular)*
+
+### Burges (1)
+
+- [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) *(Search Ranking)*
 
 ### Canva (1)
 
@@ -364,9 +382,9 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [LightGCN](https://arxiv.org/abs/2002.02126) *(Embeddings And Representation Learning)*
 
-### Kuaishou (1)
+### Kohavi, Tang, Xu (1)
 
-- [TWIN V2: ultra-long user behavior sequence modeling](https://arxiv.org/abs/2407.16357) *(Sequential Recommendation)*
+- [Trustworthy Online Controlled Experiments](https://experimentguide.com/) *(Online Experimentation And Ab Testing)*
 
 ### Mercado Libre (1)
 
@@ -396,9 +414,21 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 
 - [Whisper: Robust Speech Recognition via Large-Scale Weak Supervision](https://github.com/openai/whisper) *(Speech And Audio)*
 
+### P5 (1)
+
+- [Recommendation as Language Processing](https://arxiv.org/abs/2203.13366) *(Generative Recommendation)*
+
 ### PyTorch (1)
 
 - [Forced Alignment with Wav2Vec2](https://docs.pytorch.org/audio/stable/tutorials/forced_alignment_tutorial.html) *(Speech And Audio)*
+
+### RQ-VAE (1)
+
+- [Autoregressive Image Generation using Residual Quantization](https://arxiv.org/abs/2203.01941) *(Generative Recommendation)*
+
+### Scaling laws (1)
+
+- [Understanding Scaling Laws for Recommendation Models](https://arxiv.org/abs/2208.08489) *(Generative Recommendation)*
 
 ### Slack (1)
 
@@ -411,6 +441,10 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by compa
 ### Stitch Fix (1)
 
 - [Multi-Armed Bandits and the Experimentation Platform](https://multithreaded.stitchfix.com/blog/2020/08/05/bandits/) *(Cold Start And Exploration)*
+
+### TALLRec (1)
+
+- [Aligning an LLM with recommendation](https://arxiv.org/abs/2305.00447) *(Generative Recommendation)*
 
 ### Tecton (1)
 

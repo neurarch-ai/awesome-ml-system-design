@@ -1,15 +1,16 @@
 # Case studies, by industry
 
-The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by industry so you can see which the same ML problem patterns recur in your domain. 206 case studies across 11 industries.
+The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by industry so you can see which the same ML problem patterns recur in your domain. 222 case studies across 11 industries.
 
 ---
 
-## Big Tech and cloud (35)
+## Big Tech and cloud (43)
 
 | Company | Case study | Topic |
 | --- | --- | --- |
 | Alibaba | [Behavior Sequence Transformer for E-commerce Recommendation](https://arxiv.org/abs/1905.06874) | Sequential Recommendation |
 | Alibaba | [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978) | Sequential Recommendation |
+| Alibaba | [M6-Rec](https://arxiv.org/abs/2205.08084) | Generative Recommendation |
 | Amazon | [Alexa's new wake word research at Interspeech](https://www.amazon.science/blog/amazon-alexas-new-wake-word-research-at-interspeech) | Speech And Audio |
 | Amazon | [End-to-end learning of coherent probabilistic forecasts for hierarchical time series](https://www.amazon.science/publications/end-to-end-learning-of-coherent-probabilistic-forecasts-for-hierarchical-time-series) | Demand Forecasting And Time Series |
 | Amazon | [From structured search to learning-to-rank-and-retrieve](https://www.amazon.science/blog/from-structured-search-to-learning-to-rank-and-retrieve) | Search Ranking |
@@ -18,12 +19,15 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Dropbox | [Using machine learning to index text from billions of images](https://dropbox.tech/machine-learning/using-machine-learning-to-index-text-from-billions-of-images) | Computer Vision |
 | Google | [A Neural Network for Machine Translation, at Production Scale](https://research.google/blog/a-neural-network-for-machine-translation-at-production-scale/) | Natural Language Processing |
 | Google | [An All-Neural On-Device Speech Recognizer](https://research.google/blog/an-all-neural-on-device-speech-recognizer/) | Speech And Audio |
+| Google | [Better Generalization with Semantic IDs](https://arxiv.org/abs/2306.08121) | Generative Recommendation |
 | Google | [Child safety toolkit: Content Safety API and CSAI Match](https://protectingchildren.google/tools-for-partners/) | Content Moderation |
 | Google | [Deep Learning for Detection of Diabetic Eye Disease](https://research.google/blog/deep-learning-for-detection-of-diabetic-eye-disease/) | Computer Vision |
+| Google | [Hidden Technical Debt in Machine Learning Systems](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html) | ML Monitoring And Drift |
 | Google | [Improving On-Device Speech Recognition with VoiceFilter-Lite](https://research.google/blog/improving-on-device-speech-recognition-with-voicefilter-lite/) | Speech And Audio |
 | Google | [Long-Term Value of Exploration](https://arxiv.org/abs/2305.07764) | Cold Start And Exploration |
 | Google | [Mapping Africa's Buildings with Satellite Imagery](https://research.google/blog/mapping-africas-buildings-with-satellite-imagery/) | Computer Vision |
 | Google | [On the Factory Floor: ML engineering for industrial-scale ads](https://arxiv.org/abs/2209.05310) | Ads Ctr Prediction |
+| Google | [Recommender Systems with Generative Retrieval (TIGER)](https://arxiv.org/abs/2305.05065) | Generative Recommendation |
 | Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Feature Store And Training Serving Skew |
 | Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Realtime Serving And Deployment |
 | Google | [Rules of Machine Learning](https://developers.google.com/machine-learning/guides/rules-of-ml) | Online Experimentation And Ab Testing |
@@ -31,13 +35,17 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Google | [Sampling-Bias-Corrected Neural Modeling for Large Corpus Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/) | Candidate Retrieval |
 | Google | [Tacotron 2: Generating Human-like Speech from Text](https://research.google/blog/tacotron-2-generating-human-like-speech-from-text/) | Speech And Audio |
 | Google | [Traffic prediction with advanced Graph Neural Networks](https://deepmind.google/blog/traffic-prediction-with-advanced-graph-neural-networks/) | Demand Forecasting And Time Series |
+| Google | [Transformer Memory as a Differentiable Search Index](https://arxiv.org/abs/2202.06991) | Generative Recommendation |
 | Google | [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) | Ranking Model |
+| Kuaishou | [OneRec](https://arxiv.org/abs/2502.18965) | Generative Recommendation |
 | Kuaishou | [TWIN V2: ultra-long user behavior sequence modeling](https://arxiv.org/abs/2407.16357) | Sequential Recommendation |
+| Meta | [Actions Speak Louder than Words (HSTU)](https://arxiv.org/abs/2402.17152) | Generative Recommendation |
 | Meta | [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) | Ranking Model |
 | Meta | [Deep Learning Recommendation Model (DLRM)](https://arxiv.org/abs/1906.00091) | Ads Ctr Prediction |
 | Meta | [Hateful Memes Challenge and dataset](https://ai.meta.com/blog/hateful-memes-challenge-and-data-set/) | Content Moderation |
 | Meta | [How AI is getting better at detecting hate speech](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/) | Natural Language Processing |
 | Meta | [Mask R-CNN](https://ai.meta.com/research/publications/mask-r-cnn/) | Computer Vision |
+| Meta | [Practical Lessons from Predicting Clicks on Ads at Facebook](https://research.facebook.com/publications/practical-lessons-from-predicting-clicks-on-ads-at-facebook/) | Ads Ctr Prediction |
 | Meta | [SeamlessM4T: a foundational multimodal model for speech translation](https://ai.meta.com/blog/seamless-m4t/) | Speech And Audio |
 | Meta | [Transitioning entirely to neural machine translation](https://engineering.fb.com/2017/08/03/ml-applications/transitioning-entirely-to-neural-machine-translation/) | Natural Language Processing |
 | NVIDIA | [NeMo Parakeet ASR Models](https://developer.nvidia.com/blog/pushing-the-boundaries-of-speech-recognition-with-nemo-parakeet-asr-models/) | Speech And Audio |
@@ -103,7 +111,7 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Zalando | [How Zalando optimized large-scale inference and streamlined ML operations](https://aws.amazon.com/blogs/machine-learning/how-zalando-optimized-large-scale-inference-and-streamlined-ml-operations-on-amazon-sagemaker/) | Predictive Modeling Tabular |
 | Zalando | [Shop the Look with Deep Learning](https://engineering.zalando.com/posts/2018/09/shop-look-deep-learning.html) | Computer Vision |
 
-## Media and streaming (19)
+## Media and streaming (21)
 
 | Company | Case study | Topic |
 | --- | --- | --- |
@@ -111,6 +119,8 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Netflix | [Artwork Personalization at Netflix](https://netflixtechblog.com/artwork-personalization-c589f074ad76) | Cold Start And Exploration |
 | Netflix | [Automated Canary Analysis with Kayenta](https://netflixtechblog.com/automated-canary-analysis-at-netflix-with-kayenta-3260bc7acc69) | Realtime Serving And Deployment |
 | Netflix | [Building In-Video Search](https://netflixtechblog.com/building-in-video-search-936766f0017c) | Computer Vision |
+| Netflix | [Foundation Model for Personalized Recommendation](https://netflixtechblog.com/foundation-model-for-personalized-recommendation-1a0bd8e02d39) | Generative Recommendation |
+| Netflix | [GenRec: Towards LLM-Native Recommendation](https://netflixtechblog.com/genrec-towards-llm-native-recommendation-at-netflix-f20be6f643e3) | Generative Recommendation |
 | Netflix | [Infra for Contextual Bandits and Reinforcement Learning](https://netflixtechblog.com/ml-platform-meetup-infra-for-contextual-bandits-and-reinforcement-learning-4a90305948ef) | Cold Start And Exploration |
 | Netflix | [Innovating faster on personalization using Interleaving](https://netflixtechblog.com/interleaving-in-online-experiments-at-netflix-a04ee392ec55) | Online Experimentation And Ab Testing |
 | Netflix | [Integrating Netflix Foundation Model into Personalization](https://netflixtechblog.medium.com/integrating-netflixs-foundation-model-into-personalization-applications-cf176b5860eb) | Sequential Recommendation |
@@ -247,11 +257,12 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Yelp | [Beyond Matrix Factorization: Using hybrid features for user-business recommendations](https://engineeringblog.yelp.com/2022/04/beyond-matrix-factorization-using-hybrid-features-for-user-business-recommendations.html) | Ranking Model |
 | Yelp | [Learning to Rank for Business Matching](https://engineeringblog.yelp.com/2014/12/learning-to-rank-for-business-matching.html) | Search Ranking |
 
-## Research and academia (13)
+## Research and academia (19)
 
 | Company | Case study | Topic |
 | --- | --- | --- |
 | Berkeley RISELab | [Clipper: A Low-Latency Online Prediction Serving System](https://arxiv.org/abs/1612.03079) | Realtime Serving And Deployment |
+| Burges | [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) | Search Ranking |
 | Chawla et al. | [SMOTE: Synthetic Minority Over-sampling Technique](https://arxiv.org/abs/1106.1813) | Fraud And Anomaly Detection |
 | Cheng et al. | [Wide & Deep Learning](https://arxiv.org/abs/1606.07792) | Fraud And Anomaly Detection |
 | Cheng et al. | [Wide & Deep Learning](https://arxiv.org/abs/1606.07792) | Search Ranking |
@@ -261,6 +272,11 @@ The same shipped systems as [CASE-STUDIES.md](CASE-STUDIES.md), pivoted by indus
 | Gao et al. | [SimCSE: Simple Contrastive Learning of Sentence Embeddings](https://arxiv.org/abs/2104.08821) | Embeddings And Representation Learning |
 | Guo et al. | [DeepFM](https://arxiv.org/abs/1703.04247) | Ads Ctr Prediction |
 | He et al. | [LightGCN](https://arxiv.org/abs/2002.02126) | Embeddings And Representation Learning |
+| Kohavi, Tang, Xu | [Trustworthy Online Controlled Experiments](https://experimentguide.com/) | Online Experimentation And Ab Testing |
+| P5 | [Recommendation as Language Processing](https://arxiv.org/abs/2203.13366) | Generative Recommendation |
+| RQ-VAE | [Autoregressive Image Generation using Residual Quantization](https://arxiv.org/abs/2203.01941) | Generative Recommendation |
+| Scaling laws | [Understanding Scaling Laws for Recommendation Models](https://arxiv.org/abs/2208.08489) | Generative Recommendation |
 | Stanford / Hamilton et al. | [GraphSAGE: Inductive Representation Learning on Large Graphs](https://arxiv.org/abs/1706.02216) | Embeddings And Representation Learning |
+| TALLRec | [Aligning an LLM with recommendation](https://arxiv.org/abs/2305.00447) | Generative Recommendation |
 | Wang et al. | [DCN V2](https://arxiv.org/abs/2008.13535) | Ads Ctr Prediction |
 | Wang et al. | [DCN V2: Improved Deep & Cross Network](https://arxiv.org/abs/2008.13535) | Search Ranking |

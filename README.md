@@ -28,6 +28,26 @@ and watch the numbers change. More on why that matters [below](#about-the-diagra
 > Every chapter closes with a capstone that decides the whole build once, costs it,
 > re-derives it under two other constraint sets, and ships a runnable
 > zero-dependency reference you can execute with nothing but Python 3.
+
+> **Want a sidebar and a search box?** The same material is published as a site at
+> **[neurarch-ai.github.io/awesome-ml-system-design](https://neurarch-ai.github.io/awesome-ml-system-design/)**,
+> generated from these exact files. Searching there covers every page at once, which is
+> the fastest way to find the one paragraph that answers a question you are stuck on.
+
+---
+
+## What else is here, and what it is for
+
+Four things ship alongside the text, and each one exists because reading about a system
+is not the same as being able to produce its numbers under pressure.
+
+| | What it is | Use it to |
+|---|---|---|
+| [**Model Zoo**](https://github.com/neurarch-ai/awesome-llm-model-zoo) ([gallery](https://neurarch-ai.github.io/awesome-llm-model-zoo)) | 92 reference architectures as validated graphs at real dimensions, MIT, including DLRM, DeepFM, SASRec, BERT4Rec and GraphSAGE | Trace an embedding table or a feature cross on the real model instead of a diagram of it |
+| [**papers.md**](papers.md) | The reading list per topic, eight papers maximum each | Read the handful an interviewer will not stop to explain |
+| [**datasets.md**](datasets.md) | The public datasets per problem, with what each is for and what is wrong with it | Answer "where would the data come from", which is the question candidates answer worst |
+| [**CASE-STUDIES.md**](CASE-STUDIES.md) + [**teardowns**](CASE-TEARDOWNS.md) | Shipped systems from first-party engineering writeups, with per-system teardowns | Ground an answer in what a real team did, and what it cost them |
+
 ## How to use this repo
 
 1. **Read the [answer framework](framework/answer-framework.md) first.** It is the
@@ -69,6 +89,7 @@ predictive), plus the cross-cutting platform layer they all run on.
 | 01 | [Candidate retrieval (two-tower)](topics/01-candidate-retrieval.md) | The two-tower architecture, in-batch negatives, ANN serving, the candidate funnel, embedding freshness |
 | 02 | [Ranking model](topics/02-ranking-model.md) | Feature engineering, wide-and-deep and DLRM, feature interactions, multi-task ranking, calibration, the scoring latency budget |
 | 03 | [Sequential and personalized recommendation](topics/03-sequential-recommendation.md) | Behavior sequence modeling, attention over interactions, session-based recsys, cold start, real-time features |
+| 19 | [Generative recommendation](topics/19-generative-recommendation.md) | Semantic IDs and the vocabulary collapse, retrieval as constrained decoding, generative ranking and the scaling-law bet, the LLM in the loop, and why the standard metrics flatter all of it |
 | 18 | [Cold start and exploration](topics/18-cold-start-and-exploration.md) | New-user and new-item cold start, content towers, explore-exploit, contextual bandits, off-policy evaluation |
 
 ### Advertising
@@ -133,7 +154,7 @@ predictive), plus the cross-cutting platform layer they all run on.
 | 06 | [Online experimentation and A/B testing](topics/06-online-experimentation-and-ab-testing.md) | Metrics, guardrails, interleaving, novelty effects, sample sizing |
 | 11 | [ML monitoring and drift](topics/11-ml-monitoring-and-drift.md) | Feature drift, label drift, performance decay, alerting |
 
-All eighteen topics are written and ready.
+All nineteen topics are written and ready.
 
 **Going deeper than the whiteboard?** [**deep-dives.md**](deep-dives.md) is a
 bank of ~186 rapid-fire, depth-probing questions: the follow-ups an interviewer
